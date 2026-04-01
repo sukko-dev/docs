@@ -31,7 +31,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/klurvio/sukko-docs/edit/main/',
-          routeBasePath: '/',
+          routeBasePath: 'docs',
         },
         blog: false,
         theme: {
@@ -66,17 +66,17 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          to: '/reference/cli',
+          to: '/docs/reference/cli',
           label: 'CLI',
           position: 'left',
         },
         {
-          to: '/reference/rest-api',
+          to: '/docs/reference/rest-api',
           label: 'API',
           position: 'left',
         },
         {
-          to: '/editions/comparison',
+          to: '/docs/editions/comparison',
           label: 'Editions',
           position: 'left',
         },
@@ -93,17 +93,17 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            {label: 'Quickstart', to: '/quickstart'},
-            {label: 'Concepts', to: '/concepts/architecture'},
-            {label: 'SDK Guides', to: '/guides/sdk/react'},
+            {label: 'Quickstart', to: '/docs/quickstart'},
+            {label: 'Concepts', to: '/docs/concepts/architecture'},
+            {label: 'SDK Guides', to: '/docs/guides/sdk/react'},
           ],
         },
         {
           title: 'Reference',
           items: [
-            {label: 'CLI', to: '/reference/cli'},
-            {label: 'REST API', to: '/reference/rest-api'},
-            {label: 'Configuration', to: '/reference/configuration'},
+            {label: 'CLI', to: '/docs/reference/cli'},
+            {label: 'REST API', to: '/docs/reference/rest-api'},
+            {label: 'Configuration', to: '/docs/reference/configuration'},
           ],
         },
         {
