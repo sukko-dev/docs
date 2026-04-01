@@ -1,0 +1,23 @@
+# Sukko Documentation
+
+> Sukko is a multi-tenant WebSocket infrastructure platform. Deploy it in your own cloud (BYOC), connect your Kafka/Redpanda pipeline, and deliver real-time data to thousands of WebSocket clients with sub-millisecond fan-out.
+
+## Sections
+
+- [Quickstart](/quickstart): Zero-to-first-message in 5 minutes using the sukko CLI
+- [Concepts](/concepts/architecture): Architecture, multi-tenancy, channels, authentication, message backends, gateway
+- [SDK Guides](/guides/sdk/react): React, Vue, Svelte, and vanilla TypeScript integration guides
+- [Deployment](/guides/deploy/local): Local dev (Docker Compose) and Kubernetes (Helm) deployment guides
+- [CLI Reference](/reference/cli): Every sukko CLI command with flags and examples
+- [REST API Reference](/reference/rest-api): Provisioning API endpoints (tenants, keys, rules, quotas)
+- [SDK Reference](/reference/sdk/core): TypeScript SDK API reference (@sukko/sdk, @sukko/react, @sukko/vue, @sukko/svelte)
+- [Configuration Reference](/reference/configuration): Every environment variable across all services
+- [Editions](/editions/comparison): Community, Pro, and Enterprise feature comparison
+
+## Links
+
+- Website: https://sukko.dev
+- Documentation: https://docs.sukko.dev
+- CLI: https://github.com/klurvio/sukko-cli
+- JS SDK: https://github.com/klurvio/sukko-js
+- Issues: https://github.com/klurvio/sukko-issues
