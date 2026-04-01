@@ -1,8 +1,186 @@
 ---
-title: Kubernetes
-description: Kubernetes guide
+title: Kubernetes Deployment
+description: Deploy Sukko to Kubernetes with Helm
 ---
 
-# Kubernetes
+# Kubernetes Deployment
 
-*Content coming soon.*
+Deploy Sukko to any Kubernetes cluster using the Helm chart. Supports DOKS (DigitalOcean), GKE (Google), and any conformant K8s.
+
+:::info Time to complete
+~15 minutes (assuming an existing cluster)
+:::
+
+## Prerequisites
+
+- A Kubernetes cluster (v1.25+)
+- `kubectl` configured and connected to the cluster
+- Helm 3 installed
+- Container images available on ghcr.io (or your registry)
+
+## Step 1: Add the Chart
+
+The Helm chart is in the Sukko repository:
+
+```bash
+git clone https://github.com/klurvio/sukko.git
+cd sukko
+```
+
+## Step 2: Configure Values
+
+Copy the demo values as a starting point:
+
+```bash
+cp deployments/helm/sukko/values/doks/demo.yaml my-values.yaml
+```
+
+Edit `my-values.yaml` for your environment:
+
+```yaml
+global:
+  namespace: sukko
+  imageRegistry: "ghcr.io/klurvio"
+
+ws-gateway:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 3000
+
+ws-server:
+  replicaCount: 2
+  messageBackend: kafka
+
+provisioning:
+  replicaCount: 1
+
+redpanda:
+  enabled: true
+  replicaCount: 1
+
+nats:
+  enabled: true
+
+monitoring:
+  enabled: true
+```
+
+### Key Configuration
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `ws-gateway.replicaCount` | Gateway replicas | 1 |
+| `ws-server.messageBackend` | `direct`, `kafka`, or `nats` | kafka |
+| `redpanda.enabled` | Deploy Redpanda (Kafka) | true |
+| `nats.enabled` | Deploy NATS (broadcast bus) | true |
+| `monitoring.enabled` | Deploy Prometheus + Grafana | true |
+
+## Step 3: Deploy
+
+```bash
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f my-values.yaml \
+  -n sukko --create-namespace
+```
+
+## Step 4: Verify
+
+```bash
+# Check pods
+kubectl get pods -n sukko
+
+# Check services
+kubectl get svc -n sukko
+
+# Check gateway external IP
+kubectl get svc -n sukko -l app.kubernetes.io/name=ws-gateway \
+  -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}'
+```
+
+Test connectivity:
+
+```bash
+curl http://<gateway-ip>/health
+```
+
+## Platform-Specific Notes
+
+### DOKS (DigitalOcean)
+
+```bash
+# Connect kubectl
+doctl kubernetes cluster kubeconfig save sukko-demo
+
+# Deploy
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f deployments/helm/sukko/values/doks/demo.yaml \
+  -n sukko-demo --create-namespace
+```
+
+### GKE (Google)
+
+```bash
+# Connect kubectl
+gcloud container clusters get-credentials sukko-demo \
+  --zone us-central1-a --project your-project
+
+# Deploy with static IP from foundation layer
+GATEWAY_IP=$(terraform -chdir=deployments/terraform/environments/gke/demo-foundation \
+  output -raw gateway_external_ip)
+
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f deployments/helm/sukko/values/gke/demo.yaml \
+  -n sukko-demo --create-namespace \
+  --set ws-gateway.service.loadBalancerIP=$GATEWAY_IP
+```
+
+## Monitoring
+
+With `monitoring.enabled: true`, the chart deploys:
+
+- **Prometheus** — metrics collection (port-forward: 9090)
+- **Grafana** — dashboards (port-forward: 3000)
+- **Loki** — log aggregation
+- **Promtail** — log shipping
+
+```bash
+# Access Grafana
+kubectl port-forward -n sukko svc/sukko-monitoring-grafana 3000:3000
+# Open http://localhost:3000
+```
+
+## Scaling
+
+### Horizontal Scaling
+
+Increase replicas for the gateway and server:
+
+```yaml
+ws-gateway:
+  replicaCount: 3
+
+ws-server:
+  replicaCount: 3
+```
+
+### Connection Limits
+
+Configure per-tenant and global limits:
+
+```yaml
+ws-gateway:
+  extraEnv:
+    DEFAULT_TENANT_CONNECTION_LIMIT: "10000"
+
+ws-server:
+  connectionLimits:
+    clusterMaxConnections: 100000
+```
+
+## Next Steps
+
+- **[Configuration Reference](../../reference/configuration)** — All environment variables
+- **[Monitoring](../../concepts/architecture)** — Architecture and data flow
+- **[Local Development](./local)** — Run Sukko locally for development

@@ -1,8 +1,87 @@
 ---
 title: Channels
-description: Channels overview
+description: Public, user-scoped, and group-scoped channel patterns
 ---
 
 # Channels
 
-*Content coming soon.*
+Channels control who receives which messages. Sukko supports three channel types, configured per tenant via channel rules.
+
+## Channel Types
+
+### Public Channels
+
+Any authenticated client can subscribe. Used for broadcast data.
+
+```
+general.chat
+announce.updates
+market.BTC.trade
+```
+
+Pattern: configured in the `public` array of channel rules.
+
+### User-Scoped Channels
+
+Only the user whose JWT `sub` matches the channel's `{principal}` placeholder can subscribe. Used for private messages.
+
+```
+dm.{principal}    →    dm.user-123  (only user-123 receives)
+```
+
+The gateway resolves `{principal}` from the JWT `sub` claim at connection time.
+
+### Group-Scoped Channels
+
+Only users whose JWT `groups` claim includes the matching group can subscribe. Used for team/role-based messaging.
+
+```
+room.vip          →    only users with "vip" in their groups claim
+room.traders      →    only users with "traders" in their groups claim
+```
+
+## Channel Rules Configuration
+
+Channel rules are set per tenant via the provisioning API:
+
+```bash
+curl -X PUT http://localhost:8080/api/v1/tenants/demo/channel-rules \
+  -H "Content-Type: application/json" \
+  -d '{
+    "public": ["general.*", "announce.*", "dm.{principal}"],
+    "default": ["general.*"],
+    "group_mappings": {
+      "vip": ["room.vip"],
+      "traders": ["room.traders"]
+    },
+    "publish_public": ["general.*", "dm.{principal}"],
+    "publish_default": ["general.*"]
+  }'
+```
+
+### Rule Fields
+
+| Field | Description |
+|-------|-------------|
+| `public` | Channels any authenticated user can subscribe to |
+| `default` | Channels for users with no group matches |
+| `group_mappings` | Map of group name to allowed channels |
+| `publish_public` | Channels any user can publish to |
+| `publish_default` | Channels users with no groups can publish to |
+
+### Pattern Syntax
+
+Channel patterns use glob matching:
+
+- `*` matches any single segment (`general.*` matches `general.chat` but not `general.chat.v2`)
+- `{principal}` resolves to the JWT subject claim
+
+## Publish Authorization
+
+Publishing is also controlled by channel rules. If a client publishes to a channel they're not authorized for, the message is silently dropped (or rejected with an error, depending on gateway configuration).
+
+## Next Steps
+
+- **[Authentication](./authentication)** — JWT claims that drive channel access
+- **[Multi-Tenancy](./multi-tenancy)** — Per-tenant channel isolation
+- **[REST API Reference](../reference/rest-api)** — Channel rules API endpoints

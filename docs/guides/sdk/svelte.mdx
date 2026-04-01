@@ -1,8 +1,73 @@
 ---
-title: Svelte
-description: Svelte guide
+title: Svelte Integration
+description: Add real-time features to your Svelte app with @sukko/svelte
 ---
 
-# Svelte
+# Svelte Integration
 
-*Content coming soon.*
+Add real-time WebSocket features to your Svelte app using the `@sukko/svelte` package.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket @sukko/svelte
+```
+
+## Setup Context
+
+Initialize the Sukko client in your root layout:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script>
+  import { setSukkoContext } from '@sukko/svelte';
+
+  setSukkoContext({
+    url: 'ws://localhost:3000',
+    getToken: async () => {
+      const res = await fetch('/api/auth/sukko-token');
+      return res.text();
+    },
+  });
+</script>
+
+<slot />
+```
+
+## Subscribe to a Channel
+
+```svelte
+<script>
+  import { createSubscription } from '@sukko/svelte';
+
+  const messages = createSubscription('general.chat');
+</script>
+
+<ul>
+  {#each $messages as msg, i}
+    <li>{JSON.stringify(msg.data)}</li>
+  {/each}
+</ul>
+```
+
+## Connection State
+
+```svelte
+<script>
+  import { createConnectionState } from '@sukko/svelte';
+
+  const state = createConnectionState();
+</script>
+
+<span>Status: {$state}</span>
+```
+
+## Next Steps
+
+- **[Vanilla TypeScript](./vanilla-ts)** — Framework-agnostic integration
+- **[SDK Reference](../../reference/sdk/svelte)** — Full API reference
+- **[Channels](../../concepts/channels)** — Channel types and scoping

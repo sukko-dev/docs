@@ -1,8 +1,116 @@
 ---
-title: Local
-description: Local guide
+title: Local Development
+description: Run Sukko locally with Docker Compose via the sukko CLI
 ---
 
-# Local
+# Local Development
 
-*Content coming soon.*
+Run the full Sukko stack on your machine using Docker Compose. No Kubernetes required.
+
+:::info Time to complete
+~3 minutes
+:::
+
+## Prerequisites
+
+- Docker installed and running
+- The `sukko` CLI installed ([see Quickstart](../../quickstart))
+
+## Start the Stack
+
+```bash
+sukko up
+```
+
+This starts all services:
+
+| Service | Port | Description |
+|---------|------|-------------|
+| ws-gateway | 3000 | WebSocket reverse proxy |
+| ws-server | 3005 | Core message server |
+| provisioning | 8080 | Tenant management API |
+| Redpanda | 9092 | Kafka-compatible broker |
+| NATS | 4222 | Broadcast bus |
+
+## Verify
+
+Check that all services are healthy:
+
+```bash
+sukko health
+```
+
+```bash
+sukko status
+```
+
+## Common Operations
+
+### View Logs
+
+```bash
+# All services
+sukko logs
+
+# Specific service
+sukko logs --service gateway
+```
+
+### Stop the Stack
+
+```bash
+sukko down
+```
+
+### Force Pull Latest Images
+
+```bash
+sukko down && sukko up --pull
+```
+
+## Architecture
+
+The local stack mirrors production:
+
+```
+Client → ws-gateway (:3000) → ws-server (:3005)
+                                    ↓
+                              NATS broadcast
+                                    ↓
+                              ws-server shards → Clients
+                                    ↑
+                        Redpanda (Kafka) (:9092)
+                                    ↑
+                            External publishers
+```
+
+The only difference from production:
+- Single instance of each service (no replication)
+- SQLite for provisioning (no PostgreSQL)
+- All services on localhost (no Kubernetes networking)
+
+## Customization
+
+### Environment Variables
+
+Override service configuration by setting env vars before `sukko up`:
+
+```bash
+export SUKKO_LICENSE_KEY="your-pro-license-key"
+sukko down && sukko up
+```
+
+### Message Backend
+
+The default local setup uses the **direct** message backend (no Kafka). To use Kafka/Redpanda:
+
+```bash
+sukko config set message-backend kafka
+sukko down && sukko up
+```
+
+## Next Steps
+
+- **[Deploy to Kubernetes](./kubernetes)** — Production deployment with Helm
+- **[Quickstart](../../quickstart)** — Create your first tenant and send a message
+- **[SDK Integration](../sdk/react)** — Connect your frontend app

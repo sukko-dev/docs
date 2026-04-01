@@ -1,8 +1,84 @@
 ---
 title: Message Backends
-description: Message Backends overview
+description: Direct, Kafka, and NATS JetStream message backends
 ---
 
 # Message Backends
 
-*Content coming soon.*
+Sukko supports three pluggable message backends. All three deliver messages through the same broadcast bus to WebSocket clients — they differ in how messages enter the system.
+
+## Direct
+
+Zero-dependency mode for local development and testing.
+
+- Client publishes via WebSocket, server routes directly to broadcast bus
+- No persistence, no replay
+- No external dependencies (no Kafka, no JetStream)
+
+```bash
+# Default for sukko up
+MESSAGE_BACKEND=direct
+```
+
+## Kafka / Redpanda
+
+Production-grade persistent ingestion with offset-based replay.
+
+- External systems publish to Kafka topics
+- ws-server consumes via franz-go consumer groups
+- Three-layer protection: rate limiting, CPU backpressure, non-blocking broadcast
+- Offset-based replay on client reconnection
+
+```bash
+MESSAGE_BACKEND=kafka
+KAFKA_BROKERS=redpanda:9092
+```
+
+### Topic Naming
+
+Topics follow a three-part scheme: `{namespace}.{tenant_id}.{category}`
+
+Example: `prod.acme.trade`, `dev.demo.analytics`
+
+### Consumer Modes
+
+- **Shared** — all tenants on one consumer group (default)
+- **Dedicated** — per-tenant consumer group for high-volume tenants
+
+## NATS JetStream
+
+Kafka alternative using NATS built-in persistence.
+
+- Lighter than Kafka, uses sequence-based replay
+- Auto-created streams per tenant
+- Configurable retention and replication
+
+```bash
+MESSAGE_BACKEND=nats
+NATS_JETSTREAM_URLS=nats://nats:4222
+```
+
+## Comparison
+
+| | Direct | Kafka | JetStream |
+|---|---|---|---|
+| **Persistence** | None | Offset-based | Sequence-based |
+| **Replay** | No | Yes | Yes |
+| **Dependencies** | None | Kafka/Redpanda | NATS |
+| **Use Case** | Testing | Production | Alternative production |
+| **Backpressure** | No | Yes (CPU brake) | No |
+
+## Broadcast Bus
+
+All three backends route messages through the **broadcast bus** (NATS or Valkey) for inter-pod fan-out. The backend is how messages get IN — the bus is how they get distributed.
+
+```bash
+BROADCAST_TYPE=nats     # or valkey
+NATS_URLS=nats://nats:4222
+```
+
+## Next Steps
+
+- **[Architecture](./architecture)** — Full data flow diagram
+- **[Configuration Reference](../reference/configuration)** — All backend env vars
+- **[Kubernetes Deployment](../guides/deploy/kubernetes)** — Configure backends in Helm

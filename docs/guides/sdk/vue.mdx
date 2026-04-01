@@ -1,8 +1,79 @@
 ---
-title: Vue
-description: Vue guide
+title: Vue Integration
+description: Add real-time features to your Vue 3 app with @sukko/vue
 ---
 
-# Vue
+# Vue Integration
 
-*Content coming soon.*
+Add real-time WebSocket features to your Vue 3 app using the `@sukko/vue` package.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket @sukko/vue
+```
+
+## Setup Plugin
+
+Register the Sukko plugin in your app:
+
+```typescript
+// src/main.ts
+import { createApp } from 'vue';
+import { createSukkoPlugin } from '@sukko/vue';
+import App from './App.vue';
+
+const app = createApp(App);
+
+app.use(createSukkoPlugin({
+  url: 'ws://localhost:3000',
+  getToken: async () => {
+    const res = await fetch('/api/auth/sukko-token');
+    return res.text();
+  },
+}));
+
+app.mount('#app');
+```
+
+## Subscribe to a Channel
+
+```vue
+<script setup lang="ts">
+import { useSubscription } from '@sukko/vue';
+
+const { messages } = useSubscription('general.chat');
+</script>
+
+<template>
+  <ul>
+    <li v-for="(msg, i) in messages" :key="i">
+      {{ JSON.stringify(msg.data) }}
+    </li>
+  </ul>
+</template>
+```
+
+## Connection State
+
+```vue
+<script setup lang="ts">
+import { useConnectionState } from '@sukko/vue';
+
+const state = useConnectionState();
+</script>
+
+<template>
+  <span>Status: {{ state }}</span>
+</template>
+```
+
+## Next Steps
+
+- **[Svelte Integration](./svelte)** — Svelte stores
+- **[SDK Reference](../../reference/sdk/vue)** — Full API reference
+- **[Channels](../../concepts/channels)** — Channel types and scoping

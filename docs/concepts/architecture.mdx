@@ -1,8 +1,64 @@
 ---
 title: Architecture
-description: Architecture overview
+description: How Sukko components work together to deliver real-time messages
 ---
 
 # Architecture
 
-*Content coming soon.*
+Sukko is a multi-service platform that ingests messages from Kafka/Redpanda and delivers them to WebSocket clients in real time.
+
+## Components
+
+| Service | Role | Port |
+|---------|------|------|
+| **ws-gateway** | WebSocket reverse proxy. Client connections, JWT auth, rate limiting, tenant isolation. | 3000 |
+| **ws-server** | Core message server. Kafka consumption, NATS broadcast, sharded connections. | 3005 |
+| **provisioning** | REST API. Tenants, keys, channel rules, routing rules, quotas. | 8080 |
+
+## Data Flow
+
+```
+External API / Producer
+        │
+        ▼
+  Kafka / Redpanda          (persistent message ingestion)
+        │
+        ▼
+    ws-server                (consume → rate limit → CPU backpressure)
+        │
+        ▼
+   NATS broadcast bus        (inter-pod fan-out)
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+ Shard Shard Shard           (sharded client connections)
+   │    │    │
+   ▼    ▼    ▼
+ ws-gateway instances        (reverse proxy → WebSocket clients)
+```
+
+## Sharded Architecture
+
+The ws-server distributes connections across **shards**. Each shard owns a subset of connections, has a dedicated write pump per client, and maintains a **subscription index** for O(1) subscriber lookup — no full-client scan on every message.
+
+## Broadcast Bus
+
+The broadcast bus (NATS or Valkey) handles inter-pod message distribution:
+
+1. Consuming ws-server publishes to the bus
+2. Every ws-server instance receives the message
+3. Each routes to local subscribers via the subscription index
+
+## Three-Layer Message Protection
+
+The Kafka consumer has three protection layers:
+
+1. **Rate Limiting** — caps messages per second (configurable)
+2. **CPU Emergency Brake** — pauses consumption when CPU exceeds threshold (backpressure, zero message loss)
+3. **Non-blocking Broadcast** — drops to slow subscribers, counted via Prometheus
+
+## Next Steps
+
+- **[Multi-Tenancy](./multi-tenancy)** — How tenant isolation works
+- **[Channels](./channels)** — Public, user-scoped, and group-scoped patterns
+- **[Message Backends](./message-backends)** — Kafka, JetStream, and direct modes

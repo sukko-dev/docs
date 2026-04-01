@@ -1,8 +1,60 @@
 ---
-title: Multi Tenancy
-description: Multi Tenancy overview
+title: Multi-Tenancy
+description: How Sukko isolates tenants at every layer
 ---
 
-# Multi Tenancy
+# Multi-Tenancy
 
-*Content coming soon.*
+Every connection, channel, and topic in Sukko belongs to a tenant. Tenants are isolated at every layer of the stack.
+
+## Tenant Model
+
+A tenant represents a customer or application environment. Each tenant has:
+
+- A unique ID (`^[a-z][a-z0-9-]{2,62}$`)
+- JWT signing keys for authentication
+- Channel rules controlling subscribe/publish access
+- Routing rules mapping channels to Kafka topics
+- Quotas limiting connections, topics, and rules
+
+## Isolation Guarantees
+
+| Layer | Isolation |
+|-------|-----------|
+| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced. |
+| **Channels** | Channel names are namespaced per tenant internally. Tenant A's `general.chat` is separate from Tenant B's. |
+| **Topics** | Kafka topics are prefixed: `{namespace}.{tenant_id}.{category}` |
+| **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected. |
+| **Quotas** | Per-tenant limits on connections, topics, and routing rules. |
+
+## Consumer Modes
+
+Sukko supports two Kafka consumer modes:
+
+### Shared Consumer
+
+All tenants share a single consumer group. Topics are discovered via the tenant registry and hot-added without rebalance. Best for small-to-medium tenants.
+
+### Dedicated Consumer
+
+Each tenant gets its own consumer group with isolated partition management. Best for high-volume tenants that need guaranteed throughput.
+
+Configure per tenant via the provisioning API:
+
+```bash
+sukko tenant create --id high-volume --name "High Volume" --consumer-type dedicated
+```
+
+## Tenant Lifecycle
+
+| State | Description |
+|-------|-------------|
+| **active** | Normal operation. Connections accepted, messages delivered. |
+| **suspended** | New connections rejected. Existing connections maintained. |
+| **deleted** | All resources cleaned up. Irreversible. |
+
+## Next Steps
+
+- **[Authentication](./authentication)** — JWT setup and key registration
+- **[Channels](./channels)** — Channel scoping per tenant
+- **[Configuration Reference](../reference/configuration)** — Tenant-related env vars

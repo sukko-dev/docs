@@ -1,8 +1,101 @@
 ---
 title: Upgrade
-description: Sukko editions — Upgrade
+description: Upgrade from Community to Pro or Enterprise
 ---
 
 # Upgrade
 
-*Content coming soon.*
+Upgrading Sukko is a single environment variable change. No data migration, no downtime.
+
+:::info Time to complete
+~2 minutes
+:::
+
+## Step 1: Get a License Key
+
+Purchase a Pro or Enterprise license from the [Customer Portal](https://sukko.dev/pricing).
+
+You'll receive a license key that looks like:
+
+```
+sk_live_abc123...
+```
+
+## Step 2: Set the License Key
+
+### Docker Compose (sukko CLI)
+
+```bash
+sukko license set sk_live_abc123...
+sukko down && sukko up
+```
+
+### Kubernetes (Helm)
+
+```bash
+helm upgrade sukko ./deployments/helm/sukko \
+  -f my-values.yaml \
+  -n sukko \
+  --set global.licenseKey=sk_live_abc123...
+```
+
+Or set it as a Kubernetes secret:
+
+```bash
+kubectl create secret generic sukko-license \
+  -n sukko \
+  --from-literal=key=sk_live_abc123...
+```
+
+### Environment Variable (Direct)
+
+Set on all three services (gateway, server, provisioning):
+
+```bash
+export SUKKO_LICENSE_KEY="sk_live_abc123..."
+```
+
+## Step 3: Verify
+
+Check the edition endpoint on any service:
+
+```bash
+curl http://localhost:8080/edition | jq .
+```
+
+Expected output:
+
+```json
+{
+  "edition": "pro",
+  "limits": {
+    "max_tenants": 50,
+    "max_total_connections": 100000,
+    "max_shards": 8,
+    "max_topics_per_tenant": 50,
+    "max_routing_rules_per_tenant": 25
+  }
+}
+```
+
+Or via the CLI:
+
+```bash
+sukko edition
+```
+
+## Downgrade
+
+To return to Community, remove the license key and restart:
+
+```bash
+sukko license clear
+sukko down && sukko up
+```
+
+Existing tenants and data are preserved. If you exceed Community limits, new tenant/connection creation will be rejected until you're within limits.
+
+## Next Steps
+
+- **[Edition Comparison](./comparison)** — Full feature matrix
+- **[Configuration Reference](../reference/configuration)** — All environment variables

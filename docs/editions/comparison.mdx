@@ -1,8 +1,68 @@
 ---
-title: Comparison
-description: Sukko editions — Comparison
+title: Edition Comparison
+description: Compare Sukko Community, Pro, and Enterprise editions
 ---
 
-# Comparison
+import EditionBadge from '@site/src/components/EditionBadge';
 
-*Content coming soon.*
+# Edition Comparison
+
+Sukko is available in three editions. Community is free and open source. Pro and Enterprise unlock higher limits and advanced features.
+
+## Feature Matrix
+
+| Feature | Community | Pro | Enterprise |
+|---------|-----------|-----|------------|
+| **Tenants** | 3 | 50 | Unlimited |
+| **Total Connections** | 1,000 | 100,000 | Unlimited |
+| **Shards** | 1 | 8 | Unlimited |
+| **Topics per Tenant** | 5 | 50 | Unlimited |
+| **Routing Rules per Tenant** | 3 | 25 | Unlimited |
+| **WebSocket Gateway** | Yes | Yes | Yes |
+| **Multi-Tenant Isolation** | Yes | Yes | Yes |
+| **JWT Authentication** | Yes | Yes | Yes |
+| **API Key Authentication** | Yes | Yes | Yes |
+| **Channel Scoping** | Public only | All (public, user, group) | All |
+| **Kafka/Redpanda Backend** | Yes | Yes | Yes |
+| **NATS JetStream Backend** | Yes | Yes | Yes |
+| **Prometheus Metrics** | Yes | Yes | Yes |
+| **Grafana Dashboards** | Yes | Yes | Yes |
+| **Dedicated Consumers** | — | Yes | Yes |
+| **Alerting (AlertManager)** | — | Yes | Yes |
+| **TLS/SASL for Kafka** | — | Yes | Yes |
+| **OpenTelemetry Tracing** | — | Yes | Yes |
+| **pprof/Pyroscope Profiling** | — | Yes | Yes |
+| **Priority Support** | — | — | Yes |
+| **Custom SLA** | — | — | Yes |
+
+## Which Edition Do I Need?
+
+### Community (Free)
+
+For evaluation, development, and small deployments. No license key required.
+
+- Up to 3 tenants, 1,000 connections
+- All core features (gateway, multi-tenant, JWT auth, Kafka)
+- Community support via GitHub Issues
+
+### Pro <EditionBadge edition="pro" />
+
+For production workloads with multiple tenants and higher scale.
+
+- Up to 50 tenants, 100,000 connections
+- Advanced features: dedicated consumers, alerting, TLS, tracing
+- Email support
+
+### Enterprise <EditionBadge edition="enterprise" />
+
+For large-scale deployments with no limits.
+
+- Unlimited everything
+- Priority support with custom SLA
+- Contact us for pricing
+
+## Next Steps
+
+- **[Upgrade to Pro](./upgrade)** — Set your license key and unlock Pro features
+- **[Pricing](./pricing)** — Pricing details
+- **[Quickstart](../quickstart)** — Try Sukko with the free Community edition

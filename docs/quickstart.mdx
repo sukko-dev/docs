@@ -1,16 +1,157 @@
 ---
 title: Quickstart
-description: Go from zero to first message in 5 minutes
+description: Go from zero to first real-time message in 5 minutes
 sidebar_position: 1
 ---
 
 # Quickstart
 
-Get Sukko running and receive your first real-time message in under 5 minutes.
+Get Sukko running locally and receive your first real-time message in under 5 minutes.
 
-:::info Prerequisites
-- Docker installed and running
-- A terminal (macOS, Linux, or Windows WSL2)
+:::info Time to complete
+~5 minutes
 :::
 
-*Content coming soon — this is a scaffold placeholder.*
+## Prerequisites
+
+- **Docker** installed and running ([Install Docker](https://docs.docker.com/get-docker/))
+- **A terminal** (macOS, Linux, or Windows WSL2)
+
+## Step 1: Install the Sukko CLI
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="brew" label="Homebrew (macOS/Linux)" default>
+
+```bash
+brew install klurvio/tap/sukko
+```
+
+  </TabItem>
+  <TabItem value="scoop" label="Scoop (Windows)">
+
+```bash
+scoop bucket add sukko https://github.com/klurvio/scoop-bucket
+scoop install sukko
+```
+
+  </TabItem>
+  <TabItem value="binary" label="Direct Download">
+
+Download the latest release from [GitHub Releases](https://github.com/klurvio/sukko-cli/releases) and add it to your PATH.
+
+  </TabItem>
+</Tabs>
+
+Verify the installation:
+
+```bash
+sukko version
+```
+
+Expected output:
+
+```
+sukko version v0.x.x (commit: abc1234)
+```
+
+## Step 2: Start Sukko
+
+```bash
+sukko up
+```
+
+This pulls Docker images and starts the full Sukko stack:
+- **ws-gateway** — WebSocket reverse proxy (port 3000)
+- **ws-server** — Core message server
+- **provisioning** — Multi-tenant management API (port 8080)
+- **Redpanda** — Kafka-compatible message broker
+- **NATS** — Inter-pod broadcast bus
+
+Wait for all services to be healthy (~30 seconds):
+
+```
+✓ All services healthy
+  Gateway:      ws://localhost:3000
+  Provisioning: http://localhost:8080
+```
+
+## Step 3: Create a Tenant
+
+Every connection in Sukko belongs to a tenant. Create one:
+
+```bash
+sukko tenant create --id demo --name "Demo Tenant"
+```
+
+Expected output:
+
+```json
+{
+  "id": "demo",
+  "name": "Demo Tenant",
+  "status": "active"
+}
+```
+
+## Step 4: Generate a Token
+
+Clients authenticate with JWT tokens. Generate one for testing:
+
+```bash
+sukko token generate --tenant demo --subject user-1
+```
+
+Copy the token — you'll use it in the next step.
+
+## Step 5: Subscribe to a Channel
+
+Open a second terminal and subscribe to a channel:
+
+```bash
+sukko subscribe general.chat --tenant demo --subject user-1
+```
+
+You'll see:
+
+```
+Connected to ws://localhost:3000
+Subscribed to: general.chat
+Waiting for messages... (Ctrl+C to exit)
+```
+
+## Step 6: Publish a Message
+
+In your first terminal, publish a message:
+
+```bash
+sukko publish general.chat '{"text": "Hello, Sukko!"}' --tenant demo
+```
+
+In the subscriber terminal, you'll see:
+
+```json
+{
+  "channel": "general.chat",
+  "data": {"text": "Hello, Sukko!"}
+}
+```
+
+You just sent your first real-time message through Sukko.
+
+## Step 7: Clean Up
+
+When you're done:
+
+```bash
+sukko down
+```
+
+## Next Steps
+
+- **[Integrate with your app](./guides/sdk/react)** — Add real-time features with the React, Vue, or Svelte SDK
+- **[Understand the architecture](./concepts/architecture)** — How data flows from Kafka to WebSocket clients
+- **[Deploy to Kubernetes](./guides/deploy/kubernetes)** — Production deployment with Helm
+- **[Configure channels](./concepts/channels)** — Public, user-scoped, and group-scoped channel patterns

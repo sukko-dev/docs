@@ -1,8 +1,64 @@
 ---
 title: Gateway
-description: Gateway overview
+description: WebSocket reverse proxy with auth, rate limiting, and tenant isolation
 ---
 
 # Gateway
 
-*Content coming soon.*
+The ws-gateway is a WebSocket reverse proxy that sits between clients and the ws-server. It handles authentication, rate limiting, connection tracking, and tenant isolation.
+
+## Connection Lifecycle
+
+1. **Upgrade** — Client initiates WebSocket upgrade with JWT in `Authorization` header
+2. **Authenticate** — Gateway verifies JWT (signature, expiry, tenant, key revocation)
+3. **Proxy** — Bidirectional WebSocket proxy between client and ws-server
+4. **Subscribe/Publish** — Client sends subscribe/publish frames, gateway validates channel access
+5. **Disconnect** — Connection closed, metrics updated, resources released
+
+## Rate Limiting
+
+The gateway enforces rate limits at four levels:
+
+| Level | Scope | Default |
+|-------|-------|---------|
+| **Global** | All connections across all tenants | Configurable |
+| **Per-IP** | Connections from a single IP address | Configurable |
+| **Per-Tenant** | Total connections for a tenant | Set via quotas |
+| **Per-Client** | Messages per second per connection | Configurable |
+
+When a limit is exceeded, the gateway either rejects the connection (connect-time limits) or closes it (runtime limits).
+
+## Connection Tracking
+
+The gateway tracks active connections per tenant:
+
+- Total connections (global counter)
+- Per-tenant connection count
+- Per-tenant connection limit enforcement
+
+This data is available via Prometheus metrics (`gateway_connections_active`, `gateway_connections_total`) and the `/edition` endpoint.
+
+## Health Checks
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/health` | Liveness — is the process running? |
+| `/ready` | Readiness — can it accept connections? |
+| `/version` | Build info (version, commit, build time) |
+| `/edition` | Edition, limits, and usage |
+| `/metrics` | Prometheus metrics |
+
+## Static IP Preservation
+
+On GKE, the gateway LoadBalancer can use a static IP from the Terraform foundation layer. The IP survives cluster destroy/recreate cycles:
+
+```bash
+helm upgrade --install sukko ./deployments/helm/sukko \
+  --set ws-gateway.service.loadBalancerIP=$GATEWAY_IP
+```
+
+## Next Steps
+
+- **[Authentication](./authentication)** — JWT verification details
+- **[Architecture](./architecture)** — How gateway connects to ws-server
+- **[Configuration Reference](../reference/configuration)** — Gateway env vars

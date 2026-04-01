@@ -1,8 +1,103 @@
 ---
-title: Vanilla Ts
-description: Vanilla Ts guide
+title: Vanilla TypeScript
+description: Use the Sukko SDK without any framework
 ---
 
-# Vanilla Ts
+# Vanilla TypeScript
 
-*Content coming soon.*
+Use the Sukko SDK directly with TypeScript — no React, Vue, or Svelte required.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket
+```
+
+## Create a Client
+
+```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
+const client = new SukkoClient({
+  transport: new WebSocketTransport({
+    url: 'ws://localhost:3000',
+  }),
+  getToken: async () => {
+    const res = await fetch('/api/auth/sukko-token');
+    return res.text();
+  },
+});
+
+await client.connect();
+```
+
+## Subscribe
+
+```typescript
+client.subscribe('general.chat', (message) => {
+  console.log('Received:', message.data);
+});
+```
+
+## Publish
+
+```typescript
+client.publish('general.chat', {
+  text: 'Hello from vanilla TS!',
+});
+```
+
+## Connection Events
+
+```typescript
+client.on('connected', () => console.log('Connected'));
+client.on('disconnected', () => console.log('Disconnected'));
+client.on('reconnecting', () => console.log('Reconnecting...'));
+```
+
+## Complete Example
+
+```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
+const client = new SukkoClient({
+  transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+  getToken: () => fetch('/api/token').then(r => r.text()),
+});
+
+client.on('connected', () => {
+  console.log('Connected to Sukko');
+
+  client.subscribe('general.chat', (msg) => {
+    const li = document.createElement('li');
+    li.textContent = JSON.stringify(msg.data);
+    document.getElementById('messages')?.appendChild(li);
+  });
+});
+
+await client.connect();
+
+// Publish on button click
+document.getElementById('send')?.addEventListener('click', () => {
+  client.publish('general.chat', { text: 'Hello!' });
+});
+```
+
+## Cleanup
+
+```typescript
+client.unsubscribe('general.chat');
+client.disconnect();
+```
+
+## Next Steps
+
+- **[React Integration](./react)** — React hooks and provider
+- **[SDK Reference](../../reference/sdk/core)** — Full SukkoClient API reference
+- **[Authentication](../../concepts/authentication)** — Token management

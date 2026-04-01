@@ -1,8 +1,137 @@
 ---
-title: React
-description: React guide
+title: React Integration
+description: Add real-time features to your React app with @sukko/react
 ---
 
-# React
+# React Integration
 
-*Content coming soon.*
+Add real-time WebSocket features to your React app using the `@sukko/react` package.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Prerequisites
+
+- A running Sukko instance ([Quickstart](../../quickstart))
+- A React 18+ application
+- A backend endpoint that generates Sukko JWT tokens
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket @sukko/react
+```
+
+## Setup Provider
+
+Wrap your app with `SukkoProvider`:
+
+```tsx
+// src/App.tsx
+import { SukkoProvider } from '@sukko/react';
+
+function App() {
+  return (
+    <SukkoProvider
+      url="ws://localhost:3000"
+      getToken={async () => {
+        const res = await fetch('/api/auth/sukko-token');
+        return res.text();
+      }}
+    >
+      <ChatRoom />
+    </SukkoProvider>
+  );
+}
+```
+
+The `getToken` callback is called on connect and before token expiry. Your backend should return a fresh JWT.
+
+## Subscribe to a Channel
+
+```tsx
+import { useSubscription } from '@sukko/react';
+
+function ChatRoom() {
+  const { messages } = useSubscription('general.chat');
+
+  return (
+    <ul>
+      {messages.map((msg, i) => (
+        <li key={i}>{JSON.stringify(msg.data)}</li>
+      ))}
+    </ul>
+  );
+}
+```
+
+## Connection State
+
+```tsx
+import { useConnectionState } from '@sukko/react';
+
+function StatusBar() {
+  const state = useConnectionState();
+  // state: 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+
+  return <span>Status: {state}</span>;
+}
+```
+
+## Publish a Message
+
+```tsx
+import { useSukkoClient } from '@sukko/react';
+
+function MessageInput() {
+  const client = useSukkoClient();
+
+  const send = () => {
+    client.publish('general.chat', { text: 'Hello from React!' });
+  };
+
+  return <button onClick={send}>Send</button>;
+}
+```
+
+## Complete Example
+
+```tsx
+import { SukkoProvider, useSubscription, useSukkoClient, useConnectionState } from '@sukko/react';
+
+function ChatRoom() {
+  const { messages } = useSubscription('general.chat');
+  const client = useSukkoClient();
+  const state = useConnectionState();
+
+  return (
+    <div>
+      <p>Connection: {state}</p>
+      <ul>
+        {messages.map((msg, i) => (
+          <li key={i}>{JSON.stringify(msg.data)}</li>
+        ))}
+      </ul>
+      <button onClick={() => client.publish('general.chat', { text: 'Hello!' })}>
+        Send
+      </button>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <SukkoProvider url="ws://localhost:3000" getToken={() => fetch('/api/token').then(r => r.text())}>
+      <ChatRoom />
+    </SukkoProvider>
+  );
+}
+```
+
+## Next Steps
+
+- **[Vue Integration](./vue)** — Vue 3 composables
+- **[Channels](../../concepts/channels)** — Channel types and scoping
+- **[Authentication](../../concepts/authentication)** — JWT token management
+- **[SDK Reference](../../reference/sdk/react)** — Full API reference
