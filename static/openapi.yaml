@@ -1,0 +1,617 @@
+openapi: 3.0.3
+info:
+  title: Sukko Provisioning API
+  description: |
+    Multi-tenant provisioning API for Sukko WebSocket infrastructure.
+    Manages tenants, JWT signing keys, API keys, routing rules, channel rules, and quotas.
+  version: 1.0.0
+  contact:
+    name: Sukko
+    url: https://docs.sukko.dev
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://{host}:8080
+    description: Production
+    variables:
+      host:
+        default: provisioning.sukko.svc.cluster.local
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Health
+    description: Health and readiness endpoints
+  - name: Tenants
+    description: Tenant lifecycle management
+  - name: Keys
+    description: JWT signing key management
+  - name: API Keys
+    description: API key management
+  - name: Routing Rules
+    description: Message routing configuration
+  - name: Channel Rules
+    description: Channel access control
+  - name: Quotas
+    description: Tenant resource quotas
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /ready:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      security: []
+      responses:
+        '200':
+          description: Service is ready
+
+  /version:
+    get:
+      tags: [Health]
+      summary: Service version
+      security: []
+      responses:
+        '200':
+          description: Version information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: provisioning
+                  version:
+                    type: string
+                  commit:
+                    type: string
+                  build_time:
+                    type: string
+
+  /edition:
+    get:
+      tags: [Health]
+      summary: Edition information
+      security: []
+      responses:
+        '200':
+          description: Current edition and limits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  edition:
+                    type: string
+                    enum: [community, pro, enterprise]
+                  limits:
+                    type: object
+                    properties:
+                      max_tenants:
+                        type: integer
+                      max_total_connections:
+                        type: integer
+                      max_shards:
+                        type: integer
+                      max_topics_per_tenant:
+                        type: integer
+                      max_routing_rules_per_tenant:
+                        type: integer
+
+  /api/v1/tenants:
+    post:
+      tags: [Tenants]
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, name]
+              properties:
+                id:
+                  type: string
+                  pattern: ^[a-z][a-z0-9-]{2,62}$
+                  example: acme-corp
+                name:
+                  type: string
+                  example: Acme Corporation
+                consumer_type:
+                  type: string
+                  enum: [shared, dedicated]
+                  default: shared
+      responses:
+        '201':
+          description: Tenant created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Tenant already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags: [Tenants]
+      summary: List tenants
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Tenant list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tenant'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /api/v1/tenants/{tenantID}:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Tenants]
+      summary: Get tenant
+      responses:
+        '200':
+          description: Tenant details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [Tenants]
+      summary: Update tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                consumer_type:
+                  type: string
+                  enum: [shared, dedicated]
+      responses:
+        '200':
+          description: Tenant updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tenant'
+
+    delete:
+      tags: [Tenants]
+      summary: Delete tenant
+      parameters:
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Tenant deleted
+
+  /api/v1/tenants/{tenantID}/suspend:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Tenants]
+      summary: Suspend tenant
+      responses:
+        '200':
+          description: Tenant suspended
+
+  /api/v1/tenants/{tenantID}/reactivate:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Tenants]
+      summary: Reactivate tenant
+      responses:
+        '200':
+          description: Tenant reactivated
+
+  /api/v1/tenants/{tenantID}/keys:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      tags: [Keys]
+      summary: Register JWT signing key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key_id, algorithm, public_key]
+              properties:
+                key_id:
+                  type: string
+                  example: my-signing-key-1
+                algorithm:
+                  type: string
+                  enum: [ES256, RS256]
+                public_key:
+                  type: string
+                  description: PEM-encoded public key
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Key registered
+
+    get:
+      tags: [Keys]
+      summary: List JWT signing keys
+      responses:
+        '200':
+          description: Key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key_id:
+                      type: string
+                    algorithm:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+                    expires_at:
+                      type: string
+                      format: date-time
+
+  /api/v1/tenants/{tenantID}/keys/{keyID}:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: keyID
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [Keys]
+      summary: Revoke JWT signing key
+      responses:
+        '200':
+          description: Key revoked
+
+  /api/v1/tenants/{tenantID}/api-keys:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      tags: [API Keys]
+      summary: Create API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: my-api-key
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: API key created (key value shown only once)
+
+    get:
+      tags: [API Keys]
+      summary: List API keys
+      responses:
+        '200':
+          description: API key list
+
+  /api/v1/tenants/{tenantID}/api-keys/{keyID}:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: keyID
+        in: path
+        required: true
+        schema:
+          type: string
+    delete:
+      tags: [API Keys]
+      summary: Revoke API key
+      responses:
+        '200':
+          description: API key revoked
+
+  /api/v1/tenants/{tenantID}/routing-rules:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Routing Rules]
+      summary: Get routing rules
+      responses:
+        '200':
+          description: Current routing rules
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoutingRule'
+
+    put:
+      tags: [Routing Rules]
+      summary: Set routing rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rules]
+              properties:
+                rules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RoutingRule'
+      responses:
+        '200':
+          description: Routing rules updated
+
+    delete:
+      tags: [Routing Rules]
+      summary: Delete routing rules
+      responses:
+        '200':
+          description: Routing rules deleted
+
+  /api/v1/tenants/{tenantID}/channel-rules:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Channel Rules]
+      summary: Get channel rules
+      responses:
+        '200':
+          description: Current channel rules
+
+    put:
+      tags: [Channel Rules]
+      summary: Set channel rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                public:
+                  type: array
+                  items:
+                    type: string
+                  example: ["general.*", "announce.*"]
+                default:
+                  type: array
+                  items:
+                    type: string
+                  example: ["general.*"]
+                group_mappings:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                  example:
+                    vip: ["room.vip"]
+                    traders: ["room.traders"]
+      responses:
+        '200':
+          description: Channel rules updated
+
+    delete:
+      tags: [Channel Rules]
+      summary: Delete channel rules
+      responses:
+        '200':
+          description: Channel rules deleted
+
+  /api/v1/tenants/{tenantID}/quotas:
+    parameters:
+      - name: tenantID
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      tags: [Quotas]
+      summary: Get tenant quotas
+      responses:
+        '200':
+          description: Current quotas
+
+    patch:
+      tags: [Quotas]
+      summary: Update tenant quotas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                max_connections:
+                  type: integer
+                max_topics:
+                  type: integer
+                max_routing_rules:
+                  type: integer
+      responses:
+        '200':
+          description: Quotas updated
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Admin token or tenant JWT
+
+  schemas:
+    Tenant:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        consumer_type:
+          type: string
+          enum: [shared, dedicated]
+        status:
+          type: string
+          enum: [active, suspended]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RoutingRule:
+      type: object
+      required: [pattern, topic_suffix]
+      properties:
+        pattern:
+          type: string
+          description: Channel pattern (glob syntax)
+          example: "*.trade"
+        topic_suffix:
+          type: string
+          description: Kafka topic suffix
+          example: trade
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: INVALID_REQUEST
+        message:
+          type: string
+          example: Tenant ID is required
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
