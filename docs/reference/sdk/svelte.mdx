@@ -1,8 +1,65 @@
 ---
-title: Svelte Reference
-description: Svelte reference documentation
+title: "Svelte Stores"
+description: "@sukko/svelte API reference"
 ---
 
-# Svelte Reference
+# Svelte Stores
 
-*Auto-generated content coming soon.*
+```bash
+npm install @sukko/svelte
+```
+
+## Functions
+
+### `setSukkoClient(client: SukkoClient): void`
+
+**Parameters:** `client: SukkoClient`
+
+**Returns:** `void`
+
+---
+
+### `getSukkoClient(): SukkoClient`
+
+**Returns:** `SukkoClient`
+
+---
+
+### `createConnectionState(): Readable&lt;ConnectionStateResult&gt;`
+
+**Returns:** `Readable&lt;ConnectionStateResult&gt;`
+
+---
+
+### `createSubscription(options: SubscriptionOptions&lt;T&gt;,): Readable&lt;SubscriptionResult&lt;T&gt;&gt;`
+
+**Parameters:** `options: SubscriptionOptions&lt;T&gt;,`
+
+**Returns:** `Readable&lt;SubscriptionResult&lt;T&gt;&gt;`
+
+---
+
+### `onSukkoEvent(event: K,
+	handler: SukkoClientEvents[K],): void`
+
+**Parameters:** `event: K,
+	handler: SukkoClientEvents[K],`
+
+**Returns:** `void`
+
+---
+
+## Types
+
+### `ConnectionStateResult`
+
+---
+
+### `SubscriptionOptions&lt;T = unknown&gt;`
+
+---
+
+### `SubscriptionResult&lt;T = unknown&gt;`
+
+---
+

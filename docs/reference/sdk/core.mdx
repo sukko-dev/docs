@@ -1,8 +1,71 @@
 ---
-title: Core Reference
-description: Core reference documentation
+title: "Core SDK"
+description: "@sukko/sdk API reference"
 ---
 
-# Core Reference
+# Core SDK
 
-*Auto-generated content coming soon.*
+```bash
+npm install @sukko/sdk
+```
+
+## Classes
+
+### `SukkoClient`
+
+---
+
+### `TypedEventEmitter&lt;T extends EventMap = EventMap&gt;`
+
+---
+
+## Functions
+
+### `buildChannel(tenant: string, identifier: string, category: string): string`
+
+**Parameters:** `tenant: string, identifier: string, category: string`
+
+**Returns:** `string`
+
+---
+
+### `parseChannel(channel: string): ParsedChannel | null`
+
+**Parameters:** `channel: string`
+
+**Returns:** `ParsedChannel | null`
+
+---
+
+### `getChannelCategory(channel: string): string`
+
+**Parameters:** `channel: string`
+
+**Returns:** `string`
+
+---
+
+## Types
+
+### `EventMap`
+
+---
+
+### `ParsedChannel`
+
+---
+
+## Constants
+
+### `SUKKO_DEFAULTS`
+
+---
+
+### `CLOSE_CODES`
+
+---
+
+### `CLIENT_ID_KEY`
+
+---
+

@@ -1,8 +1,79 @@
 ---
-title: Vue Reference
-description: Vue reference documentation
+title: "Vue Composables"
+description: "@sukko/vue API reference"
 ---
 
-# Vue Reference
+# Vue Composables
 
-*Auto-generated content coming soon.*
+```bash
+npm install @sukko/vue
+```
+
+## Functions
+
+### `createSukkoPlugin(pluginOptions: SukkoPluginOptions): Plugin`
+
+**Parameters:** `pluginOptions: SukkoPluginOptions`
+
+**Returns:** `Plugin`
+
+---
+
+### `useSukkoClient(): SukkoClient`
+
+**Returns:** `SukkoClient`
+
+---
+
+### `useConnectionState(): ConnectionStateResult`
+
+**Returns:** `ConnectionStateResult`
+
+---
+
+### `useSubscription(options: UseSubscriptionOptions&lt;T&gt;,): UseSubscriptionResult&lt;T&gt;`
+
+**Parameters:** `options: UseSubscriptionOptions&lt;T&gt;,`
+
+**Returns:** `UseSubscriptionResult&lt;T&gt;`
+
+---
+
+### `useSukkoEvent(event: K,
+	handler: SukkoClientEvents[K],): void`
+
+**Parameters:** `event: K,
+	handler: SukkoClientEvents[K],`
+
+**Returns:** `void`
+
+---
+
+## Types
+
+### `SukkoProviderProps`
+
+---
+
+### `SukkoPluginOptions`
+
+---
+
+### `ConnectionStateResult`
+
+---
+
+### `UseSubscriptionOptions&lt;T = unknown&gt;`
+
+---
+
+### `UseSubscriptionResult&lt;T = unknown&gt;`
+
+---
+
+## Constants
+
+### `SukkoProvider`
+
+---
+

@@ -1,8 +1,458 @@
 ---
-title: Cli Reference
-description: Cli reference documentation
+title: CLI Reference
+description: Every sukko CLI command with usage and flags
 ---
 
-# Cli Reference
+# CLI Reference
 
-*Auto-generated content coming soon.*
+The `sukko` CLI manages your Sukko deployment — tenants, keys, testing, and local development.
+
+## Install
+
+```bash
+# macOS / Linux
+brew install klurvio/tap/sukko
+
+# Windows
+scoop bucket add sukko https://github.com/klurvio/scoop-bucket
+scoop install sukko
+```
+
+## Commands
+
+### `sukko api-keys`
+
+Manage API keys for tenant authentication
+
+---
+
+### `sukko create`
+
+Create a new API key
+
+---
+
+### `sukko list`
+
+List API keys for a tenant
+
+---
+
+### `sukko revoke`
+
+Revoke an API key
+
+---
+
+### `sukko completion [bash|zsh|fish]`
+
+Generate shell completion scripts
+
+Generate shell completion scripts for sukko.
+
+To load completions:
+
+Bash:
+  $ source &lt;(sukko completion bash)
+  # To load for each session, add to ~/.bashrc:
+  $ echo 'source &lt;(sukko completion bash)' &gt;&gt; ~/.bashrc
+
+Zsh:
+  $ source &lt;(sukko completion zsh)
+  # To load for each session, add to ~/.zshrc:
+  $ echo 'source &lt;(sukko completion zsh)' &gt;&gt; ~/.zshrc
+
+Fish:
+  $ sukko completion fish | source
+  # To load for each session:
+  $ sukko completion fish &gt; ~/.config/fish/completions/sukko.fish
+
+
+---
+
+### `sukko config`
+
+Configuration management
+
+---
+
+### `sukko defaults`
+
+Show all configuration environment variables with defaults
+
+Outputs all environment variables from Go config struct tags (the single source of truth).
+
+---
+
+### `sukko view`
+
+Fetch active configuration from a running service
+
+---
+
+### `sukko connections`
+
+Connection management and testing
+
+---
+
+### `sukko test`
+
+Test WebSocket connectivity to the gateway (CLI-only, no tester needed)
+
+Test WebSocket connectivity by opening a single connection directly from the CLI.
+
+Verifies: WebSocket upgrade (101), subscribe, and basic message flow.
+For full deployment validation (Kafka pipeline, multi-tenant isolation),
+use 'sukko test smoke' which orchestrates the tester service.
+
+---
+
+### `sukko context`
+
+Manage CLI contexts (environments)
+
+Add, remove, switch, and list named contexts for different Sukko environments.
+
+---
+
+### `sukko add &lt;name&gt;`
+
+Add a new context
+
+---
+
+### `sukko use &lt;name&gt;`
+
+Set the active context
+
+---
+
+### `sukko remove &lt;name&gt;`
+
+Remove a context
+
+**Aliases:** `rm`
+
+---
+
+### `sukko current`
+
+Show the active context
+
+---
+
+### `sukko create [name]`
+
+Create a context interactively
+
+Create a named context for a Sukko environment. Prompts for required
+fields (name, provisioning URL, gateway URL, admin token) and optional fields.
+Secrets are entered with masked input to avoid shell history exposure.
+
+All fields can also be provided as flags for non-interactive/CI use.
+
+---
+
+### `sukko down`
+
+Stop the local development environment
+
+Stop and remove local Docker Compose services. Use -v to also remove volumes.
+
+---
+
+### `sukko edition`
+
+Show current edition, limits, and usage
+
+Show the current Sukko edition (Community/Pro/Enterprise), license status,
+hard limits, and live resource usage.
+
+Fetches data from provisioning's /edition endpoint (tenant usage) and
+gateway's /edition endpoint (connection/shard usage), merging both.
+Falls back to locally stored license key if the platform is unreachable.
+
+---
+
+### `sukko compare`
+
+Compare Community, Pro, and Enterprise editions
+
+Display a comparison table of all three Sukko editions.
+
+This command works offline — the comparison data is hardcoded from the
+published edition matrix. No running services required.
+
+---
+
+### `sukko grafana`
+
+Open Grafana in the browser
+
+Open the Grafana dashboard in the system browser. Requires observability to be enabled.
+
+---
+
+### `sukko health`
+
+Check health of all Sukko components
+
+Check health of all Sukko components.
+
+Probes gateway, server, provisioning, and their dependencies. Reports
+per-component status with troubleshooting suggestions on failure.
+
+---
+
+### `sukko init`
+
+Initialize a local Sukko development environment
+
+Initialize a local Sukko development environment.
+
+Creates .sukko/config.json with infrastructure selections and sets up
+a local context with dev credentials. Run 'sukko up' to start services.
+
+---
+
+### `sukko keys`
+
+Manage JWT signing keys
+
+---
+
+### `sukko license`
+
+Manage Sukko license key
+
+Store, view, and remove the Sukko license key from the CLI context.
+
+---
+
+### `sukko set [key]`
+
+Store a license key in the active context
+
+Store a Sukko license key in the CLI context. The key is encrypted at rest.
+
+If no key argument is provided, you will be prompted for input to avoid
+the key appearing in shell history.
+
+---
+
+### `sukko show`
+
+Display the stored license key and decoded claims
+
+---
+
+### `sukko remove`
+
+Remove the stored license key from the active context
+
+---
+
+### `sukko logs [service...]`
+
+View logs from local Docker Compose services
+
+View logs from local Docker Compose services.
+
+Only available for local Docker Compose environments. Specify service names
+to filter (e.g., 'sukko logs ws-gateway ws-server').
+
+---
+
+### `sukko publish &lt;channel&gt; &lt;message&gt;`
+
+Publish a message to a channel via the gateway
+
+---
+
+### `sukko quota`
+
+Manage tenant quotas
+
+---
+
+### `sukko get`
+
+Get quotas for a tenant
+
+---
+
+### `sukko update`
+
+Update quotas for a tenant
+
+---
+
+### `sukko sukko`
+
+Sukko WebSocket platform CLI
+
+CLI tool for managing tenants, keys, rules, and operating the Sukko WebSocket platform.
+
+---
+
+### `sukko rules`
+
+Manage routing and channel rules
+
+---
+
+### `sukko routing`
+
+Manage topic routing rules
+
+---
+
+### `sukko set`
+
+Set routing rules for a tenant from a JSON file
+
+---
+
+### `sukko delete`
+
+Delete routing rules for a tenant
+
+---
+
+### `sukko channels`
+
+Manage channel permission rules
+
+---
+
+### `sukko test-access`
+
+Test channel access for a subject
+
+---
+
+### `sukko status`
+
+Show status of all services
+
+Show a unified view of all Sukko services with health status.
+
+---
+
+### `sukko subscribe &lt;channel&gt; [channel...]`
+
+Subscribe to channels and stream messages to stdout
+
+---
+
+### `sukko tenant`
+
+Manage tenants
+
+---
+
+### `sukko get [tenant-id]`
+
+Get tenant details
+
+Get tenant details. If no tenant-id is provided, uses the active tenant from context.
+
+---
+
+### `sukko update [tenant-id]`
+
+Update a tenant
+
+---
+
+### `sukko suspend [tenant-id]`
+
+Suspend a tenant
+
+---
+
+### `sukko reactivate [tenant-id]`
+
+Reactivate a suspended tenant
+
+---
+
+### `sukko deprovision [tenant-id]`
+
+Initiate tenant deletion (grace period)
+
+---
+
+### `sukko delete [tenant-id]`
+
+Delete a tenant (alias for deprovision)
+
+---
+
+### `sukko smoke`
+
+Quick connectivity and health check
+
+---
+
+### `sukko load`
+
+Sustained load test with configurable connections
+
+---
+
+### `sukko stress`
+
+Push to maximum capacity and find limits
+
+---
+
+### `sukko soak`
+
+Long-running stability test
+
+---
+
+### `sukko validate`
+
+Run validation suites (auth, channels, ordering)
+
+---
+
+### `sukko token`
+
+JWT token helpers
+
+---
+
+### `sukko generate`
+
+Generate a signed JWT token
+
+---
+
+### `sukko validate &lt;token&gt;`
+
+Decode and validate a JWT token
+
+---
+
+### `sukko up`
+
+Start the local development environment
+
+Start the local development environment using Docker Compose.
+
+Reads .sukko/config.json (created by 'sukko init'), activates the selected
+infrastructure profiles, waits for all services to become healthy, and
+provisions a default tenant for immediate use.
+
+---
+
+### `sukko version`
+
+Show CLI version information
+
+---
+
