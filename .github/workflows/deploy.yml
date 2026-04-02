@@ -67,6 +67,11 @@ jobs:
       - name: Extract SDK reference
         run: node scripts/extract-sdk/index.js .sources/sukko-js > generated/sdk-reference.json
 
+      - name: Extract edition limits
+        run: |
+          cd scripts/extract-editions
+          go run . ../../.sources/sukko/ws > ../../generated/editions.json
+
       # --- Build site ---
 
       - uses: actions/setup-node@v4

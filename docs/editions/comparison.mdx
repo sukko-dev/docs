@@ -9,15 +9,20 @@ import EditionBadge from '@site/src/components/EditionBadge';
 
 Sukko is available in three editions. Community is free and open source. Pro and Enterprise unlock higher limits and advanced features.
 
-## Feature Matrix
+## Limits
+
+| Resource | Community | Pro | Enterprise |
+|----------|-----------|-----|------------|
+| **Tenants** | 3 | 50 | Unlimited |
+| **Total Connections** | 500 | 10,000 | Unlimited |
+| **Shards** | 1 | 8 | Unlimited |
+| **Topics per Tenant** | 10 | 50 | Unlimited |
+| **Routing Rules per Tenant** | 10 | 100 | Unlimited |
+
+## Features
 
 | Feature | Community | Pro | Enterprise |
 |---------|-----------|-----|------------|
-| **Tenants** | 3 | 50 | Unlimited |
-| **Total Connections** | 1,000 | 100,000 | Unlimited |
-| **Shards** | 1 | 8 | Unlimited |
-| **Topics per Tenant** | 5 | 50 | Unlimited |
-| **Routing Rules per Tenant** | 3 | 25 | Unlimited |
 | **WebSocket Gateway** | Yes | Yes | Yes |
 | **Multi-Tenant Isolation** | Yes | Yes | Yes |
 | **JWT Authentication** | Yes | Yes | Yes |
@@ -41,7 +46,7 @@ Sukko is available in three editions. Community is free and open source. Pro and
 
 For evaluation, development, and small deployments. No license key required.
 
-- Up to 3 tenants, 1,000 connections
+- Up to 3 tenants, 500 connections
 - All core features (gateway, multi-tenant, JWT auth, Kafka)
 - Community support via GitHub Issues
 
@@ -49,7 +54,7 @@ For evaluation, development, and small deployments. No license key required.
 
 For production workloads with multiple tenants and higher scale.
 
-- Up to 50 tenants, 100,000 connections
+- Up to 50 tenants, 10,000 connections
 - Advanced features: dedicated consumers, alerting, TLS, tracing
 - Email support
 

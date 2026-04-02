@@ -199,10 +199,115 @@ npm install ${pkg.name}
   }
 }
 
+// ─── Editions Comparison ──────────────────────────────────────────────────────
+
+function formatLimit(value) {
+  if (value === 0) return 'Unlimited';
+  return value.toLocaleString();
+}
+
+function generateEditionsComparison() {
+  const jsonPath = path.join(GEN_DIR, 'editions.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip editions (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const editions = {};
+  for (const e of data.editions) {
+    editions[e.edition] = e;
+  }
+
+  const c = editions['community'] || {};
+  const p = editions['pro'] || {};
+  const e = editions['enterprise'] || {};
+
+  let md = `---
+title: Edition Comparison
+description: Compare Sukko Community, Pro, and Enterprise editions
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Edition Comparison
+
+Sukko is available in three editions. Community is free and open source. Pro and Enterprise unlock higher limits and advanced features.
+
+## Limits
+
+| Resource | Community | Pro | Enterprise |
+|----------|-----------|-----|------------|
+| **Tenants** | ${formatLimit(c.max_tenants)} | ${formatLimit(p.max_tenants)} | ${formatLimit(e.max_tenants)} |
+| **Total Connections** | ${formatLimit(c.max_total_connections)} | ${formatLimit(p.max_total_connections)} | ${formatLimit(e.max_total_connections)} |
+| **Shards** | ${formatLimit(c.max_shards)} | ${formatLimit(p.max_shards)} | ${formatLimit(e.max_shards)} |
+| **Topics per Tenant** | ${formatLimit(c.max_topics_per_tenant)} | ${formatLimit(p.max_topics_per_tenant)} | ${formatLimit(e.max_topics_per_tenant)} |
+| **Routing Rules per Tenant** | ${formatLimit(c.max_routing_rules_per_tenant)} | ${formatLimit(p.max_routing_rules_per_tenant)} | ${formatLimit(e.max_routing_rules_per_tenant)} |
+
+## Features
+
+| Feature | Community | Pro | Enterprise |
+|---------|-----------|-----|------------|
+| **WebSocket Gateway** | Yes | Yes | Yes |
+| **Multi-Tenant Isolation** | Yes | Yes | Yes |
+| **JWT Authentication** | Yes | Yes | Yes |
+| **API Key Authentication** | Yes | Yes | Yes |
+| **Channel Scoping** | Public only | All (public, user, group) | All |
+| **Kafka/Redpanda Backend** | Yes | Yes | Yes |
+| **NATS JetStream Backend** | Yes | Yes | Yes |
+| **Prometheus Metrics** | Yes | Yes | Yes |
+| **Grafana Dashboards** | Yes | Yes | Yes |
+| **Dedicated Consumers** | — | Yes | Yes |
+| **Alerting (AlertManager)** | — | Yes | Yes |
+| **TLS/SASL for Kafka** | — | Yes | Yes |
+| **OpenTelemetry Tracing** | — | Yes | Yes |
+| **pprof/Pyroscope Profiling** | — | Yes | Yes |
+| **Priority Support** | — | — | Yes |
+| **Custom SLA** | — | — | Yes |
+
+## Which Edition Do I Need?
+
+### Community (Free)
+
+For evaluation, development, and small deployments. No license key required.
+
+- Up to ${formatLimit(c.max_tenants)} tenants, ${formatLimit(c.max_total_connections)} connections
+- All core features (gateway, multi-tenant, JWT auth, Kafka)
+- Community support via GitHub Issues
+
+### Pro <EditionBadge edition="pro" />
+
+For production workloads with multiple tenants and higher scale.
+
+- Up to ${formatLimit(p.max_tenants)} tenants, ${formatLimit(p.max_total_connections)} connections
+- Advanced features: dedicated consumers, alerting, TLS, tracing
+- Email support
+
+### Enterprise <EditionBadge edition="enterprise" />
+
+For large-scale deployments with no limits.
+
+- Unlimited everything
+- Priority support with custom SLA
+- Contact us for pricing
+
+## Next Steps
+
+- **[Upgrade to Pro](./upgrade)** — Set your license key and unlock Pro features
+- **[Pricing](./pricing)** — Pricing details
+- **[Quickstart](../quickstart)** — Try Sukko with the free Community edition
+`;
+
+  const outPath = path.join(DOCS_DIR, 'editions', 'comparison.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  editions: ${data.editions.length} editions`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 console.log('Generating reference docs from extracted JSON...');
 generateConfigReference();
 generateCLIReference();
 generateSDKReference();
+generateEditionsComparison();
 console.log('Done.');
