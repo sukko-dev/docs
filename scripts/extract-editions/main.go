@@ -31,6 +31,9 @@ type FeatureGate struct {
 	Name        string `json:"name"`
 	ConstName   string `json:"const_name"`
 	Edition     string `json:"edition"`
+	Description string `json:"description"`
+	Status      string `json:"status"`
+	Priority    int    `json:"priority"`
 	Implemented bool   `json:"implemented"`
 }
 
@@ -59,8 +62,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Detect which features are implemented by scanning for gate checks
-	// outside of features.go and test files
+	// Enrich features with metadata (description, status, priority)
+	metadata := extractMetadata(filepath.Join(licenseDir, "features.go"))
+	for i := range features {
+		if info, ok := metadata[features[i].ConstName]; ok {
+			features[i].Description = info.description
+			features[i].Status = info.status
+			features[i].Priority = info.priority
+			features[i].Implemented = info.status == "implemented" || info.status == "ungated"
+		}
+	}
+
+	// Fallback: scan for gate checks if metadata is missing
 	markImplemented(features, wsRoot)
 
 	enc := json.NewEncoder(os.Stdout)
@@ -211,6 +224,110 @@ func extractEditions(path string) ([]EditionLimits, error) {
 	})
 
 	return editions, nil
+}
+
+type metadataInfo struct {
+	description string
+	status      string
+	priority    int
+}
+
+// extractMetadata parses the featureMetadata map from features.go.
+// Returns a map of Go const name → metadata.
+func extractMetadata(path string) map[string]metadataInfo {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
+	if err != nil {
+		return nil
+	}
+
+	// Map status const names to string values
+	statusValues := map[string]string{
+		"StatusImplemented": "implemented",
+		"StatusUngated":     "ungated",
+		"StatusFuture":      "future",
+	}
+	priorityValues := map[string]int{
+		"PriorityNone":     0,
+		"PriorityCritical": 1,
+		"PriorityHigh":     2,
+		"PriorityMedium":   3,
+		"PriorityLow":      4,
+	}
+
+	result := map[string]metadataInfo{}
+
+	ast.Inspect(f, func(n ast.Node) bool {
+		genDecl, ok := n.(*ast.GenDecl)
+		if !ok {
+			return true
+		}
+		for _, spec := range genDecl.Specs {
+			vs, ok := spec.(*ast.ValueSpec)
+			if !ok || len(vs.Names) == 0 || vs.Names[0].Name != "featureMetadata" {
+				continue
+			}
+			if len(vs.Values) == 0 {
+				continue
+			}
+			comp, ok := vs.Values[0].(*ast.CompositeLit)
+			if !ok {
+				continue
+			}
+
+			for _, elt := range comp.Elts {
+				kv, ok := elt.(*ast.KeyValueExpr)
+				if !ok {
+					continue
+				}
+				// Key is the Feature const name
+				keyIdent, ok := kv.Key.(*ast.Ident)
+				if !ok {
+					continue
+				}
+				// Value is a FeatureInfo{...} composite literal
+				infoComp, ok := kv.Value.(*ast.CompositeLit)
+				if !ok {
+					continue
+				}
+
+				info := metadataInfo{}
+				for _, field := range infoComp.Elts {
+					fieldKV, ok := field.(*ast.KeyValueExpr)
+					if !ok {
+						continue
+					}
+					fieldKey, ok := fieldKV.Key.(*ast.Ident)
+					if !ok {
+						continue
+					}
+					switch fieldKey.Name {
+					case "Description":
+						info.description = stringLitValue(fieldKV.Value)
+					case "Status":
+						if id, ok := fieldKV.Value.(*ast.Ident); ok {
+							info.status = statusValues[id.Name]
+						}
+					case "Priority":
+						if id, ok := fieldKV.Value.(*ast.Ident); ok {
+							info.priority = priorityValues[id.Name]
+						}
+					}
+				}
+				result[keyIdent.Name] = info
+			}
+		}
+		return true
+	})
+
+	return result
+}
+
+func stringLitValue(expr ast.Expr) string {
+	if lit, ok := expr.(*ast.BasicLit); ok {
+		return strings.Trim(lit.Value, "\"")
+	}
+	return ""
 }
 
 func identName(expr ast.Expr) string {
