@@ -19,26 +19,35 @@ Sukko is available in three editions. Community is free — no license key requi
 | **Topics per Tenant** | 10 | 50 | Unlimited |
 | **Routing Rules per Tenant** | 10 | 100 | Unlimited |
 
-## Features
+## Feature Gates
 
 | Feature | Community | Pro | Enterprise |
 |---------|-----------|-----|------------|
-| **WebSocket Gateway** | Yes | Yes | Yes |
-| **Multi-Tenant Isolation** | Yes | Yes | Yes |
-| **JWT Authentication** | Yes | Yes | Yes |
-| **API Key Authentication** | Yes | Yes | Yes |
-| **Channel Scoping** | Public only | All (public, user, group) | All |
-| **Kafka/Redpanda Backend** | Yes | Yes | Yes |
-| **NATS JetStream Backend** | Yes | Yes | Yes |
-| **Prometheus Metrics** | Yes | Yes | Yes |
-| **Grafana Dashboards** | Yes | Yes | Yes |
-| **Dedicated Consumers** | — | Yes | Yes |
-| **Alerting (AlertManager)** | — | Yes | Yes |
-| **TLS/SASL for Kafka** | — | Yes | Yes |
-| **OpenTelemetry Tracing** | — | Yes | Yes |
-| **pprof/Pyroscope Profiling** | — | Yes | Yes |
-| **Priority Support** | — | — | Yes |
-| **Custom SLA** | — | — | Yes |
+| **MESSAGE_BACKEND=kafka** | — | Yes | Yes |
+| **MESSAGE_BACKEND=nats** | — | Yes | Yes |
+| **DATABASE_DRIVER=postgres** | — | Yes | Yes |
+| **SSE transport** | — | Yes | Yes |
+| **GATEWAY_PER_TENANT_CHANNEL_RULES** | — | Yes | Yes |
+| **TENANT_CONNECTION_LIMIT_ENABLED** | — | Yes | Yes |
+| **per-tenant configurable quotas** | — | Yes | Yes |
+| **tenant lifecycle manager** | — | Yes | Yes |
+| **ALERT_ENABLED** | — | Yes | Yes |
+| **real-time analytics** | — | Yes | Yes |
+| **connection tracing** | — | Yes | Yes |
+| **admin UI** | — | Yes | Yes |
+| **token revocation** | — | Yes | Yes |
+| **webhook delivery** | — | Yes | Yes |
+| **message history** | — | Yes | Yes |
+| **channel patterns (CEL)** | — | Yes | Yes |
+| **delta compression** | — | Yes | Yes |
+| **Web Push transport** | — | — | Yes |
+| **admin UI SSO/OIDC** | — | — | Yes |
+| **per-tenant IP allowlisting** | — | — | Yes |
+| **audit logging** | — | — | Yes |
+| **end-to-end encryption** | — | — | Yes |
+| **priority message routing** | — | — | Yes |
+| **custom quota policies** | — | — | Yes |
+
 
 ## Which Edition Do I Need?
 

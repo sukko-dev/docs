@@ -244,26 +244,25 @@ Sukko is available in three editions. Community is free — no license key requi
 | **Topics per Tenant** | ${formatLimit(c.max_topics_per_tenant)} | ${formatLimit(p.max_topics_per_tenant)} | ${formatLimit(e.max_topics_per_tenant)} |
 | **Routing Rules per Tenant** | ${formatLimit(c.max_routing_rules_per_tenant)} | ${formatLimit(p.max_routing_rules_per_tenant)} | ${formatLimit(e.max_routing_rules_per_tenant)} |
 
-## Features
+## Feature Gates
 
 | Feature | Community | Pro | Enterprise |
 |---------|-----------|-----|------------|
-| **WebSocket Gateway** | Yes | Yes | Yes |
-| **Multi-Tenant Isolation** | Yes | Yes | Yes |
-| **JWT Authentication** | Yes | Yes | Yes |
-| **API Key Authentication** | Yes | Yes | Yes |
-| **Channel Scoping** | Public only | All (public, user, group) | All |
-| **Kafka/Redpanda Backend** | Yes | Yes | Yes |
-| **NATS JetStream Backend** | Yes | Yes | Yes |
-| **Prometheus Metrics** | Yes | Yes | Yes |
-| **Grafana Dashboards** | Yes | Yes | Yes |
-| **Dedicated Consumers** | — | Yes | Yes |
-| **Alerting (AlertManager)** | — | Yes | Yes |
-| **TLS/SASL for Kafka** | — | Yes | Yes |
-| **OpenTelemetry Tracing** | — | Yes | Yes |
-| **pprof/Pyroscope Profiling** | — | Yes | Yes |
-| **Priority Support** | — | — | Yes |
-| **Custom SLA** | — | — | Yes |
+`;
+
+  // Auto-generate feature rows from extracted data
+  const features = data.features || [];
+  const proFeatures = features.filter(f => f.edition === 'pro');
+  const enterpriseFeatures = features.filter(f => f.edition === 'enterprise');
+
+  for (const f of proFeatures) {
+    md += `| **${mdxSafe(f.name)}** | — | Yes | Yes |\n`;
+  }
+  for (const f of enterpriseFeatures) {
+    md += `| **${mdxSafe(f.name)}** | — | — | Yes |\n`;
+  }
+
+  md += `
 
 ## Which Edition Do I Need?
 
