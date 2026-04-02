@@ -214,6 +214,39 @@ function generateEditionsComparison() {
   }
 
   const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
+  // Normalize feature names to human-readable labels
+  const featureLabels = {
+    'MESSAGE_BACKEND=kafka': 'Kafka/Redpanda Backend',
+    'MESSAGE_BACKEND=nats': 'NATS JetStream Backend',
+    'DATABASE_DRIVER=postgres': 'PostgreSQL Database',
+    'SSE transport': 'SSE Transport',
+    'GATEWAY_PER_TENANT_CHANNEL_RULES': 'Per-Tenant Channel Rules',
+    'TENANT_CONNECTION_LIMIT_ENABLED': 'Per-Tenant Connection Limits',
+    'per-tenant configurable quotas': 'Per-Tenant Configurable Quotas',
+    'tenant lifecycle manager': 'Tenant Lifecycle Manager',
+    'ALERT_ENABLED': 'Alerting (AlertManager)',
+    'real-time analytics': 'Real-Time Analytics',
+    'connection tracing': 'Connection Tracing (OpenTelemetry)',
+    'admin UI': 'Admin UI',
+    'token revocation': 'Token Revocation',
+    'webhook delivery': 'Webhook Delivery',
+    'message history': 'Message History',
+    'channel patterns (CEL)': 'Channel Patterns (CEL)',
+    'delta compression': 'Delta Compression',
+    'Web Push transport': 'Web Push Transport',
+    'admin UI SSO/OIDC': 'Admin UI SSO/OIDC',
+    'per-tenant IP allowlisting': 'Per-Tenant IP Allowlisting',
+    'audit logging': 'Audit Logging',
+    'end-to-end encryption': 'End-to-End Encryption',
+    'priority message routing': 'Priority Message Routing',
+    'custom quota policies': 'Custom Quota Policies',
+  };
+
+  function featureLabel(name) {
+    return featureLabels[name] || name;
+  }
+
   const editions = {};
   for (const e of data.editions) {
     editions[e.edition] = e;
@@ -256,10 +289,10 @@ Sukko is available in three editions. Community is free — no license key requi
   const enterpriseFeatures = features.filter(f => f.edition === 'enterprise');
 
   for (const f of proFeatures) {
-    md += `| **${mdxSafe(f.name)}** | — | Yes | Yes |\n`;
+    md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
   }
   for (const f of enterpriseFeatures) {
-    md += `| **${mdxSafe(f.name)}** | — | — | Yes |\n`;
+    md += `| **${mdxSafe(featureLabel(f.name))}** | — | — | Yes |\n`;
   }
 
   md += `
