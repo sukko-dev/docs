@@ -6,6 +6,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"go/ast"
@@ -27,8 +28,10 @@ type EditionLimits struct {
 }
 
 type FeatureGate struct {
-	Name    string `json:"name"`
-	Edition string `json:"edition"`
+	Name        string `json:"name"`
+	ConstName   string `json:"const_name"`
+	Edition     string `json:"edition"`
+	Implemented bool   `json:"implemented"`
 }
 
 type Output struct {
@@ -55,6 +58,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error extracting features: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Detect which features are implemented by scanning for gate checks
+	// outside of features.go and test files
+	markImplemented(features, wsRoot)
 
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
@@ -128,8 +135,9 @@ func extractFeatures(path string) ([]FeatureGate, error) {
 
 				if editionName != "" {
 					features = append(features, FeatureGate{
-						Name:    featureName,
-						Edition: editionName,
+						Name:      featureName,
+						ConstName: keyIdent.Name,
+						Edition:   editionName,
 					})
 				}
 			}
@@ -224,4 +232,62 @@ func intValue(expr ast.Expr) int {
 		}
 	}
 	return 0
+}
+
+// markImplemented scans all Go files in the workspace (excluding features.go
+// and test files) for references to each feature's const name in gate-check
+// patterns: EditionHasFeature, RequiredEdition, HasFeature, or license.<Name>.
+// A feature with zero gate checks outside features.go is marked unimplemented.
+func markImplemented(features []FeatureGate, wsRoot string) {
+	// Collect all Go file contents (excluding features.go and tests)
+	var contents []string
+	_ = filepath.Walk(wsRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
+			return nil
+		}
+		base := filepath.Base(path)
+		if base == "features.go" || strings.HasSuffix(base, "_test.go") {
+			return nil
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		var sb strings.Builder
+		for scanner.Scan() {
+			sb.WriteString(scanner.Text())
+			sb.WriteByte('\n')
+		}
+		contents = append(contents, sb.String())
+		return nil
+	})
+
+	allContent := strings.Join(contents, "\n")
+
+	for i := range features {
+		constName := features[i].ConstName
+		if constName == "" {
+			continue
+		}
+		// Search for gate-check patterns referencing this feature constant
+		patterns := []string{
+			"license." + constName,
+			"EditionHasFeature(" + constName,
+			"RequiredEdition(" + constName,
+			"HasFeature(" + constName,
+		}
+		found := false
+		for _, p := range patterns {
+			if strings.Contains(allContent, p) {
+				found = true
+				break
+			}
+		}
+		features[i].Implemented = found
+	}
 }

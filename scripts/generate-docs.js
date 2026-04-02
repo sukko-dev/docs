@@ -288,11 +288,28 @@ Sukko is available in three editions. Community is free — no license key requi
   const proFeatures = features.filter(f => f.edition === 'pro');
   const enterpriseFeatures = features.filter(f => f.edition === 'enterprise');
 
-  for (const f of proFeatures) {
+  const implProFeatures = proFeatures.filter(f => f.implemented);
+  const comingSoonProFeatures = proFeatures.filter(f => !f.implemented);
+  const implEntFeatures = enterpriseFeatures.filter(f => f.implemented);
+  const comingSoonEntFeatures = enterpriseFeatures.filter(f => !f.implemented);
+
+  for (const f of implProFeatures) {
     md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
   }
-  for (const f of enterpriseFeatures) {
+  for (const f of implEntFeatures) {
     md += `| **${mdxSafe(featureLabel(f.name))}** | — | — | Yes |\n`;
+  }
+
+  if (comingSoonProFeatures.length > 0 || comingSoonEntFeatures.length > 0) {
+    md += `\n## Coming Soon\n\n`;
+    md += `| Feature | Edition |\n`;
+    md += `|---------|----------|\n`;
+    for (const f of comingSoonProFeatures) {
+      md += `| ${mdxSafe(featureLabel(f.name))} | Pro |\n`;
+    }
+    for (const f of comingSoonEntFeatures) {
+      md += `| ${mdxSafe(featureLabel(f.name))} | Enterprise |\n`;
+    }
   }
 
   md += `
