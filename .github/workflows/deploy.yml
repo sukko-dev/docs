@@ -45,34 +45,11 @@ jobs:
       - name: Clone sukko-js
         run: git clone --depth 1 https://github.com/klurvio/sukko-js.git .sources/sukko-js
 
-      # --- Extract references ---
-
-      - name: Create generated directory
-        run: mkdir -p generated
+      # --- Build site (extract.sh handles source repo discovery) ---
 
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
-
-      - name: Extract config reference
-        run: |
-          cd scripts/extract-config
-          go run . ../../.sources/sukko/ws > ../../generated/config-reference.json
-
-      - name: Extract CLI reference
-        run: |
-          cd .sources/sukko-cli
-          go run ./cmd/gendocs > ../../generated/cli-reference.json
-
-      - name: Extract SDK reference
-        run: node scripts/extract-sdk/index.js .sources/sukko-js > generated/sdk-reference.json
-
-      - name: Extract edition limits
-        run: |
-          cd scripts/extract-editions
-          go run . ../../.sources/sukko/ws > ../../generated/editions.json
-
-      # --- Build site ---
 
       - uses: actions/setup-node@v4
         with:

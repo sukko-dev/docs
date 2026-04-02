@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "extract": "mkdir -p generated && cd scripts/extract-config && go run . ../../../sukko/ws > ../../generated/config-reference.json && cd ../../ && cd ../sukko-cli && go run ./cmd/gendocs > ../sukko-docs/generated/cli-reference.json && cd ../sukko-docs && cd scripts/extract-editions && go run . ../../../sukko/ws > ../../generated/editions.json && cd ../.. && node scripts/extract-sdk/index.js ../sukko-js > generated/sdk-reference.json",
+    "extract": "bash scripts/extract.sh",
     "generate": "node scripts/generate-docs.js",
     "start": "npm run extract && npm run generate && docusaurus start",
     "build": "npm run extract && npm run generate && docusaurus build",
