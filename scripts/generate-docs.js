@@ -219,7 +219,7 @@ function generateEditionsComparison() {
   const featureLabels = {
     'MESSAGE_BACKEND=kafka': 'Kafka/Redpanda Backend',
     'MESSAGE_BACKEND=nats': 'NATS JetStream Backend',
-    'DATABASE_DRIVER=postgres': 'PostgreSQL Database',
+    'DATABASE_DRIVER=postgres': 'PostgreSQL for Provisioning',
     'SSE transport': 'SSE Transport',
     'GATEWAY_PER_TENANT_CHANNEL_RULES': 'Per-Tenant Channel Rules',
     'TENANT_CONNECTION_LIMIT_ENABLED': 'Per-Tenant Connection Limits',
