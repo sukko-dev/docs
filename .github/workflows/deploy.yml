@@ -61,8 +61,8 @@ jobs:
 
       - name: Extract CLI reference
         run: |
-          cd scripts/extract-cli
-          go run . ../../.sources/sukko-cli > ../../generated/cli-reference.json
+          cd .sources/sukko-cli
+          go run ./cmd/gendocs > ../../generated/cli-reference.json
 
       - name: Extract SDK reference
         run: node scripts/extract-sdk/index.js .sources/sukko-js > generated/sdk-reference.json

@@ -104,26 +104,50 @@ scoop install sukko
 
 `;
 
-  const seen = new Set();
-  for (const cmd of data.commands) {
-    if (seen.has(cmd.use)) continue;
-    seen.add(cmd.use);
+  // gendocs outputs a tree: root command with children (nested subcommands)
+  // Support both old format (flat .commands array) and new format (single root with .children)
+  const commands = data.commands || (data.children ? data.children : []);
+  let count = 0;
 
-    md += `### \`sukko ${mdxSafe(cmd.use)}\`\n\n`;
+  function renderCommand(cmd, prefix) {
+    const fullName = prefix ? `${prefix} ${cmd.name}` : cmd.name;
+    md += `### \`sukko ${mdxSafe(cmd.use || cmd.name)}\`\n\n`;
     md += `${mdxSafe(cmd.short)}\n\n`;
     if (cmd.long) md += `${mdxSafe(cmd.long)}\n\n`;
     if (cmd.aliases && cmd.aliases.length > 0) {
       md += `**Aliases:** ${cmd.aliases.map(a => `\`${a}\``).join(', ')}\n\n`;
     }
+    if (cmd.flags && cmd.flags.length > 0) {
+      md += '**Flags:**\n\n';
+      md += '| Flag | Type | Default | Description |\n';
+      md += '|------|------|---------|-------------|\n';
+      for (const f of cmd.flags) {
+        const name = f.shorthand ? `\`--${f.name}\`, \`-${f.shorthand}\`` : `\`--${f.name}\``;
+        md += `| ${name} | ${f.type} | ${f.default ? `\`${mdxSafe(f.default)}\`` : '—'} | ${mdxSafe(f.usage)} |\n`;
+      }
+      md += '\n';
+    }
     if (cmd.example) {
       md += '**Example:**\n\n```bash\n' + cmd.example + '\n```\n\n';
     }
     md += '---\n\n';
+    count++;
+
+    // Recurse into subcommands
+    if (cmd.children) {
+      for (const child of cmd.children) {
+        renderCommand(child, fullName);
+      }
+    }
+  }
+
+  for (const cmd of commands) {
+    renderCommand(cmd, 'sukko');
   }
 
   const outPath = path.join(DOCS_DIR, 'reference', 'cli.mdx');
   fs.writeFileSync(outPath, md);
-  console.log(`  cli-reference: ${seen.size} commands`);
+  console.log(`  cli-reference: ${count} commands`);
 }
 
 // ─── SDK Reference ────────────────────────────────────────────────────────────
