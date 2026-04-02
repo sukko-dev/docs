@@ -1,0 +1,93 @@
+---
+title: React Native
+description: Add real-time features to your React Native app with the Sukko TypeScript SDK
+---
+
+# React Native
+
+The Sukko TypeScript SDK works in React Native out of the box. No separate native SDK needed — `@sukko/sdk` and `@sukko/websocket` run on React Native's JavaScript runtime, and `@sukko/react` hooks work identically to web React.
+
+:::info Same SDK, same API
+React Native uses the exact same packages as web React. If you've already integrated Sukko in a web app, the code is identical.
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket @sukko/react
+```
+
+## Setup Provider
+
+```tsx
+// App.tsx
+import { SukkoProvider } from '@sukko/react';
+
+export default function App() {
+  return (
+    <SukkoProvider
+      url="ws://your-gateway:3000"
+      getToken={async () => {
+        const res = await fetch('https://your-api.com/auth/sukko-token');
+        return res.text();
+      }}
+    >
+      <ChatScreen />
+    </SukkoProvider>
+  );
+}
+```
+
+## Subscribe and Display Messages
+
+```tsx
+import { useSubscription, useConnectionState } from '@sukko/react';
+import { View, Text, FlatList } from 'react-native';
+
+function ChatScreen() {
+  const { messages } = useSubscription('general.chat');
+  const state = useConnectionState();
+
+  return (
+    <View>
+      <Text>Status: {state}</Text>
+      <FlatList
+        data={messages}
+        keyExtractor={(_, i) => String(i)}
+        renderItem={({ item }) => (
+          <Text>{JSON.stringify(item.data)}</Text>
+        )}
+      />
+    </View>
+  );
+}
+```
+
+## Publish a Message
+
+```tsx
+import { useSukkoClient } from '@sukko/react';
+import { TouchableOpacity, Text } from 'react-native';
+
+function SendButton() {
+  const client = useSukkoClient();
+
+  return (
+    <TouchableOpacity onPress={() => client.publish('general.chat', { text: 'Hello from RN!' })}>
+      <Text>Send</Text>
+    </TouchableOpacity>
+  );
+}
+```
+
+## Platform Notes
+
+- **WebSocket** — React Native includes a built-in WebSocket implementation. The `@sukko/websocket` transport uses it automatically.
+- **Background** — WebSocket connections are closed when the app is backgrounded on iOS/Android. The SDK auto-reconnects when the app returns to the foreground.
+- **Token refresh** — The `getToken` callback is called automatically before token expiry, same as web.
+
+## Next Steps
+
+- **[React Integration](./react)** — Same API, web-specific examples
+- **[Authentication](../../concepts/authentication)** — Token management
+- **[SDK Reference](../../reference/sdk/react)** — Full hooks API reference

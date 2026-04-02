@@ -27,6 +27,7 @@ const sidebars: SidebarsConfig = {
             'guides/sdk/vue',
             'guides/sdk/svelte',
             'guides/sdk/vanilla-ts',
+            'guides/sdk/react-native',
           ],
         },
         {

@@ -6,7 +6,7 @@
 
 - [Quickstart](/quickstart): Zero-to-first-message in 5 minutes using the sukko CLI
 - [Concepts](/concepts/architecture): Architecture, multi-tenancy, channels, authentication, message backends, gateway
-- [SDK Guides](/guides/sdk/react): React, Vue, Svelte, and vanilla TypeScript integration guides
+- [SDK Guides](/guides/sdk/react): React, Vue, Svelte, React Native, and vanilla TypeScript integration guides
 - [Deployment](/guides/deploy/local): Local dev (Docker Compose) and Kubernetes (Helm) deployment guides
 - [CLI Reference](/reference/cli): Every sukko CLI command with flags and examples
 - [REST API Reference](/reference/rest-api): Provisioning API endpoints (tenants, keys, rules, quotas)
