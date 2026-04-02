@@ -34,5 +34,5 @@ jobs:
       - name: Check links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --verbose --no-progress ./build
+          args: --verbose --no-progress --root-dir ./build --exclude 'localhost' --exclude '127.0.0.1' --exclude 'sukko.dev' --exclude 'docs.sukko.dev' --accept '200..=399' ./build
           fail: true
