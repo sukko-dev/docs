@@ -68,6 +68,7 @@ const sidebars: SidebarsConfig = {
         'editions/pricing',
       ],
     },
+    'roadmap',
   ],
 };
 

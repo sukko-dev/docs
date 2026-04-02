@@ -352,6 +352,76 @@ For large-scale deployments with no limits.
   console.log(`  editions: ${data.editions.length} editions`);
 }
 
+// ─── Roadmap ──────────────────────────────────────────────────────────────────
+
+const priorityLabels = {
+  2: 'High Priority',
+  3: 'Medium Priority',
+  4: 'Low Priority',
+  5: 'Future',
+};
+
+function generateRoadmap() {
+  const jsonPath = path.join(GEN_DIR, 'editions.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip roadmap (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const features = (data.features || []).filter(f => f.status === 'future' && f.priority >= 2);
+
+  if (features.length === 0) {
+    console.log('  skip roadmap (no future features)');
+    return;
+  }
+
+  // Group by priority
+  const groups = {};
+  for (const f of features) {
+    const p = f.priority;
+    if (!groups[p]) groups[p] = [];
+    groups[p].push(f);
+  }
+
+  let md = `---
+title: Roadmap
+description: Upcoming features planned for Sukko
+---
+
+# Roadmap
+
+Planned features for upcoming Sukko releases. This page is auto-generated from the feature matrix in the Sukko source code.
+
+Have feedback or feature requests? Join the discussion on [GitHub Discussions](https://github.com/klurvio/sukko-issues/discussions).
+
+`;
+
+  const sortedPriorities = Object.keys(groups).map(Number).sort();
+
+  for (const p of sortedPriorities) {
+    const label = priorityLabels[p] || `Priority ${p}`;
+    md += `## ${label}\n\n`;
+    md += '| Feature | Edition | Description |\n';
+    md += '|---------|---------|-------------|\n';
+
+    for (const f of groups[p]) {
+      const edition = f.edition === 'pro' ? 'Pro' : 'Enterprise';
+      md += `| **${mdxSafe(featureLabel(f.name))}** | ${edition} | ${mdxSafe(f.description)} |\n`;
+    }
+    md += '\n';
+  }
+
+  md += `---
+
+*This roadmap is auto-generated from the [feature matrix](https://github.com/klurvio/sukko) in the Sukko source code. Priorities may change based on community feedback.*
+`;
+
+  const outPath = path.join(DOCS_DIR, 'roadmap.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  roadmap: ${features.length} planned features`);
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 console.log('Generating reference docs from extracted JSON...');
@@ -359,4 +429,5 @@ generateConfigReference();
 generateCLIReference();
 generateSDKReference();
 generateEditionsComparison();
+generateRoadmap();
 console.log('Done.');
