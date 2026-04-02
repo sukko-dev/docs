@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
+    "extract": "mkdir -p generated && cd scripts/extract-config && go run . ../../../sukko/ws > ../../generated/config-reference.json && cd ../extract-cli && go run . ../../../sukko-cli > ../../generated/cli-reference.json && cd ../extract-editions && go run . ../../../sukko/ws > ../../generated/editions.json && cd ../.. && node scripts/extract-sdk/index.js ../sukko-js > generated/sdk-reference.json",
     "generate": "node scripts/generate-docs.js",
-    "start": "npm run generate && docusaurus start",
-    "build": "npm run generate && docusaurus build",
+    "start": "npm run extract && npm run generate && docusaurus start",
+    "build": "npm run extract && npm run generate && docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
