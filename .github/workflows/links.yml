@@ -1,0 +1,38 @@
+# =============================================================================
+# Link Check — Validate no broken links in the docs site
+# =============================================================================
+# Runs on PRs. Builds the site and checks all internal/external links.
+
+name: Link Check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check Links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Build without reference generation (just check link structure)
+      - run: npx docusaurus build
+        env:
+          # Skip reference generation — no source repos available in link check
+          SKIP_GENERATE: "true"
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --verbose --no-progress ./build
+          fail: true

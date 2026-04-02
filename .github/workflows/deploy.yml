@@ -1,0 +1,85 @@
+# =============================================================================
+# Deploy Docs — Build + Deploy to Cloudflare Pages
+# =============================================================================
+# Triggers on push to main and PRs.
+# Clones source repos (sukko, sukko-cli, sukko-js) for reference extraction.
+# Builds Docusaurus site and deploys to Cloudflare Pages on main push.
+
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- Clone source repos for reference extraction ---
+
+      # sukko (private) — needs GitHub App token
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.DOCS_BUILD_APP_ID }}
+          private-key: ${{ secrets.DOCS_BUILD_APP_PRIVATE_KEY }}
+          owner: klurvio
+          repositories: sukko
+
+      - name: Clone sukko (private)
+        run: git clone --depth 1 https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/klurvio/sukko.git .sources/sukko
+
+      # sukko-cli (public)
+      - name: Clone sukko-cli
+        run: git clone --depth 1 https://github.com/klurvio/sukko-cli.git .sources/sukko-cli
+
+      # sukko-js (public)
+      - name: Clone sukko-js
+        run: git clone --depth 1 https://github.com/klurvio/sukko-js.git .sources/sukko-js
+
+      # --- Extract references ---
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Extract config reference
+        run: |
+          cd scripts/extract-config
+          go run . ../../.sources/sukko/ws > ../../generated/config-reference.json
+
+      - name: Extract CLI reference
+        run: |
+          cd scripts/extract-cli
+          go run . ../../.sources/sukko-cli > ../../generated/cli-reference.json
+
+      - name: Extract SDK reference
+        run: node scripts/extract-sdk/index.js .sources/sukko-js > generated/sdk-reference.json
+
+      # --- Build site ---
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # --- Deploy (main only) ---
+
+      - name: Deploy to Cloudflare Pages
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy build --project-name=sukko-docs
