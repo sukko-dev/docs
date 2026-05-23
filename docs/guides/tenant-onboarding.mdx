@@ -1,0 +1,106 @@
+---
+title: Tenant Onboarding
+description: How admins provision tenants and hand off credential management
+---
+
+# Tenant Onboarding
+
+Bringing a new tenant online is a two-phase process: an admin bootstraps the tenant with an initial signing key, then the tenant manages their own keys from that point. This page explains why each step is admin-only, how the handoff works, and the reasoning behind the algorithm choices.
+
+## Why Admins Bootstrap the First Key
+
+Tenant public key registration (`POST /api/v1/tenants/{id}/keys`) accepts either an admin JWT or a tenant's own JWT. The catch: a brand-new tenant has no JWT yet — they can't produce one until they have a registered key. An admin must register that first key on their behalf.
+
+This is intentional. It keeps tenant creation gated behind admin credentials, which means a tenant cannot self-provision or register keys for another tenant. Once the first key is in place, the tenant has a credential and can manage all subsequent keys themselves.
+
+## Admin: Create the Tenant
+
+```bash
+sukko tenant create --id acme --name "Acme Corp"
+```
+
+Or via the REST API (requires admin JWT in `Authorization` header):
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tenants \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "acme", "name": "Acme Corp"}'
+```
+
+## Admin: Register the Tenant's First Key
+
+The tenant generates an ES256 keypair and sends the public key to the admin out-of-band (email, shared secret store, etc.). The admin registers it:
+
+```bash
+sukko keys create --tenant acme \
+  --key-id acme-primary \
+  --algorithm ES256 \
+  --public-key-file ./acme-public.pem
+```
+
+Or via REST:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tenants/acme/keys \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key_id": "acme-primary",
+    "algorithm": "ES256",
+    "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  }'
+```
+
+The tenant's **private key never touches Sukko**. Only the public key is stored, in plaintext — public keys are not sensitive.
+
+## Tenant: Self-Serve From Here
+
+Once the first key is registered, the tenant can mint their own JWTs and use them to manage additional keys without admin involvement:
+
+```bash
+# Add a second key for zero-downtime rotation
+sukko keys create --tenant acme \
+  --key-id acme-secondary \
+  --algorithm ES256 \
+  --public-key-file ./acme-secondary.pem
+
+# Revoke the old key after cutover
+sukko keys revoke --tenant acme --key-id acme-primary
+```
+
+The gateway supports multiple active keys simultaneously, so tenants can rotate without dropping connections.
+
+## Why ES256 for Tenants, Ed25519 for Admins
+
+Two different algorithms serve two different threat models:
+
+**Admin keys use Ed25519 (EdDSA)**
+
+Admin credentials authorize provisioning operations — creating tenants, registering keys, reloading licenses. A compromise is catastrophic. Ed25519 is the safest choice: signatures are fast, key material is small, and the algorithm has no parameter choices that can be misconfigured (no weak curves, no nonce reuse vulnerability that ECDSA carries). The provisioning service enforces this — ES256 admin tokens are rejected even if someone tried.
+
+**Tenant keys use ES256 (ECDSA P-256)**
+
+Tenant keys are used to mint JWTs for WebSocket client connections. The tenant's backend may be any language or runtime. ES256 is the most widely supported asymmetric JWT algorithm across SDKs and platforms, making it the practical choice when you don't control the client toolchain. RS256 (RSA) is also accepted as a fallback for stacks that predate ECDSA support.
+
+This split is enforced in code — the admin validator's allowed algorithms are hardcoded to `EdDSA` and `RS256`. A tenant key cannot be used as an admin credential.
+
+## Key Expiry and Rotation
+
+Keys can be registered with an optional expiry:
+
+```bash
+sukko keys create --tenant acme \
+  --key-id acme-2027 \
+  --algorithm ES256 \
+  --public-key-file ./acme-public.pem \
+  --expires-at 2027-01-01T00:00:00Z
+```
+
+Best practice: register a replacement key before revoking the current one. The gateway caches active keys and serves both during the overlap window, so no connections are dropped during rotation.
+
+## Next Steps
+
+- **[Authentication](../concepts/authentication)** — JWT claims, token refresh, and API key alternative
+- **[Admin Authentication](./admin-auth)** — Setting up admin credentials (Ed25519 keypair, `ADMIN_BOOTSTRAP_KEY`)
+- **[Multi-Tenancy](../concepts/multi-tenancy)** — Tenant lifecycle, isolation, and consumer types

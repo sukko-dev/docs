@@ -1,0 +1,106 @@
+---
+title: Admin Authentication
+description: Set up Ed25519 keypair authentication for the provisioning API
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Admin Authentication
+
+All provisioning API operations (tenant management, key registration, license reload) require admin authentication via Ed25519 JWT keypairs. The admin's private key stays on their machine — only the public key is registered with Sukko.
+
+## How It Works
+
+1. Admin generates an Ed25519 keypair locally
+2. The public key is registered with the provisioning service
+3. Every CLI command auto-signs a short-lived JWT (5-minute expiry) using the private key
+4. Provisioning validates the JWT signature against registered public keys
+
+There is no static admin token — every request is signed with a fresh JWT.
+
+## Local Development
+
+`sukko init` handles everything automatically:
+
+```bash
+sukko init --defaults
+sukko up
+```
+
+This generates an Ed25519 keypair, injects the public key into Docker Compose as `ADMIN_BOOTSTRAP_KEY`, and registers it on first startup. The private key is saved to your context directory.
+
+## Production (Kubernetes)
+
+### Step 1: Generate a Keypair
+
+```bash
+sukko auth keygen
+```
+
+```
+Keypair generated:
+  Private: ~/.sukko/contexts/production/admin.key
+  Public:  ~/.sukko/contexts/production/admin.pub
+```
+
+The private key file has `0600` permissions — readable only by your user.
+
+### Step 2: Deploy with Bootstrap Key
+
+Pass the public key to Helm:
+
+```bash
+helm upgrade sukko klurvio/sukko \
+  --set provisioning.adminBootstrapKey="$(cat ~/.sukko/contexts/production/admin.pub)"
+```
+
+On first startup, provisioning auto-registers this key. The bootstrap key is ignored if admin keys already exist in the database (prevents leaked env var attacks).
+
+### Step 3: Verify
+
+```bash
+sukko auth list
+```
+
+```
+KEY_ID              NAME       ALGORITHM  REGISTERED_BY  CREATED_AT
+bootstrap-abc123    tester     Ed25519    system         2026-04-01T12:00:00Z
+```
+
+## Adding More Admins
+
+An existing admin can register additional admin keys:
+
+```bash
+# New admin generates their keypair
+sukko auth keygen
+
+# Existing admin registers the new public key
+sukko auth register --name "ops-team" --key-file /path/to/new-admin.pub
+```
+
+## Revoking an Admin Key
+
+```bash
+sukko auth revoke <key-id>
+```
+
+The last active admin key cannot be revoked — at least one must remain. If all keys are compromised, redeploy with a new `ADMIN_BOOTSTRAP_KEY` after wiping the `admin_keys` table.
+
+## JWT Details
+
+Admin JWTs include:
+- `iss`: `"sukko-admin"` (distinguishes from tenant JWTs)
+- `kid`: Key ID in the JWT header (maps to registered public key)
+- `sub`: Admin identity (key name)
+- `exp`: 5-minute expiry (default, configurable via `SUKKO_AUTH_TOKEN_EXPIRY`, max 24 hours)
+- `iat`: Issued-at timestamp
+- `jti`: Unique ID per request
+
+The provisioning service allows 30-second clock skew tolerance and enforces a maximum 24-hour token lifetime.
+
+## Next Steps
+
+- **[Authentication](../concepts/authentication)** — Tenant JWT authentication
+- **[Security](../security)** — Full security model overview
+- **[Configuration Reference](../reference/configuration)** — Admin auth env vars

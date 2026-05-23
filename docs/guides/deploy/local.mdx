@@ -109,6 +109,15 @@ sukko config set message-backend kafka
 sukko down && sukko up
 ```
 
+## migrate-dlq {#migrate-dlq}
+
+If upgrading from a release that predates channel topic routing, run `migrate-dlq` to create the required infrastructure topics for existing active tenants. See the [Kubernetes Upgrading guide](./kubernetes#upgrading) for full details.
+
+```bash
+./migrate-dlq --dry-run  # preview without making changes
+./migrate-dlq            # create topics
+```
+
 ## Next Steps
 
 - **[Deploy to Kubernetes](./kubernetes)** — Production deployment with Helm

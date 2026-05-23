@@ -22,8 +22,8 @@ function mdxSafe(str) {
 const SERVICE_ORDER = ['base', 'gateway', 'server', 'provisioning', 'tester'];
 const SERVICE_LABELS = {
   base: 'Shared (Base)',
-  gateway: 'ws-gateway',
-  server: 'ws-server',
+  gateway: 'Gateway',
+  server: 'Core',
   provisioning: 'Provisioning',
   tester: 'Tester',
 };
@@ -111,9 +111,15 @@ scoop install sukko
 
   function renderCommand(cmd, prefix) {
     const fullName = prefix ? `${prefix} ${cmd.name}` : cmd.name;
-    md += `### \`sukko ${mdxSafe(cmd.use || cmd.name)}\`\n\n`;
+    // use field goes inside backticks — angle brackets are safe there, don't escape
+    // prefix carries the full parent path (e.g., "sukko context") for nested subcommands
+    md += `### \`${prefix} ${cmd.use || cmd.name}\`\n\n`;
     md += `${mdxSafe(cmd.short)}\n\n`;
-    if (cmd.long) md += `${mdxSafe(cmd.long)}\n\n`;
+    if (cmd.long) {
+      // Long descriptions from cobra may contain markdown headings or shell syntax
+      // that breaks MDX parsing — render as a fenced code block
+      md += `\`\`\`\n${cmd.long.trim()}\n\`\`\`\n\n`;
+    }
     if (cmd.aliases && cmd.aliases.length > 0) {
       md += `**Aliases:** ${cmd.aliases.map(a => `\`${a}\``).join(', ')}\n\n`;
     }
@@ -252,6 +258,7 @@ const featureLabels = {
   'Web Push transport': 'Web Push Transport',
   'per-tenant IP allowlisting': 'Per-Tenant IP Allowlisting',
   'audit logging': 'Audit Logging',
+  'push notifications': 'Push Notifications',
   'end-to-end encryption': 'End-to-End Encryption',
   'priority message routing': 'Priority Message Routing',
   'custom quota policies': 'Custom Quota Policies',
@@ -300,7 +307,7 @@ Sukko is available in three editions. Community is free — no license key requi
 | **Topics per Tenant** | ${formatLimit(c.max_topics_per_tenant)} | ${formatLimit(p.max_topics_per_tenant)} | ${formatLimit(e.max_topics_per_tenant)} |
 | **Routing Rules per Tenant** | ${formatLimit(c.max_routing_rules_per_tenant)} | ${formatLimit(p.max_routing_rules_per_tenant)} | ${formatLimit(e.max_routing_rules_per_tenant)} |
 
-## Feature Gates
+## Features
 
 | Feature | Community | Pro | Enterprise |
 |---------|-----------|-----|------------|
@@ -325,13 +332,13 @@ Sukko is available in three editions. Community is free — no license key requi
 
   if (comingSoonProFeatures.length > 0 || comingSoonEntFeatures.length > 0) {
     md += `\n## Coming Soon\n\n`;
-    md += `| Feature | Edition |\n`;
-    md += `|---------|----------|\n`;
+    md += `| Feature | Community | Pro | Enterprise |\n`;
+    md += `|---------|-----------|-----|------------|\n`;
     for (const f of comingSoonProFeatures) {
-      md += `| ${mdxSafe(featureLabel(f.name))} | Pro |\n`;
+      md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
     }
     for (const f of comingSoonEntFeatures) {
-      md += `| ${mdxSafe(featureLabel(f.name))} | Enterprise |\n`;
+      md += `| **${mdxSafe(featureLabel(f.name))}** | — | — | Yes |\n`;
     }
   }
 

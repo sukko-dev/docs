@@ -3,82 +3,216 @@ title: Channels
 description: Public, user-scoped, and group-scoped channel patterns
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # Channels
 
-Channels control who receives which messages. Sukko supports three channel types, configured per tenant via channel rules.
+Channels control who receives which messages. Every channel uses the format `{tenant}.{suffix}` — the tenant prefix is validated at the gateway to enforce [tenant isolation](./multi-tenancy).
+
+## Channel Access Validation
+
+The gateway validates channels in two stages:
+
+**Stage 1 — Tenant validation (always applies):**
+The channel must start with `{tenant_id}.` matching the authenticated tenant (from JWT `tenant_id` claim or API key). Channels with the wrong tenant prefix are silently filtered on subscribe, or rejected with `forbidden` on publish.
+
+**Stage 2 — Pattern matching:**
+The gateway strips the tenant prefix and matches the remaining suffix against permission patterns. Channels not matching any pattern are denied.
 
 ## Channel Types
 
 ### Public Channels
 
-Any authenticated client can subscribe. Used for broadcast data.
+Any connection can subscribe — no specific JWT claims required. Used for broadcast data like announcements or general chat.
 
 ```
-general.chat
-announce.updates
-market.BTC.trade
+demo.general.chat
+demo.announce.updates
+demo.lobby.messages
 ```
 
-Pattern: configured in the `public` array of channel rules.
+Pattern example: `*.chat`, `announce.*`
 
 ### User-Scoped Channels
 
-Only the user whose JWT `sub` matches the channel's `{principal}` placeholder can subscribe. Used for private messages.
+Only the user whose JWT `sub` claim matches the `{principal}` placeholder can subscribe. Used for private messages and notifications.
 
 ```
-dm.{principal}    →    dm.user-123  (only user-123 receives)
+demo.inbox.{principal}  →  demo.inbox.user-123  (only sub=user-123 can subscribe)
+demo.dm.{principal}     →  demo.dm.user-456     (only sub=user-456 can subscribe)
 ```
 
 The gateway resolves `{principal}` from the JWT `sub` claim at connection time.
 
 ### Group-Scoped Channels
 
-Only users whose JWT `groups` claim includes the matching group can subscribe. Used for team/role-based messaging.
+Only users whose JWT `groups` claim includes the matching group can subscribe. Used for team or role-based messaging.
 
 ```
-room.vip          →    only users with "vip" in their groups claim
-room.traders      →    only users with "traders" in their groups claim
+demo.rooms.{group_id}   →  demo.rooms.engineering  (only users with "engineering" in groups)
+demo.rooms.{group_id}   →  demo.rooms.support      (only users with "support" in groups)
 ```
 
-## Channel Rules Configuration
+The gateway resolves `{group_id}` from the JWT `groups` claim.
 
-Channel rules are set per tenant via the provisioning API:
+**API-key-only connections** (no JWT) can only subscribe to public channels — user-scoped and group-scoped patterns require JWT claims.
+
+## Global Channel Patterns
+
+By default, the gateway enforces channel access using global patterns configured via environment variables. These apply to all tenants:
+
+| Variable | Description |
+|----------|-------------|
+| `GATEWAY_PUBLIC_PATTERNS` | Channels any connection can subscribe to |
+| `GATEWAY_USER_SCOPED_PATTERNS` | Channels requiring `sub` claim match |
+| `GATEWAY_GROUP_SCOPED_PATTERNS` | Channels requiring `groups` claim match |
+
+Operators should configure these patterns for their domain. At least one public pattern is required — the gateway will not start without it.
+
+See the [Configuration Reference](../reference/configuration) for defaults and full syntax.
+
+## Per-Tenant Channel Rules <EditionBadge edition="pro" /> <EditionBadge edition="enterprise" />
+
+For finer control, per-tenant channel rules override the global patterns on a per-tenant basis. Configure via the provisioning API:
 
 ```bash
 curl -X PUT http://localhost:8080/api/v1/tenants/demo/channel-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
   -H "Content-Type: application/json" \
   -d '{
-    "public": ["general.*", "announce.*", "dm.{principal}"],
-    "default": ["general.*"],
+    "public": ["*.chat", "announce.*"],
+    "default": ["*.chat", "inbox.{subject}"],
     "group_mappings": {
-      "vip": ["room.vip"],
-      "traders": ["room.traders"]
+      "engineering": ["rooms.engineering", "rooms.{group_id}"],
+      "support": ["rooms.support", "tickets.*"]
     },
-    "publish_public": ["general.*", "dm.{principal}"],
-    "publish_default": ["general.*"]
+    "publish_public": ["*.chat"],
+    "publish_default": ["*.chat"],
+    "publish_group_mappings": {
+      "engineering": ["rooms.engineering"],
+      "support": ["rooms.support", "tickets.*"]
+    }
   }'
 ```
+
+Patterns support wildcards (`*`) and placeholders (`{subject}`, `{group_id}`).
 
 ### Rule Fields
 
 | Field | Description |
 |-------|-------------|
-| `public` | Channels any authenticated user can subscribe to |
-| `default` | Channels for users with no group matches |
-| `group_mappings` | Map of group name to allowed channels |
-| `publish_public` | Channels any user can publish to |
-| `publish_default` | Channels users with no groups can publish to |
+| `public` | Subscribe patterns for all connections |
+| `default` | Fallback subscribe patterns when no group matches |
+| `group_mappings` | Group name to subscribe patterns mapping |
+| `publish_public` | Publish patterns for all connections |
+| `publish_default` | Fallback publish patterns when no group matches |
+| `publish_group_mappings` | Group name to publish patterns mapping |
+
+When per-tenant rules are enabled but a specific tenant has no rules configured, the gateway falls back to `GATEWAY_FALLBACK_PUBLIC_CHANNELS`. When per-tenant rules are disabled, all tenants use the global patterns above.
 
 ### Pattern Syntax
 
-Channel patterns use glob matching:
+**Wildcards:**
+- In channel permission patterns, `*` matches a single segment (no dots): `general.*` matches `general.chat` but not `general.chat.v2`
+- In routing rule patterns, `*` matches any sequence including dots: `rooms.*` matches `rooms.general.messages`
 
-- `*` matches any single segment (`general.*` matches `general.chat` but not `general.chat.v2`)
-- `{principal}` resolves to the JWT subject claim
+**Placeholders** (all resolve to the same JWT claim):
+- `{principal}`, `{subject}`, `{sub}`, `{user_id}` — all resolve to the JWT `sub` claim
+- `{group_id}` — resolves to group names from the JWT `groups` claim
 
 ## Publish Authorization
 
-Publishing is also controlled by channel rules. If a client publishes to a channel they're not authorized for, the message is silently dropped (or rejected with an error, depending on gateway configuration).
+Publishing is controlled by the `publish_public`, `publish_default`, and `publish_group_mappings` rules. If a client publishes to a channel they're not authorized for, the gateway rejects it with a `forbidden` error.
+
+Published messages are routed to backend topics via **topic routing rules** configured per-tenant. If no routing rule matches the channel, the publish is rejected.
+
+## Topic Routing Rules
+
+Every tenant must configure routing rules that map channel patterns to backend Kafka topic suffixes. Without routing rules, all client publishes are rejected (secure by default).
+
+Rules are evaluated in **ascending priority order** — the rule with the lowest `priority` value is checked first (first match wins). Add a catch-all rule at priority `100` and tenant-specific rules at `0–99` to override it.
+
+```bash
+# Add a specific rule (lower priority = checked first)
+curl -X POST https://gateway.example.com/api/v1/tenants/demo/routing-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule": {"pattern": "trades.**", "topics": ["trades"], "priority": 0}
+  }'
+
+# Add a catch-all rule
+curl -X POST https://gateway.example.com/api/v1/tenants/demo/routing-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rule": {"pattern": "**", "topics": ["default"], "priority": 100}
+  }'
+```
+
+Or replace all rules atomically with `PUT`:
+
+```bash
+curl -X PUT https://gateway.example.com/api/v1/tenants/demo/routing-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rules": [
+      {"pattern": "trades.**",        "topics": ["trades"],               "priority": 0},
+      {"pattern": "rooms.**",         "topics": ["rooms"],                "priority": 10},
+      {"pattern": "**",               "topics": ["default"],              "priority": 100}
+    ]
+  }'
+```
+
+| Field | Description |
+|-------|-------------|
+| `pattern` | Channel suffix pattern — see [Wildcard Semantics](#wildcard-semantics) below |
+| `topics` | One or more topic suffixes to route matching channels to — see [Fan-Out](#fan-out) |
+| `priority` | Evaluation order (ascending, first match wins). Must be unique per tenant. |
+
+### Wildcard Semantics
+
+| Pattern | Matches |
+|---------|---------|
+| `**` | Any channel suffix (any number of dot-separated segments) |
+| `trades.**` | `trades.BTC-USD`, `trades.spot.BTC-USD`, `trades.futures.ETH.weekly` |
+| `rooms.*.presence` | `rooms.engineering.presence`, but NOT `rooms.a.b.presence` |
+
+`*` submitted via the API is accepted and **normalized to `**` on storage** — GET responses always return the normalized `**` form. For example, submitting `"pattern": "trades.*"` is stored and returned as `"pattern": "trades.**"`.
+
+This means two rules with patterns `trades.*` and `trades.**` are treated as duplicates — the second POST will return `409 ROUTING_RULE_DUPLICATE_PATTERN`.
+
+### Fan-Out
+
+The `topics` array enables routing a channel to **multiple Kafka topics simultaneously**. All listed topics receive the message in parallel — this is useful for audit logging, analytics, or multi-consumer architectures.
+
+```json
+{"pattern": "trades.**", "topics": ["trades", "audit-log"], "priority": 0}
+```
+
+Publishing to `demo.trades.BTC-USD` routes to both `prod.demo.trades` and `prod.demo.audit-log`.
+
+Each value in `topics` is a **topic suffix** (not a full topic name). The full Kafka topic name is constructed as:
+
+```
+{namespace}.{tenant_id}.{suffix}
+```
+
+For example, with namespace `prod` and tenant `demo`, suffix `trades` becomes topic `prod.demo.trades`.
+
+### Dead-Letter Topic
+
+When no routing rule matches a published channel, the message is routed to the tenant's **dead-letter topic** (`{namespace}.{tenant_id}.dead-letter`) instead of being dropped. This allows operators to inspect unmatched messages without losing them.
+
+Two failure modes:
+
+| Mode | When | Behavior |
+|------|------|----------|
+| Routing-time | No rule matches at publish time | Message silently routed to dead-letter topic |
+| Provisioning-time | Dead-letter or default topic fails to create at tenant setup | Logged at Error level + `provisioning_reactivate_topic_provision_errors_total` counter incremented; reactivation continues |
+
+Infrastructure topics (`dead-letter` and `default`) are created automatically when a tenant is provisioned. If upgrading from an older release, run [`migrate-dlq`](../guides/deploy/local#migrate-dlq) to create these topics for existing active tenants.
 
 ## Next Steps
 

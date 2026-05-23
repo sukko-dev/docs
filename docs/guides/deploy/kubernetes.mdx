@@ -179,6 +179,50 @@ ws-server:
     clusterMaxConnections: 100000
 ```
 
+## Upgrading
+
+### migrate-dlq
+
+When upgrading to a release that introduces **channel topic routing**, run `migrate-dlq` **before** upgrading the provisioning service. It creates the `dead-letter` and `default` Kafka topics for all existing active tenants so that infrastructure is in place when the new server starts routing.
+
+```bash
+# Dry-run first — lists what would be created without touching Kafka
+./migrate-dlq --dry-run
+
+# Create topics for all active tenants
+./migrate-dlq
+
+# Recreate existing topics (delete + create — non-atomic)
+./migrate-dlq --recreate
+```
+
+:::caution --recreate is non-atomic
+If `--recreate` deletes a topic but the subsequent create fails, the topic will be absent until you re-run `migrate-dlq`. The tool logs `state=topic_absent` for any such topic and exits with code 2. Re-running without `--recreate` will recreate missing topics.
+:::
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | All tenants processed successfully |
+| `1` | Startup failure (cannot connect to DB or Kafka) |
+| `2` | Partial failure (≥1 tenant topic creation failed) |
+
+**Required Kafka permissions:**
+- `CreateTopics` — always required
+- `DeleteTopics` — required only with `--recreate`
+
+**Required database permissions:**
+- `SELECT` on the `tenants` table
+
+**Configuration** — the tool reads from environment variables, same as the provisioning service:
+
+```bash
+PROVISIONING_KAFKA_BROKERS=redpanda:9092 \
+DATABASE_URL=postgres://... \
+./migrate-dlq --dry-run
+```
+
 ## Next Steps
 
 - **[Configuration Reference](../../reference/configuration)** — All environment variables

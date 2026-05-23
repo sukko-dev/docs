@@ -3,6 +3,8 @@ title: Multi-Tenancy
 description: How Sukko isolates tenants at every layer
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # Multi-Tenancy
 
 Every connection, channel, and topic in Sukko belongs to a tenant. Tenants are isolated at every layer of the stack.
@@ -13,27 +15,48 @@ A tenant represents a customer or application environment. Each tenant has:
 
 - A unique ID (`^[a-z][a-z0-9-]{2,62}$`)
 - JWT signing keys for authentication
+- API keys for public-channel-only access
 - Channel rules controlling subscribe/publish access
-- Routing rules mapping channels to Kafka topics
-- Quotas limiting connections, topics, and rules
+- Routing rules mapping channels to backend topics
+- Quotas limiting connections, topics, throughput, and storage
 
 ## Isolation Guarantees
 
 | Layer | Isolation |
 |-------|-----------|
-| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced. |
-| **Channels** | Channel names are namespaced per tenant internally. Tenant A's `general.chat` is separate from Tenant B's. |
-| **Topics** | Kafka topics are prefixed: `{namespace}.{tenant_id}.{category}` |
-| **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected. |
-| **Quotas** | Per-tenant limits on connections, topics, and routing rules. |
+| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced via quotas. |
+| **Channels** | Channel names are namespaced as `{tenant}.{suffix}`. Tenant A's `general.chat` is completely separate from Tenant B's. |
+| **Topics** | Backend topics are prefixed: `{namespace}.{tenant_id}.{category}` |
+| **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected at the gateway. |
+| **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput. |
+
+## Quotas
+
+Each tenant has configurable resource quotas:
+
+| Quota | Description |
+|-------|-------------|
+| `max_connections` | Maximum concurrent WebSocket connections (0 = system default) |
+| `max_topics` | Maximum topics allowed |
+| `max_partitions` | Maximum partitions allowed |
+| `max_storage_bytes` | Maximum storage in bytes |
+| `producer_byte_rate` | Maximum producer throughput (bytes/sec) |
+| `consumer_byte_rate` | Maximum consumer throughput (bytes/sec) |
+
+Manage quotas via the CLI or REST API:
+
+```bash
+sukko quota get --tenant demo
+sukko quota update --tenant demo --max-connections 500
+```
 
 ## Consumer Modes
 
-Sukko supports two Kafka consumer modes:
+Sukko supports two consumer modes for Kafka/NATS backends:
 
 ### Shared Consumer
 
-All tenants share a single consumer group. Topics are discovered via the tenant registry and hot-added without rebalance. Best for small-to-medium tenants.
+All tenants share a single consumer group. Topics are discovered via the tenant registry and hot-added without rebalance (KIP-429). Best for small-to-medium tenants.
 
 ### Dedicated Consumer
 
@@ -50,11 +73,24 @@ sukko tenant create --id high-volume --name "High Volume" --consumer-type dedica
 | State | Description |
 |-------|-------------|
 | **active** | Normal operation. Connections accepted, messages delivered. |
-| **suspended** | New connections rejected. Existing connections maintained. |
+| **suspended** | New connections rejected. Existing connections maintained. Reactivation possible. |
+| **deprovisioning** | Grace period before deletion. A `deprovision_at` timestamp marks when cleanup occurs. |
 | **deleted** | All resources cleaned up. Irreversible. |
+
+```bash
+# Suspend a tenant
+sukko tenant suspend --id demo
+
+# Reactivate
+sukko tenant reactivate --id demo
+
+# Deprovision (schedules deletion)
+sukko tenant deprovision --id demo
+```
 
 ## Next Steps
 
 - **[Authentication](./authentication)** — JWT setup and key registration
 - **[Channels](./channels)** — Channel scoping per tenant
+- **[Security](../security)** — How tenant isolation is enforced at every layer
 - **[Configuration Reference](../reference/configuration)** — Tenant-related env vars

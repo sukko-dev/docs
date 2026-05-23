@@ -1,0 +1,112 @@
+---
+title: SSE Transport
+description: Server-Sent Events for receive-only real-time data streaming
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# SSE Transport <EditionBadge edition="pro" /> <EditionBadge edition="enterprise" />
+
+Server-Sent Events (SSE) provides a receive-only transport for clients that don't need bidirectional communication — dashboards, data feeds, monitoring widgets, or environments where WebSocket isn't available.
+
+SSE clients receive the same messages as WebSocket clients on the same channels, through the same broadcast bus.
+
+## Connecting
+
+```
+GET /sse?channels=demo.general.chat,demo.announce.updates&token=<JWT>
+```
+
+Or with an API key (public channels only):
+
+```
+GET /sse?channels=demo.general.chat&api_key=<pk_live_...>
+```
+
+Authentication can also be passed via headers:
+
+```
+GET /sse?channels=demo.general.chat
+Authorization: Bearer <JWT>
+```
+
+## Browser Example
+
+```javascript
+const url = new URL('https://gateway.example.com/sse');
+url.searchParams.set('channels', 'demo.general.chat,demo.announce.updates');
+url.searchParams.set('token', jwt);
+
+const source = new EventSource(url);
+
+source.addEventListener('message', (event) => {
+  const msg = JSON.parse(event.data);
+  console.log(`[${msg.channel}]`, msg.data);
+});
+
+source.onerror = () => {
+  console.log('Connection lost, reconnecting...');
+};
+```
+
+## Event Format
+
+```
+id: 1234
+event: message
+data: {"type":"message","seq":1234,"ts":1706000000000,"channel":"demo.general.chat","data":{"text":"Hello"}}
+
+```
+
+- `id` — sequence number (used for reconnection via `Last-Event-ID`)
+- `event` — always `message` for broadcast messages
+- `data` — JSON message envelope (same format as WebSocket)
+
+Keepalive comments (`: keepalive`) are sent periodically (default: every 45 seconds) to prevent proxy timeouts on idle connections.
+
+## Key Differences from WebSocket
+
+| | WebSocket | SSE |
+|--|-----------|-----|
+| Direction | Bidirectional | Receive-only |
+| Publishing | Yes (via WebSocket frame) | No (use REST publish endpoint) |
+| Channel changes | Subscribe/unsubscribe mid-connection | Close and reconnect with new channels |
+| Connection limits | Counts toward tenant limit | Counts toward tenant limit |
+| Auth refresh | Mid-connection via `auth` message | Close and reconnect with new token |
+
+## REST Publish
+
+SSE clients can publish via the stateless REST endpoint:
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/publish \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"channel": "demo.general.chat", "data": {"text": "Hello from REST"}}'
+```
+
+REST publish requires a JWT — API keys cannot publish. Same rate limiting and channel permissions as WebSocket publish.
+
+## CORS
+
+For browser EventSource connections from a different origin, configure CORS:
+
+```
+GATEWAY_CORS_ORIGINS=https://app.example.com,https://dashboard.example.com
+```
+
+Default is `*` (allow all origins) for development. Set specific origins in production.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SSE_KEEPALIVE_INTERVAL` | `45s` | Interval between keepalive comments |
+| `GATEWAY_CORS_ORIGINS` | `*` | Allowed CORS origins (comma-separated) |
+| `SERVER_GRPC_ADDR` | `localhost:3006` | Core gRPC address (auto-wired in Helm) |
+
+## Next Steps
+
+- **[Channels](../concepts/channels)** — Channel types and access patterns
+- **[Authentication](../concepts/authentication)** — JWT and API key setup
+- **[Configuration Reference](../reference/configuration)** — All SSE-related env vars

@@ -51,26 +51,29 @@ Verify the installation:
 sukko version
 ```
 
-Expected output:
+## Step 2: Initialize and Start Sukko
 
-```
-sukko version v0.x.x (commit: abc1234)
+Initialize a local environment with default settings (SQLite + NATS + direct messaging):
+
+```bash
+sukko init --defaults
 ```
 
-## Step 2: Start Sukko
+This creates a `.sukko/config.json` with your infrastructure selections and sets up a `local` context pointing to `localhost`.
+
+Now start the stack:
 
 ```bash
 sukko up
 ```
 
-This pulls Docker images and starts the full Sukko stack:
-- **ws-gateway** — WebSocket reverse proxy (port 3000)
-- **ws-server** — Core message server
-- **provisioning** — Multi-tenant management API (port 8080)
-- **Redpanda** — Kafka-compatible message broker
-- **NATS** — Inter-pod broadcast bus
+Docker images are pulled and services start up:
+- **Gateway** — WebSocket reverse proxy (port 3000)
+- **Core** — Message server
+- **Provisioning** — Multi-tenant management API (port 8080)
+- **NATS** — Broadcast bus
 
-Wait for all services to be healthy (~30 seconds):
+A `demo` tenant is automatically created with catch-all routing and public channel rules. Wait for all services to be healthy (~30 seconds):
 
 ```
 ✓ All services healthy
@@ -78,65 +81,57 @@ Wait for all services to be healthy (~30 seconds):
   Provisioning: http://localhost:8080
 ```
 
-## Step 3: Create a Tenant
+## Step 3: Create a Signing Key
 
-Every connection in Sukko belongs to a tenant. Create one:
+Generate an ES256 keypair, register the public key with the provisioning API, and save the private key locally:
 
 ```bash
-sukko tenant create --id demo --name "Demo Tenant"
+sukko keys create --generate
 ```
 
-Expected output:
+```
+Key pair generated.
+  Public key registered as "..." for tenant "demo"
+  Private key saved to ~/.config/sukko/keys/demo/...
 
-```json
-{
-  "id": "demo",
-  "name": "Demo Tenant",
-  "status": "active"
-}
+Generate a token with:
+  sukko token generate --sub <user-id>
 ```
 
 ## Step 4: Generate a Token
 
-Clients authenticate with JWT tokens. Generate one for testing:
+Create a JWT token for a test user:
 
 ```bash
-sukko token generate --tenant demo --subject user-1
+sukko token generate --sub user-1
 ```
 
-Copy the token — you'll use it in the next step.
+Copy the token — you'll use it in the next steps.
 
 ## Step 5: Subscribe to a Channel
 
-Open a second terminal and subscribe to a channel:
+Open a **second terminal** and subscribe to a channel:
 
 ```bash
-sukko subscribe general.chat --tenant demo --subject user-1
+sukko subscribe demo.general.chat --token <paste-token-here>
 ```
 
-You'll see:
-
 ```
-Connected to ws://localhost:3000
-Subscribed to: general.chat
-Waiting for messages... (Ctrl+C to exit)
+Subscribed to [demo.general.chat]. Press Ctrl+C to stop.
 ```
 
 ## Step 6: Publish a Message
 
-In your first terminal, publish a message:
+Back in your first terminal, publish a message:
 
 ```bash
-sukko publish general.chat '{"text": "Hello, Sukko!"}' --tenant demo
+sukko publish demo.general.chat '{"text": "Hello, Sukko!"}' --token <paste-token-here>
 ```
 
 In the subscriber terminal, you'll see:
 
-```json
-{
-  "channel": "general.chat",
-  "data": {"text": "Hello, Sukko!"}
-}
+```
+[demo.general.chat] {"text": "Hello, Sukko!"}
 ```
 
 You just sent your first real-time message through Sukko.

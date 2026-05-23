@@ -1,0 +1,138 @@
+---
+title: License Lifecycle
+description: What happens when you upgrade, downgrade, or your license expires
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# License Lifecycle
+
+Sukko uses Ed25519-signed license keys to determine which edition (Community, Pro, Enterprise) is active. License changes take effect immediately via hot-reload — no restart required for upgrades or limit changes.
+
+## How License Changes Propagate
+
+When a license is reloaded via `POST /api/v1/license`:
+
+1. Provisioning validates the Ed25519 signature and checks replay protection (`iat` must be newer)
+2. New edition and limits are atomically swapped in memory
+3. All services (Core, Gateway, Push) receive the update via gRPC stream
+4. Feature gates and limits take effect immediately
+
+No restart is needed for upgrades. Downgrades that change the message backend (e.g., Kafka → direct) require a restart.
+
+## Upgrades
+
+### Community → Pro
+
+| What Changes | Effect |
+|--------------|--------|
+| Tenant limit | 3 → 50 (new tenants can be created immediately) |
+| Connection limit | 500 → 10,000 |
+| Shard limit | 1 → 8 |
+| Feature gates | Kafka, NATS, SSE, per-tenant channel rules, alerting — all activate immediately |
+
+### Community → Enterprise
+
+Same as Community → Pro, plus:
+
+| What Changes | Effect |
+|--------------|--------|
+| All limits | Unlimited |
+| Feature gates | Push notifications, audit logging, IP allowlisting — all activate immediately |
+
+### Pro → Enterprise
+
+| What Changes | Effect |
+|--------------|--------|
+| All limits | Unlimited (was capped) |
+| Feature gates | Enterprise-only features activate (push, audit, IP allowlisting) |
+
+All upgrades are immediate. No data migration, no restart, no downtime.
+
+## Downgrades
+
+Downgrades are graceful — existing resources are preserved, but new creation is blocked when limits are exceeded.
+
+### Enterprise → Pro
+
+| Component | Behavior |
+|-----------|----------|
+| **Existing tenants** | Preserved. New creation blocked if count exceeds 50. |
+| **Existing connections** | Maintained. New connections rejected if over 10,000. |
+| **Push notifications** | New subscriptions return `403 EDITION_LIMIT`. Existing device registrations preserved. |
+| **Audit logs** | Existing logs preserved. Audit endpoint returns `403 EDITION_LIMIT`. |
+| **Shards** | If running >8 shards, restart required to reduce. |
+
+### Enterprise → Community
+
+| Component | Behavior |
+|-----------|----------|
+| **Existing tenants** | Preserved. New creation blocked if count exceeds 3. |
+| **Existing connections** | Maintained. New connections rejected if over 500. |
+| **Kafka/NATS backend** | Continues running but flagged as mismatched. `ws_license_backend_mismatch` metric set to 1. **Restart required** to switch to `direct` backend. |
+| **SSE transport** | New SSE connections return `403 EDITION_LIMIT`. Existing SSE connections maintained. |
+| **Per-tenant channel rules** | Existing rules preserved in database. New rules creation blocked. Gateway continues enforcing existing rules. |
+| **Push notifications** | New subscriptions blocked. Existing registrations preserved. |
+
+### Pro → Community
+
+Same as Enterprise → Community, except push notifications and audit logging were already unavailable.
+
+## License Expiry
+
+When a license expires, Sukko immediately degrades to Community edition. There is no grace period — at expiry time, the system behaves as if running Community.
+
+| Scenario | Effect |
+|----------|--------|
+| **Pro expires** | Same as Pro → Community downgrade. Existing resources preserved, new creation blocked at Community limits. |
+| **Enterprise expires** | Same as Enterprise → Community downgrade. Backend mismatch detected if running Kafka/NATS. |
+
+### Monitoring Expiry
+
+Sukko exposes a Prometheus metric for license expiry:
+
+```
+sukko_license_expiry_timestamp
+```
+
+Set up an alert to catch upcoming expirations:
+
+```yaml
+# Alert 7 days before expiry
+- alert: SukkoLicenseExpiringSoon
+  expr: (sukko_license_expiry_timestamp - time()) < 7 * 86400
+  labels:
+    severity: warning
+```
+
+## Key Behaviors
+
+**No forced disconnections** — Sukko never drops existing WebSocket or SSE connections on downgrade or expiry. Connections established before the change continue until the client disconnects.
+
+**No data deletion** — Tenants, channel rules, routing rules, audit logs, and push registrations are never deleted on downgrade. They remain in the database and become accessible again on upgrade.
+
+**Backend mismatch requires restart** — If running Kafka or NATS when the license drops to Community, the services continue operating but log a warning and set `ws_license_backend_mismatch=1`. A restart is required to switch to the `direct` backend.
+
+**Replay protection** — License keys include an `iat` (issued-at) timestamp. Older keys are rejected to prevent replay attacks.
+
+## Checking Current Edition
+
+Every service exposes an edition endpoint:
+
+```bash
+curl http://localhost:3000/edition   # Gateway
+curl http://localhost:8080/edition   # Provisioning
+curl http://localhost:3005/edition   # Core
+```
+
+Or via the CLI:
+
+```bash
+sukko edition
+```
+
+## Next Steps
+
+- **[Upgrade to Pro](./upgrade)** — Set your license key
+- **[Edition Comparison](./comparison)** — Feature matrix across editions
+- **[Configuration Reference](../reference/configuration)** — License-related env vars

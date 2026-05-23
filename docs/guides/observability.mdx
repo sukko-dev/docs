@@ -1,0 +1,142 @@
+---
+title: Observability
+description: Integrate Sukko with your existing monitoring, logging, and tracing infrastructure
+---
+
+# Observability
+
+Sukko ships with an optional bundled monitoring stack (Prometheus, Grafana, Loki), but every observability signal is designed to integrate with your existing infrastructure.
+
+## What Sukko Exposes
+
+| Signal | Format | Endpoint / Output |
+|--------|--------|-------------------|
+| **Metrics** | Prometheus | `/metrics` on every service |
+| **Logs** | Structured JSON | stdout (standard K8s log collection) |
+| **Traces** | OpenTelemetry (OTLP) | Configurable exporter endpoint |
+| **Dashboards** | Grafana JSON | Bundled in Helm chart, exportable |
+
+## Using the Bundled Stack
+
+Sukko's Helm chart includes a monitoring profile with Prometheus, Grafana, and Loki pre-configured. Enabled by default:
+
+```bash
+helm install sukko klurvio/sukko --set monitoring.enabled=true
+```
+
+For local development with Docker Compose, observability is opt-in via profile:
+
+```bash
+sukko init  # Select "yes" for observability when prompted
+sukko up
+```
+
+## Using Your Own Stack
+
+If you already run Prometheus, Grafana, Datadog, or another monitoring platform, disable the bundled stack and point Sukko at your infrastructure.
+
+### Step 1: Disable Bundled Monitoring
+
+```bash
+helm install sukko klurvio/sukko --set monitoring.enabled=false
+```
+
+### Step 2: Scrape Metrics
+
+Every Sukko service exposes Prometheus metrics at `/metrics`. Add them as scrape targets in your existing Prometheus:
+
+```yaml
+# prometheus.yml
+scrape_configs:
+  - job_name: sukko-gateway
+    static_configs:
+      - targets: ['sukko-gateway:3000']
+  - job_name: sukko-core
+    static_configs:
+      - targets: ['sukko-server:3005']
+  - job_name: sukko-provisioning
+    static_configs:
+      - targets: ['sukko-provisioning:8080']
+```
+
+### Step 3: Collect Logs
+
+All services log structured JSON to stdout. Your existing log collector (Fluentd, Fluent Bit, Datadog Agent, Vector, etc.) picks them up automatically through standard Kubernetes log collection — no Loki dependency required.
+
+### Step 4: Import Dashboards
+
+Sukko's Grafana dashboards are JSON files bundled in the Helm chart. To use them in your own Grafana instance, export them from:
+
+```
+deployments/helm/sukko/charts/monitoring/dashboards/
+```
+
+Import the JSON files into your Grafana via the UI or API.
+
+### Step 5: Enable Tracing (Optional)
+
+Sukko supports OpenTelemetry tracing. Point it at any OTLP-compatible collector (Jaeger, Tempo, Datadog, Honeycomb, etc.):
+
+```bash
+helm install sukko klurvio/sukko \
+  --set monitoring.enabled=false \
+  --set env.OTEL_TRACING_ENABLED=true \
+  --set env.OTEL_EXPORTER_ENDPOINT=your-collector:4317
+```
+
+### Step 5: Enable Profiling (Optional)
+
+Sukko supports continuous profiling via Pyroscope:
+
+```bash
+helm install sukko klurvio/sukko \
+  --set env.PYROSCOPE_ENABLED=true \
+  --set env.PYROSCOPE_ADDR=http://your-pyroscope:4040
+```
+
+## Summary
+
+| Scenario | Helm Config |
+|----------|-------------|
+| Use bundled stack | `monitoring.enabled=true` (default) |
+| Use your own stack | `monitoring.enabled=false` + scrape `/metrics` + collect stdout logs |
+| Add tracing | `OTEL_TRACING_ENABLED=true` + `OTEL_EXPORTER_ENDPOINT=...` |
+| Add profiling | `PYROSCOPE_ENABLED=true` + `PYROSCOPE_ADDR=...` |
+
+## Tracing Details
+
+Tracing is instrumented on **cold paths only** — operations that happen infrequently (connection setup, auth validation, Kafka rebalance). Hot paths (per-message delivery, broadcast fan-out) are not traced to protect latency; they're covered by Prometheus histograms instead.
+
+**Instrumented paths:**
+- Gateway: WebSocket upgrade, auth validation, auth refresh, publish authorization
+- Core: Kafka consumer setup/rebalance, NATS connection lifecycle, shard creation
+- Provisioning: API request handling, database queries, gRPC stream events
+
+**Exporters:** OTLP/gRPC (default), OTLP/HTTP, stdout (development)
+
+If the tracing backend is unreachable, spans are dropped silently — tracing never blocks the message pipeline.
+
+## Alerting
+
+The bundled Helm chart includes PrometheusRule definitions with default alerts:
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| Connection capacity > 80% | 5 min sustained | Warning |
+| Connection capacity > 95% | 2 min sustained | Critical |
+| Error rate > 1% | 5 min sustained | Warning |
+| Pod restarts > 2 | 10 min window | Warning |
+| Kafka consumer lag > 1000 | 5 min sustained | Warning |
+| Memory > 80% of limit | 10 min sustained | Warning |
+| License expiry within 7 days | — | Warning |
+| Service down | 2 min | Critical |
+
+AlertManager supports Slack, PagerDuty, OpsGenie, email, and generic webhooks. Configure via Helm values — no chart modification needed.
+
+Operators can add custom alert rules via Helm values alongside the defaults.
+
+## Next Steps
+
+- **[Architecture](../concepts/architecture)** — How services connect and expose metrics
+- **[Configuration Reference](../reference/configuration)** — All observability-related env vars
+- **[Testing](./testing)** — Validate your deployment with built-in test suites

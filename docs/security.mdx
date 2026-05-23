@@ -1,0 +1,126 @@
+---
+title: Security
+description: How Sukko secures multi-tenant WebSocket infrastructure at every layer
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Security
+
+Sukko is built with security as a core design principle, not an afterthought. Every connection is authenticated, every channel is tenant-scoped, and every backend link supports encryption in transit. Whether you're running a single tenant in development or hundreds in production, the same security model applies — multi-layered, enforced by default, and configurable where you need it.
+
+## Security at a Glance
+
+| Layer | Protection |
+|-------|------------|
+| **Connection** | JWT authentication (ES256, RS256, EdDSA), API key identification, per-IP and global connection rate limiting |
+| **Channel** | Tenant-scoped namespacing, public/user-scoped/group-scoped access patterns |
+| **Topic** | Tenant-prefixed Kafka topics, isolated consumer groups |
+| **Data** | Tenant-scoped database queries, AES-256-GCM credential encryption |
+| **Transport** | TLS encryption for all backend connections (Kafka, NATS, Valkey) |
+
+## Authentication
+
+Every WebSocket connection is authenticated before it reaches the message layer. Sukko validates JWTs using industry-standard asymmetric algorithms — your backend signs tokens with a private key, and Sukko verifies them with the registered public key. Private keys never touch the platform.
+
+- **ES256** (ECDSA P-256) — the default and recommended algorithm for most deployments
+- **RS256** (RSA 2048+) — supported for environments with existing RSA infrastructure
+- **EdDSA** (Ed25519) — compact keys and fast verification, also used for admin authentication with stricter lifetime controls
+
+Tokens carry claims that define the connection's identity: `tenant_id` determines which tenant the connection belongs to, `sub` identifies the user, and `roles` and `groups` control channel access. Expired, revoked, or malformed tokens are rejected at the gateway before any resource is consumed.
+
+For scenarios that don't require user identity — public data feeds, market tickers, read-only dashboards — Sukko supports API key authentication. API keys identify the tenant but carry no user claims, restricting access to public channels only.
+
+[Learn more about authentication &rarr;](./concepts/authentication)
+
+## Authorization
+
+Channel access is enforced at the gateway, before any message reaches the server or backend. Sukko supports three access patterns that map directly to JWT claims:
+
+- **Public channels** — accessible to any authenticated connection (or API key holder). No additional claims required.
+- **User-scoped channels** — require the `sub` claim to match a placeholder in the channel pattern (e.g., `inbox.{principal}`). Only the owning user can subscribe.
+- **Group-scoped channels** — require the `groups` claim to include the group identifier in the channel name (e.g., `rooms.{group_id}`). Only group members can subscribe.
+- **Per-tenant channel rules** <EditionBadge edition="pro" /> — define custom access patterns per tenant through the provisioning API, giving operators fine-grained control over which channels each tenant's users can access.
+
+Every access decision is evaluated at the gateway. Denied requests never reach the message bus.
+
+[Learn more about channels &rarr;](./concepts/channels)
+
+## Tenant Isolation
+
+Every tenant is isolated at every layer of the stack. There is no shared state between tenants, and cross-tenant access is rejected at the gateway before processing.
+
+- **Connections** — the tenant is extracted from the JWT `tenant_id` claim at connection time. All subsequent operations are scoped to that tenant.
+- **Channels** — channel names are internally namespaced as `{tenant_id}.{suffix}`. A subscription to `general.chat` in tenant A is a completely different channel from `general.chat` in tenant B.
+- **Topics** — Kafka topics are prefixed with the tenant ID, ensuring message streams are physically separated. Consumer groups can be shared or dedicated per tenant.
+- **Data** — all database queries in the provisioning service are scoped to the tenant. Keys, rules, and quotas for one tenant are invisible to another.
+
+Cross-tenant JWT tokens — where the `tenant_id` claim doesn't match the target resource — are rejected at the gateway with no further processing.
+
+[Learn more about multi-tenancy &rarr;](./concepts/multi-tenancy)
+
+## Key Management
+
+Sukko never stores private keys. Operators register public keys through the provisioning API, and Sukko uses them exclusively for JWT signature verification. This means a compromised Sukko instance cannot forge tokens — it can only verify them.
+
+- **Per-tenant key registry** — each tenant registers their own signing keys, identified by `kid` (Key ID). Keys are looked up in constant time during token validation.
+- **Automatic cache refresh** — public keys are cached in memory with automatic background refresh from the database, ensuring low-latency validation without stale keys.
+- **Key lifecycle** — keys support expiration dates and explicit revocation. Revoked keys are rejected immediately with no grace period. This enables safe key rotation: register a new key, let the old one expire, then revoke it.
+- **Algorithm enforcement** — each key is registered with its algorithm (ES256, RS256, EdDSA). If a JWT header declares a different algorithm than the registered key, validation fails — preventing algorithm confusion attacks.
+- **Admin key isolation** — admin keys use a separate registry with stricter controls: EdDSA or RS256 only, maximum 24-hour token lifetime, and a dedicated `sukko-admin` issuer to prevent cross-contamination with tenant tokens.
+
+[Learn more about authentication &rarr;](./concepts/authentication) | [REST API &rarr;](./reference/rest-api)
+
+## Rate Limiting & Abuse Protection
+
+Sukko protects against abuse at multiple levels, using token bucket rate limiting that handles both burst traffic and sustained load.
+
+- **Per-client message rate limiting** — each connected client has its own token bucket. Burst capacity allows short spikes (default: 100 messages), while the sustained rate caps long-term throughput (default: 10 messages/sec).
+- **Per-IP connection rate limiting** — prevents a single IP address from opening excessive connections. Stale IP entries are automatically cleaned up to prevent memory leaks.
+- **Global connection rate limiting** — a system-wide rate limit protects against distributed connection floods, even when no single IP exceeds its limit.
+- **Publish rate and size limits** — separate rate limits for publish operations, plus a maximum message size (default: 64KB) that prevents oversized payloads from consuming resources.
+- **Per-tenant connection limits** <EditionBadge edition="pro" /> — set maximum concurrent connections per tenant, preventing any single tenant from consuming disproportionate resources.
+
+All rate limit violations are tracked via Prometheus metrics, giving operators visibility into abuse patterns.
+
+[Learn more about the gateway &rarr;](./concepts/gateway)
+
+## Transport Security
+
+All backend connections between Sukko services and infrastructure support TLS encryption, ensuring data is protected in transit across your network.
+
+- **Kafka / Redpanda** — TLS encryption with optional SASL authentication (SCRAM-SHA-256, SCRAM-SHA-512). CA certificate verification prevents man-in-the-middle attacks.
+- **NATS** — TLS with CA certificate verification for the broadcast bus connection between gateway and server.
+- **Valkey** — TLS with CA certificate verification for the optional caching layer.
+
+Each backend connection supports configurable CA certificate paths and an insecure mode for development environments with self-signed certificates.
+
+[See configuration reference &rarr;](./reference/configuration)
+
+## Secrets Handling
+
+Sensitive credentials are never stored in plaintext configuration files or logged to output.
+
+- **Environment variables only** — all secrets (database URLs, encryption keys, SASL passwords, authentication tokens) are injected via environment variables. No secrets in config files, no secrets in code.
+- **AES-256-GCM encryption** — credentials that must be stored (such as push notification provider keys) are encrypted at rest using AES-256-GCM, an authenticated encryption algorithm that provides both confidentiality and integrity.
+- **No secret logging** — passwords, tokens, and encryption keys are excluded from configuration dumps and debug output. Even in verbose logging mode, secrets are never emitted.
+
+[See configuration reference &rarr;](./reference/configuration)
+
+## Planned Security Enhancements
+
+Sukko's security surface continues to grow. These features are in active development:
+
+- **Token Revocation** <EditionBadge edition="pro" /> — revoke individual JWT tokens (not just signing keys) for immediate session termination
+- **Audit Logging** <EditionBadge edition="enterprise" /> — immutable, queryable audit trail of all provisioning actions with actor attribution
+- **Per-Tenant IP Allowlisting** <EditionBadge edition="enterprise" /> — restrict tenant connections to approved IP ranges
+- **End-to-End Encryption** <EditionBadge edition="enterprise" /> — encrypted message delivery where Sukko cannot read message payloads
+
+[See the full roadmap &rarr;](./roadmap)
+
+## Next Steps
+
+- **[Quickstart](./quickstart)** — Try Sukko in 5 minutes
+- **[Authentication](./concepts/authentication)** — Deep dive into JWT auth, claims, and key registration
+- **[Configuration Reference](./reference/configuration)** — All security-related environment variables
+- **[Edition Comparison](./editions/comparison)** — See which security features are in each edition
