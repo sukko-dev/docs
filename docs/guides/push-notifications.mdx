@@ -1,0 +1,170 @@
+---
+title: Push Notifications
+description: Deliver messages to offline clients via FCM, APNs, and Web Push
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Push Notifications <EditionBadge edition="enterprise" />
+
+When a client is offline or disconnected, Sukko can deliver messages via push notifications — FCM (Android), APNs (iOS/macOS), and Web Push (browsers). The Push service runs independently from the real-time path, consuming from the message backend and dispatching to registered devices.
+
+## Architecture
+
+```
+Message Backend (Kafka/NATS)
+        │
+        ▼
+  Push Service              consumes push-eligible messages
+        │
+   ┌────┼────┐
+   ▼    ▼    ▼
+  FCM  APNs  Web Push      dispatches to registered devices
+```
+
+Push requires a persistent message backend — `direct` mode is not supported.
+
+## Setup
+
+### Step 1: Enable the Push Service
+
+**Docker Compose (Enterprise profile):**
+
+```bash
+sukko init  # Select enterprise profile
+sukko up
+```
+
+**Kubernetes (Helm):**
+
+```bash
+helm install sukko klurvio/sukko --set push.enabled=true
+```
+
+### Step 2: Upload Provider Credentials
+
+Each tenant needs credentials for the push providers they use.
+
+**Android (FCM):**
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/push/credentials \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "provider": "fcm",
+    "credential_data": "{...}"
+  }'
+```
+
+The `credential_data` is the Firebase service account JSON (from Firebase Console > Project Settings > Service Accounts).
+
+**iOS/macOS (APNs):**
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/push/credentials \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "provider": "apns",
+    "credential_data": "{\"key_id\":\"ABC123\",\"team_id\":\"XYZ789\",\"bundle_id\":\"com.example.app\",\"key\":\"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\"}"
+  }'
+```
+
+Requires a `.p8` auth key from Apple Developer Portal, plus Key ID, Team ID, and Bundle ID.
+
+**Web Push (VAPID):**
+
+VAPID keys are auto-generated per tenant — no credential upload needed. Retrieve the public key for your frontend:
+
+```bash
+curl https://gateway.example.com/api/v1/push/vapid-key \
+  -H "Authorization: Bearer $JWT"
+```
+
+### Step 3: Configure Push Channel Patterns
+
+Define which channels trigger push notifications for each tenant:
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/push/channels \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tenant_id": "demo",
+    "patterns": ["demo.alerts.*", "demo.notifications.*"],
+    "default_ttl": 2419200,
+    "default_urgency": "normal"
+  }'
+```
+
+Patterns use the same glob syntax as channel rules.
+
+### Step 4: Register Devices
+
+Clients register their devices via the gateway:
+
+**Web Push:**
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/push/subscribe \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "web",
+    "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+    "p256dh_key": "...",
+    "auth_secret": "...",
+    "channels": ["demo.alerts.urgent", "demo.notifications.dm"]
+  }'
+```
+
+**Android/iOS:**
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/push/subscribe \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "platform": "android",
+    "token": "<FCM-device-token>",
+    "channels": ["demo.alerts.urgent"]
+  }'
+```
+
+## How Delivery Works
+
+1. A message is published to a channel matching a push pattern
+2. The Push service consumes it from the message backend (separate consumer group)
+3. Matching device subscriptions are queried from the database
+4. Messages dispatched to providers via bounded worker pool (default: 200 workers)
+5. Failed deliveries (410/UNREGISTERED) auto-delete stale subscriptions
+
+Push delivery is independent from WebSocket/SSE — messages are delivered even if the user has no active real-time connection.
+
+## Local Testing
+
+Use dry-run mode to test the flow without real provider credentials:
+
+```
+PUSH_DRY_RUN=true
+```
+
+In dry-run mode, push payloads are logged instead of sent to providers. Register devices and publish messages normally — check push service logs for dispatch payloads.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PUSH_WORKER_POOL_SIZE` | `200` | Number of dispatch workers |
+| `PUSH_DRY_RUN` | `false` | Log payloads instead of sending |
+| `PUSH_DATABASE_URL` | — | PostgreSQL connection string |
+| `MESSAGE_BACKEND` | — | Must be `kafka` or `nats` (not `direct`) |
+
+## Next Steps
+
+- **[Architecture](../concepts/architecture)** — How the Push service fits in the data flow
+- **[Edition Comparison](../editions/comparison)** — Push is an Enterprise feature
+- **[Security](../security)** — How push credentials are encrypted at rest

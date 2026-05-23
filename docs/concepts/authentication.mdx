@@ -21,7 +21,7 @@ Sukko authenticates WebSocket connections using **JWT tokens** signed with ES256
 {
   "sub": "user-123",
   "tenant_id": "demo",
-  "groups": ["vip", "traders"],
+  "groups": ["engineering", "support"],
   "roles": ["admin"],
   "exp": 1711900800,
   "iat": 1711900000
@@ -92,7 +92,7 @@ For server-to-server communication (no browser), API keys are simpler:
 sukko api-keys create --tenant demo --name "backend-producer"
 ```
 
-Pass via header: `X-API-Key: sk_...`
+Pass via header: `X-API-Key: pk_live_...`
 
 ## Next Steps
 

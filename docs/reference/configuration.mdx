@@ -21,7 +21,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `PPROF_ENABLED` | bool | `false` | Profiling — pprof endpoints and Pyroscope continuous profiling, disabled by default. |
 | `PYROSCOPE_ENABLED` | bool | `false` |  |
 | `PYROSCOPE_ADDR` | string | `http://localhost:4040` |  |
-| `AUTH_ENABLED` | bool | `true` |  |
+| `AUTH_MODE` | string | `required` | AuthMode is the authentication model. Only "required" is supported. Kept temporarily for backward compatibility with deployments that set AUTH_MODE=required. Extensible to "public-read" in the future (anonymous subscribe for public channels). |
 | `PROVISIONING_GRPC_ADDR` | string | `localhost:9090` |  |
 | `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` |  |
 | `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` |  |
@@ -30,8 +30,27 @@ All configurable environment variables across Sukko services. Values are set via
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` |  |
 | `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | KafkaTopicNamespaceOverride overrides ENVIRONMENT for Kafka topic naming only. If empty, defaults to normalized ENVIRONMENT value via kafka.ResolveNamespace(). NOT allowed in production — startup validation blocks this. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | ValidNamespaces is a comma-separated list of allowed topic namespace prefixes. |
+| `MESSAGE_BACKEND` | string | `direct` | Message Backend Selection |
+| `KAFKA_BROKERS` | string | `localhost:19092` | Kafka Configuration (only used when MESSAGE_BACKEND=kafka) |
+| `KAFKA_SASL_ENABLED` | bool | `false` | Kafka Security - SASL Authentication  For connecting to managed Kafka/Redpanda services that require authentication. When KafkaSASLEnabled=false (default), connects without authentication (local dev).  Supported mechanisms: - scram-sha-256: SCRAM-SHA-256 (recommended, widely supported) - scram-sha-512: SCRAM-SHA-512 (stronger, less common) |
+| `KAFKA_SASL_MECHANISM` | string | — | scram-sha-256 or scram-sha-512 |
+| `KAFKA_SASL_USERNAME` | string | — |  |
+| `KAFKA_SASL_PASSWORD` | string | — |  |
+| `KAFKA_TLS_ENABLED` | bool | `false` | Kafka Security - TLS Encryption  For encrypted connections to Kafka. Required for most managed services. When KafkaTLSEnabled=false (default), connects without TLS (local dev).  KafkaTLSInsecure: Skip server certificate verification (NOT for production) KafkaTLSCAPath: Path to CA certificate for server verification |
+| `KAFKA_TLS_INSECURE` | bool | `false` |  |
+| `KAFKA_TLS_CA_PATH` | string | — |  |
+| `NATS_JETSTREAM_URLS` | string | — | Comma-separated NATS URLs |
+| `NATS_JETSTREAM_TOKEN` | string | — | Auth token |
+| `NATS_JETSTREAM_USER` | string | — | Username |
+| `NATS_JETSTREAM_PASSWORD` | string | — | Password |
+| `NATS_JETSTREAM_REPLICAS` | int | `1` | Stream replicas |
+| `NATS_JETSTREAM_MAX_AGE` | time.Duration | `24h` | Message retention |
+| `NATS_JETSTREAM_TLS_ENABLED` | bool | `false` | TLS for managed NATS (Synadia Cloud, etc.) |
+| `NATS_JETSTREAM_TLS_INSECURE` | bool | `false` | Skip TLS verification (not for production) |
+| `NATS_JETSTREAM_TLS_CA_PATH` | string | — | Custom CA certificate path |
+| `DATABASE_URL` | string | — |  |
 
-## ws-gateway
+## Gateway
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -43,7 +62,6 @@ All configurable environment variables across Sukko services. Values are set via
 | `GATEWAY_DIAL_TIMEOUT` | time.Duration | `10s` |  |
 | `GATEWAY_MESSAGE_TIMEOUT` | time.Duration | `60s` |  |
 | `GATEWAY_MAX_FRAME_SIZE` | int | `1048576` | 1MB = protocol.DefaultMaxFrameSize |
-| `DEFAULT_TENANT_ID` | string | `sukko` | DefaultTenantID disables multi-tenant support. All connections are routed to this tenant. Only used when AUTH_ENABLED=false. |
 | `GATEWAY_PER_TENANT_CHANNEL_RULES` | bool | `false` | Per-tenant channel rules (Feature Flag) When enabled, channel permissions come from per-tenant rules via gRPC streaming |
 | `GATEWAY_FALLBACK_PUBLIC_CHANNELS` | []string | `*.metadata` | Fallback channel rules (when tenant has none configured) |
 | `REQUIRE_TENANT_ID` | bool | `true` | Multi-tenant settings |
@@ -60,11 +78,16 @@ All configurable environment variables across Sukko services. Values are set via
 | `GATEWAY_MAX_PUBLISH_SIZE` | int | `65536` | Max message size (64KB = protocol.DefaultMaxPublishSize) |
 | `GATEWAY_AUTH_REFRESH_RATE_INTERVAL` | time.Duration | `30s` | Auth refresh settings |
 | `GATEWAY_AUTH_VALIDATION_TIMEOUT` | time.Duration | `5s` | Auth validation timeout for intercepting auth refresh operations |
+| `REVOCATION_MAX_LIFETIME` | time.Duration | `24h` | Max time a revocation entry lives when exp is not provided |
 | `GATEWAY_SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
+| `SERVER_GRPC_ADDR` | string | `localhost:3006` | ws-server gRPC address for RealtimeService |
+| `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for PushService (RegisterDevice, UnregisterDevice, GetVAPIDKey) |
+| `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | SSE keepalive comment interval (prevents proxy timeouts) |
+| `GATEWAY_CORS_ORIGINS` | []string | `*` | CORS allowed origins (* = all, production: restrict) |
 | `GATEWAY_CHANNEL_RULES_CACHE_TTL` | time.Duration | `1m` | Channel rules provider cache TTLs |
 | `GATEWAY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` |  |
 
-## ws-server
+## Core
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
@@ -72,16 +95,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `WS_NUM_SHARDS` | int | `1` | Number of server shards |
 | `WS_BASE_PORT` | int | `3002` | Base port for shard binding (3002, 3003, ...) |
 | `WS_LB_ADDR` | string | `:3005` | Load balancer listen address |
-| `MESSAGE_BACKEND` | string | `direct` | Message Backend Selection  Controls which message ingestion/persistence layer the ws-server uses. - "direct": Messages flow directly to broadcast bus. No persistence, no replay.   Zero external dependencies beyond the broadcast bus. Default for lowest friction. - "kafka": Full Kafka/Redpanda integration. Persistence, offset-based replay,   multi-tenant consumer isolation. Requires Kafka infrastructure. - "nats": NATS JetStream persistent streams. Sequence-based replay,   stream-per-tenant isolation. Lighter than Kafka. |
-| `KAFKA_BROKERS` | string | `localhost:19092` | Kafka Configuration (only used when MESSAGE_BACKEND=kafka) |
+| `SERVER_GRPC_PORT` | int | `3006` | gRPC server port for RealtimeService (SSE Subscribe + REST Publish) |
 | `KAFKA_CONSUMER_ENABLED` | bool | `true` | KafkaConsumerEnabled controls whether the Kafka consumer pool is started. When false, the consumer pool is not created — no consumer group join, no message consumption. WebSocket connections still work (connection-only mode for loadtesting). Default: true |
-| `KAFKA_SASL_ENABLED` | bool | `false` | Kafka Security - SASL Authentication  For connecting to managed Kafka/Redpanda services that require authentication. When KafkaSASLEnabled=false (default), connects without authentication (local dev).  Supported mechanisms: - scram-sha-256: SCRAM-SHA-256 (recommended, widely supported) - scram-sha-512: SCRAM-SHA-512 (stronger, less common) |
-| `KAFKA_SASL_MECHANISM` | string | — | scram-sha-256 or scram-sha-512 |
-| `KAFKA_SASL_USERNAME` | string | — |  |
-| `KAFKA_SASL_PASSWORD` | string | — |  |
-| `KAFKA_TLS_ENABLED` | bool | `false` | Kafka Security - TLS Encryption  For encrypted connections to Kafka. Required for most managed services. When KafkaTLSEnabled=false (default), connects without TLS (local dev).  KafkaTLSInsecure: Skip server certificate verification (NOT for production) KafkaTLSCAPath: Path to CA certificate for server verification |
-| `KAFKA_TLS_INSECURE` | bool | `false` |  |
-| `KAFKA_TLS_CA_PATH` | string | — |  |
 | `KAFKA_DEFAULT_PARTITIONS` | int | `1` | Kafka Topic Defaults (for on-demand topic creation by KafkaBackend) |
 | `KAFKA_DEFAULT_REPLICATION_FACTOR` | int | `1` |  |
 | `WS_MEMORY_LIMIT` | int64 | `536870912` | 512MB |
@@ -114,7 +129,6 @@ All configurable environment variables across Sukko services. Values are set via
 | `ALERT_RATE_LIMIT_WINDOW` | time.Duration | `5m` |  |
 | `ALERT_RATE_LIMIT_MAX` | int | `3` |  |
 | `ALERT_CONSOLE_ENABLED` | bool | `false` |  |
-| `DEFAULT_TENANT_ID` | string | `sukko` | DefaultTenantID disables multi-tenant support. All messages are routed to this tenant. Only used when AUTH_ENABLED=false. |
 | `VALKEY_ADDRS` | []string | — | Valkey Configuration (for BroadcastBus when BROADCAST_TYPE=valkey) Supports both self-hosted Sentinel (3 addresses) and single instance (1 address) |
 | `VALKEY_MASTER_NAME` | string | `mymaster` |  |
 | `VALKEY_PASSWORD` | string | — |  |
@@ -135,15 +149,6 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALKEY_TLS_ENABLED` | bool | `false` | Valkey Broadcast Bus TLS (for managed Valkey/Redis: ElastiCache, Memorystore, Upstash, etc.) |
 | `VALKEY_TLS_INSECURE` | bool | `false` |  |
 | `VALKEY_TLS_CA_PATH` | string | — |  |
-| `NATS_JETSTREAM_URLS` | string | — | Comma-separated NATS URLs |
-| `NATS_JETSTREAM_TOKEN` | string | — | Auth token |
-| `NATS_JETSTREAM_USER` | string | — | Username |
-| `NATS_JETSTREAM_PASSWORD` | string | — | Password |
-| `NATS_JETSTREAM_REPLICAS` | int | `1` | Stream replicas |
-| `NATS_JETSTREAM_MAX_AGE` | time.Duration | `24h` | Message retention |
-| `NATS_JETSTREAM_TLS_ENABLED` | bool | `false` | TLS for managed NATS (Synadia Cloud, etc.) |
-| `NATS_JETSTREAM_TLS_INSECURE` | bool | `false` | Skip TLS verification (not for production) |
-| `NATS_JETSTREAM_TLS_CA_PATH` | string | — | Custom CA certificate path |
 | `TOPIC_REFRESH_INTERVAL` | time.Duration | `60s` | Topic Refresh Interval  How often to periodically re-sync tenant topics/streams from the registry. This is a safety net — primary updates come from the gRPC stream. The periodic refresh catches any events missed during transient disconnects. Applies to both Kafka (MultiTenantConsumerPool) and NATS JetStream backends. |
 | `WS_PONG_WAIT` | time.Duration | `60s` | WebSocket Ping/Pong Configuration  These settings control the keep-alive mechanism between the shard and clients. In a proxied architecture (gateway → ws-server → shard), pings travel through multiple hops, requiring a larger buffer than direct connections.  Buffer = PongWait - PingPeriod The buffer must accommodate the round-trip time through all proxies. With 8 network hops (local Kind + port-forward), 15+ seconds is recommended.  Example with defaults (60s/45s):   - Shard sends ping at t=0   - Ping travels: Shard → ShardProxy → ws-server → Gateway → Client   - Client sends pong   - Pong travels: Client → Gateway → ws-server → ShardProxy → Shard   - If pong arrives by t=60s, connection is healthy   - 15 second buffer for network latency, GC pauses, etc.  Common issues:   - Buffer too small (&lt;5s): Connections drop during GC pauses or network hiccups   - PingPeriod &gt;= PongWait: Invalid, ping would always timeout |
 | `WS_PING_PERIOD` | time.Duration | `45s` |  |
@@ -207,7 +212,6 @@ All configurable environment variables across Sukko services. Values are set via
 | `KAFKA_PRODUCER_CB_TIMEOUT` | time.Duration | `30s` |  |
 | `KAFKA_PRODUCER_CB_MAX_FAILURES` | int | `5` |  |
 | `KAFKA_PRODUCER_CB_HALF_OPEN_REQS` | int | `1` |  |
-| `KAFKA_PRODUCER_TOPIC_CACHE_TTL` | time.Duration | `30s` |  |
 | `JETSTREAM_RECONNECT_WAIT` | time.Duration | `2s` | JetStream backend tuning |
 | `JETSTREAM_MAX_DELIVER` | int | `3` |  |
 | `JETSTREAM_ACK_WAIT` | time.Duration | `30s` |  |
@@ -215,25 +219,21 @@ All configurable environment variables across Sukko services. Values are set via
 | `JETSTREAM_REFRESH_INTERVAL` | time.Duration | `60s` |  |
 | `JETSTREAM_REPLAY_FETCH_WAIT` | time.Duration | `2s` |  |
 | `JETSTREAM_MAX_AGE` | time.Duration | `24h` |  |
+| `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Routing fan-out worker pool |
+| `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` |  |
+| `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Dead-letter queue retry pool |
+| `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` |  |
+| `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` |  |
+| `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` |  |
 
 ## Provisioning
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
+| `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by migration tools (e.g., migrate-dlq) that need Kafka access. Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
 | `PROVISIONING_ADDR` | string | `:8080` | Server |
-| `DATABASE_DRIVER` | string | `sqlite` | Database — driver auto-detected from Helm values, not set directly by developers. sqlite (default, embedded) or postgres (opt-in via Helm postgresql.enabled or externalDatabase). |
-| `DATABASE_URL` | string | — |  |
-| `DATABASE_PATH` | string | `sukko.db` |  |
-| `AUTO_MIGRATE` | bool | `true` |  |
-| `DB_MAX_OPEN_CONNS` | int | `25` |  |
-| `DB_MAX_IDLE_CONNS` | int | `5` |  |
-| `DB_CONN_MAX_LIFETIME` | time.Duration | `5m` |  |
 | `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
-| `PROVISIONING_ADMIN_TOKEN` | string | — | Admin Authentication — opaque admin token for operator access (separate from tenant JWT) |
-| `ADMIN_AUTH_FAILURE_THRESHOLD` | int | `10` | Admin Auth Rate Limiting |
-| `ADMIN_AUTH_BLOCK_DURATION` | time.Duration | `60s` |  |
-| `ADMIN_AUTH_CLEANUP_INTERVAL` | time.Duration | `5m` |  |
-| `ADMIN_AUTH_CLEANUP_MAX_AGE` | time.Duration | `2m` |  |
+| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key) |
 | `DEFAULT_PARTITIONS` | int | `3` | Topic Defaults |
 | `DEFAULT_RETENTION_MS` | int64 | `604800000` | 7 days |
 | `MAX_TOPICS_PER_TENANT` | int | `50` | Quotas (defaults per tenant) |
@@ -244,13 +244,18 @@ All configurable environment variables across Sukko services. Values are set via
 | `DEPROVISION_GRACE_DAYS` | int | `30` | Tenant Lifecycle |
 | `LIFECYCLE_CHECK_INTERVAL` | time.Duration | `1h` |  |
 | `LIFECYCLE_MANAGER_ENABLED` | bool | `true` |  |
-| `MAX_ROUTING_RULES` | int | `100` | Max routing rules per tenant |
+| `MAX_ROUTING_RULES_PER_TENANT` | int | `100` | Max routing rules per tenant |
+| `MAX_TOPICS_PER_RULE` | int | `10` | Max topics per routing rule |
+| `ROUTING_DLQ_TOPIC_PARTITIONS` | int | `1` | Partitions for dead-letter topics |
+| `ROUTING_DLQ_TOPIC_RETENTION_MS` | int64 | `604800000` | Retention for dead-letter topics (7 days) |
+| `INFRA_TOPIC_REPLICATION_FACTOR` | int | `1` | Replication factor for all infrastructure topics (DLQ + default); use int — caarlos0/env v11 does not handle int16; cast to int16 at CreateTopic call sites |
 | `API_RATE_LIMIT_PER_MIN` | int | `60` | Rate Limiting |
 | `KEY_REGISTRY_REFRESH_INTERVAL` | time.Duration | `1m` | Key Registry (for JWT validation in API mode with auth enabled) |
 | `KEY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` |  |
 | `SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
 | `CORS_ALLOWED_ORIGINS` | []string | `http://localhost:3000` | CORS settings |
 | `CORS_MAX_AGE` | int | `3600` |  |
+| `CREDENTIALS_ENCRYPTION_KEY` | string | — | Credentials Encryption — AES-256-GCM key for encrypting push credentials and license keys at rest. Required. Fail fast at startup if not set. Auto-generated by sukko init (docker-compose) and Helm. |
 | `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Provisioning-specific externalized constants |
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` |  |
 
@@ -265,6 +270,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `KAFKA_BROKERS` | string | — |  |
 | `NATS_JETSTREAM_URLS` | string | — |  |
 | `MESSAGE_BACKEND` | string | `direct` |  |
+| `TESTER_SIGNING_KEY_FILE` | string | — | License reload suite — Ed25519 private key for signing test license keys |
 | `TESTER_JWT_LIFETIME` | time.Duration | `15m` | JWT auth configuration |
 | `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` |  |
 | `TESTER_KEY_EXPIRY` | time.Duration | `24h` |  |

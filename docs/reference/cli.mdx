@@ -26,7 +26,7 @@ Manage API keys for tenant authentication
 
 ---
 
-### `sukko create`
+### `sukko api-keys create`
 
 Create a new API key
 
@@ -39,7 +39,7 @@ Create a new API key
 
 ---
 
-### `sukko list`
+### `sukko api-keys list`
 
 List API keys for a tenant
 
@@ -51,7 +51,7 @@ List API keys for a tenant
 
 ---
 
-### `sukko revoke`
+### `sukko api-keys revoke`
 
 Revoke an API key
 
@@ -64,29 +64,78 @@ Revoke an API key
 
 ---
 
+### `sukko auth`
+
+Manage admin authentication keypairs
+
+```
+Generate, register, revoke, and list admin Ed25519 keypairs for JWT-based authentication.
+```
+
+---
+
+### `sukko auth keygen`
+
+Generate an Ed25519 admin keypair
+
+```
+Generates a new Ed25519 keypair and saves it to the active context directory.
+```
+
+---
+
+### `sukko auth list`
+
+List active admin keys
+
+---
+
+### `sukko auth register`
+
+Register your public key with provisioning
+
+```
+Sends your public key to the provisioning API to enable JWT-based admin authentication.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | — | Admin name (defaults to context name) |
+
+---
+
+### `sukko auth revoke <key-id>`
+
+Revoke an admin key
+
+---
+
 ### `sukko completion [bash|zsh|fish]`
 
 Generate shell completion scripts
 
+```
 Generate shell completion scripts for sukko.
 
 To load completions:
 
 Bash:
-  $ source &lt;(sukko completion bash)
+  $ source <(sukko completion bash)
   # To load for each session, add to ~/.bashrc:
-  $ echo 'source &lt;(sukko completion bash)' &gt;&gt; ~/.bashrc
+  $ echo 'source <(sukko completion bash)' >> ~/.bashrc
 
 Zsh:
-  $ source &lt;(sukko completion zsh)
+  $ source <(sukko completion zsh)
   # To load for each session, add to ~/.zshrc:
-  $ echo 'source &lt;(sukko completion zsh)' &gt;&gt; ~/.zshrc
+  $ echo 'source <(sukko completion zsh)' >> ~/.zshrc
 
 Fish:
   $ sukko completion fish | source
   # To load for each session:
-  $ sukko completion fish &gt; ~/.config/fish/completions/sukko.fish
-
+  $ sukko completion fish > ~/.config/fish/completions/sukko.fish
+```
 
 ---
 
@@ -96,11 +145,13 @@ Configuration management
 
 ---
 
-### `sukko defaults`
+### `sukko config defaults`
 
 Show all configuration environment variables with defaults
 
+```
 Outputs all environment variables from Go config struct tags (the single source of truth).
+```
 
 **Flags:**
 
@@ -110,7 +161,7 @@ Outputs all environment variables from Go config struct tags (the single source 
 
 ---
 
-### `sukko view`
+### `sukko config view`
 
 Fetch active configuration from a running service
 
@@ -122,15 +173,17 @@ Connection management and testing
 
 ---
 
-### `sukko test`
+### `sukko connections test`
 
 Test WebSocket connectivity to the gateway (CLI-only, no tester needed)
 
+```
 Test WebSocket connectivity by opening a single connection directly from the CLI.
 
 Verifies: WebSocket upgrade (101), subscribe, and basic message flow.
 For full deployment validation (Kafka pipeline, multi-tenant isolation),
 use 'sukko test smoke' which orchestrates the tester service.
+```
 
 **Flags:**
 
@@ -147,11 +200,13 @@ use 'sukko test smoke' which orchestrates the tester service.
 
 Manage CLI contexts (environments)
 
+```
 Add, remove, switch, and list named contexts for different Sukko environments.
+```
 
 ---
 
-### `sukko add &lt;name&gt;`
+### `sukko context add <name>`
 
 Add a new context
 
@@ -168,15 +223,17 @@ Add a new context
 
 ---
 
-### `sukko create [name]`
+### `sukko context create [name]`
 
 Create a context interactively
 
+```
 Create a named context for a Sukko environment. Prompts for required
 fields (name, provisioning URL, gateway URL, admin token) and optional fields.
 Secrets are entered with masked input to avoid shell history exposure.
 
 All fields can also be provided as flags for non-interactive/CI use.
+```
 
 **Flags:**
 
@@ -193,13 +250,13 @@ All fields can also be provided as flags for non-interactive/CI use.
 
 ---
 
-### `sukko current`
+### `sukko context current`
 
 Show the active context
 
 ---
 
-### `sukko list`
+### `sukko context list`
 
 List all contexts
 
@@ -207,7 +264,7 @@ List all contexts
 
 ---
 
-### `sukko remove &lt;name&gt;`
+### `sukko context remove <name>`
 
 Remove a context
 
@@ -215,7 +272,7 @@ Remove a context
 
 ---
 
-### `sukko use &lt;name&gt;`
+### `sukko context use <name>`
 
 Set the active context
 
@@ -225,7 +282,9 @@ Set the active context
 
 Stop the local development environment
 
+```
 Stop and remove local Docker Compose services. Use -v to also remove volumes.
+```
 
 **Flags:**
 
@@ -239,23 +298,27 @@ Stop and remove local Docker Compose services. Use -v to also remove volumes.
 
 Show current edition, limits, and usage
 
+```
 Show the current Sukko edition (Community/Pro/Enterprise), license status,
 hard limits, and live resource usage.
 
 Fetches data from provisioning's /edition endpoint (tenant usage) and
 gateway's /edition endpoint (connection/shard usage), merging both.
 Falls back to locally stored license key if the platform is unreachable.
+```
 
 ---
 
-### `sukko compare`
+### `sukko edition compare`
 
 Compare Community, Pro, and Enterprise editions
 
+```
 Display a comparison table of all three Sukko editions.
 
 This command works offline — the comparison data is hardcoded from the
 published edition matrix. No running services required.
+```
 
 ---
 
@@ -263,7 +326,9 @@ published edition matrix. No running services required.
 
 Open Grafana in the browser
 
+```
 Open the Grafana dashboard in the system browser. Requires observability to be enabled.
+```
 
 ---
 
@@ -271,10 +336,12 @@ Open the Grafana dashboard in the system browser. Requires observability to be e
 
 Check health of all Sukko components
 
+```
 Check health of all Sukko components.
 
 Probes gateway, server, provisioning, and their dependencies. Reports
 per-component status with troubleshooting suggestions on failure.
+```
 
 ---
 
@@ -282,16 +349,18 @@ per-component status with troubleshooting suggestions on failure.
 
 Initialize a local Sukko development environment
 
+```
 Initialize a local Sukko development environment.
 
 Creates .sukko/config.json with infrastructure selections and sets up
 a local context with dev credentials. Run 'sukko up' to start services.
+```
 
 **Flags:**
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--defaults` | bool | `false` | Skip prompts and use defaults (SQLite + NATS + direct) |
+| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + NATS + direct) |
 
 ---
 
@@ -301,7 +370,7 @@ Manage JWT signing keys
 
 ---
 
-### `sukko create`
+### `sukko keys create`
 
 Register a new public key or generate a key pair
 
@@ -318,7 +387,7 @@ Register a new public key or generate a key pair
 
 ---
 
-### `sukko list`
+### `sukko keys list`
 
 List keys for a tenant
 
@@ -330,7 +399,7 @@ List keys for a tenant
 
 ---
 
-### `sukko revoke`
+### `sukko keys revoke`
 
 Revoke a key
 
@@ -347,28 +416,50 @@ Revoke a key
 
 Manage Sukko license key
 
+```
 Store, view, and remove the Sukko license key from the CLI context.
+```
 
 ---
 
-### `sukko remove`
+### `sukko license push [key]`
+
+Push a license key to a running deployment
+
+```
+Push a Sukko license key to a running provisioning service via
+POST /api/v1/license. The license is applied immediately without
+restarting services.
+
+If no key argument is provided, you will be prompted for input to avoid
+the key appearing in shell history.
+
+This command does NOT modify the local context — use 'sukko license set'
+to persist the key for future 'sukko up' invocations.
+```
+
+---
+
+### `sukko license remove`
 
 Remove the stored license key from the active context
 
 ---
 
-### `sukko set [key]`
+### `sukko license set [key]`
 
 Store a license key in the active context
 
+```
 Store a Sukko license key in the CLI context. The key is encrypted at rest.
 
 If no key argument is provided, you will be prompted for input to avoid
 the key appearing in shell history.
+```
 
 ---
 
-### `sukko show`
+### `sukko license show`
 
 Display the stored license key and decoded claims
 
@@ -378,10 +469,12 @@ Display the stored license key and decoded claims
 
 View logs from local Docker Compose services
 
+```
 View logs from local Docker Compose services.
 
 Only available for local Docker Compose environments. Specify service names
 to filter (e.g., 'sukko logs ws-gateway ws-server').
+```
 
 **Flags:**
 
@@ -391,7 +484,7 @@ to filter (e.g., 'sukko logs ws-gateway ws-server').
 
 ---
 
-### `sukko publish &lt;channel&gt; &lt;message&gt;`
+### `sukko publish <channel> <message>`
 
 Publish a message to a channel via the gateway
 
@@ -413,7 +506,7 @@ Manage tenant quotas
 
 ---
 
-### `sukko get`
+### `sukko quota get`
 
 Get quotas for a tenant
 
@@ -425,7 +518,7 @@ Get quotas for a tenant
 
 ---
 
-### `sukko update`
+### `sukko quota update`
 
 Update quotas for a tenant
 
@@ -449,13 +542,13 @@ Manage routing and channel rules
 
 ---
 
-### `sukko channels`
+### `sukko rules channels`
 
 Manage channel permission rules
 
 ---
 
-### `sukko delete`
+### `sukko rules channels delete`
 
 Delete channel rules for a tenant
 
@@ -467,7 +560,7 @@ Delete channel rules for a tenant
 
 ---
 
-### `sukko get`
+### `sukko rules channels get`
 
 Get channel rules for a tenant
 
@@ -479,7 +572,7 @@ Get channel rules for a tenant
 
 ---
 
-### `sukko set`
+### `sukko rules channels set`
 
 Set channel rules for a tenant
 
@@ -493,13 +586,28 @@ Set channel rules for a tenant
 
 ---
 
-### `sukko routing`
+### `sukko rules routing`
 
 Manage topic routing rules
 
 ---
 
-### `sukko delete`
+### `sukko rules routing add`
+
+Add a single routing rule for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--pattern` | string | — | Channel pattern (e.g. trades.**, **) |
+| `--priority` | int | `0` | Rule priority (lower = higher precedence; must be unique per tenant) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--topics` | string | — | Comma-separated topic suffixes (e.g. trades,audit-log) |
+
+---
+
+### `sukko rules routing delete`
 
 Delete routing rules for a tenant
 
@@ -511,7 +619,7 @@ Delete routing rules for a tenant
 
 ---
 
-### `sukko get`
+### `sukko rules routing get`
 
 Get routing rules for a tenant
 
@@ -523,7 +631,7 @@ Get routing rules for a tenant
 
 ---
 
-### `sukko set`
+### `sukko rules routing set`
 
 Set routing rules for a tenant from a JSON file
 
@@ -536,7 +644,7 @@ Set routing rules for a tenant from a JSON file
 
 ---
 
-### `sukko test-access`
+### `sukko rules test-access`
 
 Test channel access for a subject
 
@@ -555,11 +663,13 @@ Test channel access for a subject
 
 Show status of all services
 
+```
 Show a unified view of all Sukko services with health status.
+```
 
 ---
 
-### `sukko subscribe &lt;channel&gt; [channel...]`
+### `sukko subscribe <channel> [channel...]`
 
 Subscribe to channels and stream messages to stdout
 
@@ -579,7 +689,7 @@ Manage tenants
 
 ---
 
-### `sukko create`
+### `sukko tenant create`
 
 Create a new tenant
 
@@ -594,27 +704,29 @@ Create a new tenant
 
 ---
 
-### `sukko delete [tenant-id]`
+### `sukko tenant delete [tenant-id]`
 
 Delete a tenant (alias for deprovision)
 
 ---
 
-### `sukko deprovision [tenant-id]`
+### `sukko tenant deprovision [tenant-id]`
 
 Initiate tenant deletion (grace period)
 
 ---
 
-### `sukko get [tenant-id]`
+### `sukko tenant get [tenant-id]`
 
 Get tenant details
 
+```
 Get tenant details. If no tenant-id is provided, uses the active tenant from context.
+```
 
 ---
 
-### `sukko list`
+### `sukko tenant list`
 
 List tenants
 
@@ -628,19 +740,19 @@ List tenants
 
 ---
 
-### `sukko reactivate [tenant-id]`
+### `sukko tenant reactivate [tenant-id]`
 
 Reactivate a suspended tenant
 
 ---
 
-### `sukko suspend [tenant-id]`
+### `sukko tenant suspend [tenant-id]`
 
 Suspend a tenant
 
 ---
 
-### `sukko update [tenant-id]`
+### `sukko tenant update [tenant-id]`
 
 Update a tenant
 
@@ -656,11 +768,13 @@ Update a tenant
 
 Run tests against the Sukko platform
 
+```
 Run smoke, load, stress, soak, or validation tests via the sukko-tester service.
+```
 
 ---
 
-### `sukko load`
+### `sukko test load`
 
 Sustained load test with configurable connections
 
@@ -679,7 +793,7 @@ Sustained load test with configurable connections
 
 ---
 
-### `sukko smoke`
+### `sukko test smoke`
 
 Quick connectivity and health check
 
@@ -694,7 +808,7 @@ Quick connectivity and health check
 
 ---
 
-### `sukko soak`
+### `sukko test soak`
 
 Long-running stability test
 
@@ -713,7 +827,7 @@ Long-running stability test
 
 ---
 
-### `sukko stress`
+### `sukko test stress`
 
 Push to maximum capacity and find limits
 
@@ -732,7 +846,7 @@ Push to maximum capacity and find limits
 
 ---
 
-### `sukko validate`
+### `sukko test validate`
 
 Run validation suites
 
@@ -754,7 +868,7 @@ JWT token helpers
 
 ---
 
-### `sukko generate`
+### `sukko token generate`
 
 Generate a signed JWT token
 
@@ -773,7 +887,23 @@ Generate a signed JWT token
 
 ---
 
-### `sukko validate &lt;token&gt;`
+### `sukko token revoke`
+
+Revoke a token by session (jti) or user (sub)
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--expires` | string | — | Revocation expiry (duration like 2h or RFC3339 timestamp) |
+| `--jti` | string | — | Revoke a specific session by JWT ID |
+| `--sub` | string | — | Revoke all sessions for a user |
+| `--tenant` | string | — | Tenant ID |
+| `--token` | string | — | JWT to revoke (extracts jti and tenant_id) |
+
+---
+
+### `sukko token validate <token>`
 
 Decode and validate a JWT token
 
@@ -789,11 +919,13 @@ Decode and validate a JWT token
 
 Start the local development environment
 
+```
 Start the local development environment using Docker Compose.
 
 Reads .sukko/config.json (created by 'sukko init'), activates the selected
 infrastructure profiles, waits for all services to become healthy, and
 provisions a default tenant for immediate use.
+```
 
 **Flags:**
 

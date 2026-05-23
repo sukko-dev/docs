@@ -5,6 +5,7 @@
 ## Sections
 
 - [Quickstart](/quickstart): Zero-to-first-message in 5 minutes using the sukko CLI
+- [Security](/security): How Sukko secures multi-tenant WebSocket infrastructure at every layer
 - [Concepts](/concepts/architecture): Architecture, multi-tenancy, channels, authentication, message backends, gateway
 - [SDK Guides](/guides/sdk/react): React, Vue, Svelte, React Native, and vanilla TypeScript integration guides
 - [Deployment](/guides/deploy/local): Local dev (Docker Compose) and Kubernetes (Helm) deployment guides

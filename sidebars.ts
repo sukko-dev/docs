@@ -3,6 +3,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   docsSidebar: [
     'quickstart',
+    'security',
     {
       type: 'category',
       label: 'Concepts',
@@ -38,6 +39,12 @@ const sidebars: SidebarsConfig = {
             'guides/deploy/kubernetes',
           ],
         },
+        'guides/admin-auth',
+        'guides/tenant-onboarding',
+        'guides/sse',
+        'guides/push-notifications',
+        'guides/testing',
+        'guides/observability',
       ],
     },
     {
@@ -65,6 +72,7 @@ const sidebars: SidebarsConfig = {
       label: 'Editions',
       items: [
         'editions/comparison',
+        'editions/lifecycle',
         'editions/upgrade',
         'editions/pricing',
       ],

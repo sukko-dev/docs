@@ -1,0 +1,313 @@
+---
+title: Testing
+description: Run smoke, load, stress, soak, and validation tests against local or remote Sukko deployments
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Testing
+
+Sukko ships with a built-in tester service and CLI commands for validating correctness, measuring performance, and catching regressions — locally or against remote deployments.
+
+## Overview
+
+| Test Type | Purpose | Default Duration |
+|-----------|---------|------------------|
+| **Smoke** | Quick connectivity and health check | Instant |
+| **Load** | Sustained connections with configurable publish rate | 5 minutes |
+| **Stress** | Push to maximum capacity and find limits | 10 minutes |
+| **Soak** | Long-running stability for memory leaks and connection drift | 2 hours |
+| **Validate** | End-to-end correctness suites (auth, isolation, ordering, etc.) | Per suite |
+
+All test types run through the **tester service** (`sukko-tester`, port 8090), orchestrated via `sukko test` CLI commands.
+
+## Contexts: Local vs Remote
+
+Tests run against whichever environment your active context points to. Switch environments with a single command — no config files to edit.
+
+### Setting Up Contexts
+
+After `sukko init`, a `local` context is created automatically:
+
+```bash
+sukko context current
+```
+
+```
+Name:            local
+Gateway:         ws://localhost:3000
+Provisioning:    http://localhost:8080
+Tester:          http://localhost:8090
+Environment:     local
+Tenant:          local
+```
+
+To test against a remote deployment, create a new context:
+
+```bash
+sukko context create staging \
+  --gateway-url wss://ws.staging.example.com \
+  --provisioning-url https://api.staging.example.com \
+  --tester-url https://tester.staging.example.com \
+  --environment staging \
+  --tenant my-tenant
+```
+
+### Switching Contexts
+
+```bash
+# Switch active context
+sukko context use staging
+
+# Run a single command against a different context (without switching)
+sukko --context staging test smoke
+
+# List all contexts
+sukko context list
+```
+
+### How Context Affects Tests
+
+- **Local context** (localhost URLs) — the tester uses its own Docker-internal URLs. No context is sent to the tester API.
+- **Remote context** — the CLI sends gateway URL, provisioning URL, and environment to the tester so it knows where to point test traffic.
+
+## Smoke Tests
+
+Quick validation that services are running and a message can flow end-to-end.
+
+```bash
+sukko test smoke
+```
+
+Verifies:
+- Service health endpoints respond
+- WebSocket connection succeeds
+- Subscribe and publish round-trip works
+- Message is received on the subscribed channel
+
+### Streaming Results
+
+Add `--follow` (or `-f`) to stream metrics in real time:
+
+```bash
+sukko test smoke --follow
+```
+
+## Validation Tests
+
+End-to-end correctness suites that verify specific behaviors. Each suite runs a set of checks and reports pass/fail.
+
+```bash
+sukko test validate --suite <suite-name>
+```
+
+### Available Suites
+
+| Suite | What It Tests |
+|-------|--------------|
+| `auth` | JWT validation — valid tokens, expired tokens, wrong key ID, wrong tenant, revoked keys, missing credentials |
+| `channels` | Channel subscribe and unsubscribe operations |
+| `ordering` | Message FIFO ordering — verifies messages arrive in the order they were published |
+| `reconnect` | Disconnect and reconnect session recovery with message replay |
+| `ratelimit` | Rate limit enforcement — verifies clients are throttled at configured limits |
+| `edition-limits` | Edition boundary limits — verifies tenant/connection/shard limits per edition |
+| `pubsub` | Pub-sub delivery with channel scoping — public, user-scoped, and group-scoped channels |
+| `tenant-isolation` | Cross-tenant message isolation — verifies tenant A cannot see tenant B's messages |
+| `provisioning` | Provisioning API validation — tenant CRUD, key management, rules |
+
+### Running All Suites
+
+Run suites one by one — each is independent:
+
+```bash
+sukko test validate --suite auth --follow
+sukko test validate --suite tenant-isolation --follow
+sukko test validate --suite pubsub --follow
+```
+
+### Choosing a Message Backend
+
+By default, tests use the `direct` backend. To test with Kafka or NATS:
+
+```bash
+sukko test validate --suite pubsub --message-backend kafka
+sukko test validate --suite ordering --message-backend nats
+```
+
+## Load Tests
+
+Sustained load with configurable connections and publish rate. Use this to verify your deployment handles expected traffic.
+
+```bash
+sukko test load \
+  --connections 100 \
+  --duration 5m \
+  --publish-rate 10 \
+  --ramp-rate 5 \
+  --follow
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--connections` | 100 | Number of WebSocket connections |
+| `--duration` | 5m | Test duration (e.g., `30s`, `5m`, `1h`) |
+| `--publish-rate` | 10 | Messages per second |
+| `--ramp-rate` | 5 | Connections per second during ramp-up |
+
+### Channel Mode
+
+Load tests distribute connections across channel types:
+- **40%** public channels (`general.chat`)
+- **30%** user-scoped channels (`dm.{principal}`)
+- **30%** group-scoped channels (`rooms.engineering`, `rooms.support`)
+
+Publish rate is split 50/50 between public and group channels. User-scoped channels are receive-only.
+
+## Stress Tests
+
+Push beyond expected capacity to find breaking points and verify graceful degradation.
+
+```bash
+sukko test stress \
+  --connections 1000 \
+  --duration 10m \
+  --ramp-rate 100 \
+  --follow
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--connections` | 1000 | Maximum connections |
+| `--duration` | 10m | Test duration |
+| `--publish-rate` | — | Messages per second |
+| `--ramp-rate` | 100 | Connections per second during ramp-up |
+
+## Soak Tests
+
+Long-running stability tests that catch memory leaks, connection drift, and JWT refresh failures over time.
+
+```bash
+sukko test soak \
+  --connections 100 \
+  --duration 2h \
+  --publish-rate 10 \
+  --follow
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--connections` | 100 | Number of WebSocket connections |
+| `--duration` | 2h | Test duration |
+| `--publish-rate` | 10 | Messages per second |
+| `--ramp-rate` | 50 | Connections per second during ramp-up |
+
+Soak tests track additional metrics:
+- **Auth refresh total** — number of JWT refresh operations during the test
+- **Auth refresh failed** — failed refresh attempts (should be 0)
+
+## Metrics
+
+All tests report a standard set of metrics, streamed in real time with `--follow` or available in the final report.
+
+| Metric | Description |
+|--------|-------------|
+| `connections_active` | Current active WebSocket connections |
+| `connections_total` | Total connections established |
+| `connections_failed` | Failed connection attempts |
+| `messages_sent` | Messages published |
+| `messages_received` | Messages received by subscribers |
+| `messages_dropped` | Messages dropped due to backpressure |
+| `messages_lost` | Message gaps detected by sequence tracking |
+| `messages_duplicated` | Duplicate messages detected by sequence tracking |
+| `errors_total` | Total errors encountered |
+
+### Output Formats
+
+```bash
+# Table format (default) — human-readable
+sukko test load --follow
+
+# JSON format — machine-parseable
+sukko test load --follow --output json
+```
+
+## Connection Tests
+
+Quick WebSocket connectivity check without the full tester service:
+
+```bash
+sukko connections test
+```
+
+This connects directly to the gateway and verifies the WebSocket upgrade succeeds.
+
+## Tester Service
+
+The tester runs as a service in the Sukko stack (started automatically by `sukko up`). It exposes an HTTP API for test orchestration:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/capabilities` | GET | Available test types, suites, and backends |
+| `/api/v1/tests` | POST | Start a new test run |
+| `/api/v1/tests/{id}` | GET | Get test status and report |
+| `/api/v1/tests/{id}/stop` | POST | Stop a running test |
+| `/api/v1/tests/{id}/metrics` | GET | Stream metrics via SSE |
+
+The `sukko test` CLI commands are a convenience wrapper around this API. You can also call the tester API directly for CI/CD integration.
+
+### Tester Authentication
+
+In production, protect the tester with a Bearer token:
+
+```bash
+# Set on the tester service
+TESTER_AUTH_TOKEN=my-secret-token
+
+# Set for the CLI
+export SUKKO_TESTER_TOKEN=my-secret-token
+sukko test smoke
+```
+
+## Common Workflows
+
+### Pre-Deploy Validation
+
+Run the full validation suite before deploying a new version:
+
+```bash
+for suite in auth channels ordering pubsub tenant-isolation provisioning; do
+  echo "Running $suite..."
+  sukko test validate --suite $suite --follow
+done
+```
+
+### Production Smoke Test
+
+After deploying, run a quick smoke test against production:
+
+```bash
+sukko --context production test smoke --follow
+```
+
+### Performance Baseline
+
+Establish a performance baseline, then compare after changes:
+
+```bash
+sukko test load --connections 500 --duration 10m --publish-rate 50 --follow --output json > baseline.json
+```
+
+### Overnight Soak
+
+Catch slow leaks with an overnight soak test:
+
+```bash
+sukko test soak --connections 200 --duration 8h --follow
+```
+
+## Next Steps
+
+- **[Quickstart](../quickstart)** — Get Sukko running locally
+- **[Architecture](../concepts/architecture)** — Understand how data flows through the stack
+- **[CLI Reference](../reference/cli)** — Full `sukko test` command reference
+- **[Configuration Reference](../reference/configuration)** — Tester service environment variables
