@@ -233,7 +233,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by migration tools (e.g., migrate-dlq) that need Kafka access. Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
 | `PROVISIONING_ADDR` | string | `:8080` | Server |
 | `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
-| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key) |
+| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key). Silently skipped if admin keys already exist in the database — safe to leave set across restarts. |
 | `DEFAULT_PARTITIONS` | int | `3` | Topic Defaults |
 | `DEFAULT_RETENTION_MS` | int64 | `604800000` | 7 days |
 | `MAX_TOPICS_PER_TENANT` | int | `50` | Quotas (defaults per tenant) |
@@ -265,7 +265,9 @@ All configurable environment variables across Sukko services. Values are set via
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `TESTER_PORT` | int | `8090` |  |
-| `TESTER_AUTH_TOKEN` | string | — | no default — must be explicitly set for production |
+| `TESTER_AUTH_TOKEN` | string | — | Bearer token required by the tester API. Must be explicitly set in production — no default. Note: missing auto-redact tag means this value may appear in `/config` endpoint output; treat any exposure as a rotation event. |
+| `TESTER_ADMIN_KEY_FILE` | string | — | Path to the raw 64-byte Ed25519 binary private key file used to sign admin JWTs. Required for the `provisioning`, `tenant-isolation`, and `token-revocation` suites. Must be a raw binary file — not PEM or PKCS#8 encoded. See the [testing guide](/guides/testing) for format details. |
+| `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | Key ID embedded in admin JWTs. In local Docker, the default (`bootstrap-0`) matches the provisioning service bootstrap key. For remote/staging deployments, set to the key ID returned by `sukko auth register`. |
 | `GATEWAY_URL` | string | `ws://localhost:3000` |  |
 | `PROVISIONING_URL` | string | `http://localhost:8080` |  |
 | `KAFKA_BROKERS` | string | — |  |
