@@ -73,8 +73,8 @@ NATS_JETSTREAM_URLS=nats://nats:4222
 All three backends route messages through the **broadcast bus** (NATS or Valkey) for inter-pod fan-out. The backend is how messages get IN — the bus is how they get distributed.
 
 ```bash
-BROADCAST_TYPE=nats     # or valkey
-NATS_URLS=nats://nats:4222
+BROADCAST_TYPE=valkey   # default; use nats for NATS Core Pub/Sub
+VALKEY_ADDRS=valkey:6379
 ```
 
 ## Next Steps

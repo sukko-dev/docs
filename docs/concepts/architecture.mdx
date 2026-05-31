@@ -94,7 +94,7 @@ The internal **load balancer** (port 3005) sits in front of the shards and distr
 
 ## Broadcast Bus
 
-The broadcast bus (NATS or Valkey, configurable via `BROADCAST_TYPE`) handles inter-instance message distribution:
+The broadcast bus (Valkey by default, or NATS, configurable via `BROADCAST_TYPE`) handles inter-instance message distribution:
 
 1. A shard on the consuming Core instance delivers to its local subscribers, then publishes to the bus
 2. Shards on every other Core instance receive the message from the bus
