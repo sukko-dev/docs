@@ -30,7 +30,7 @@ This starts all services:
 | ws-server | 3005 | Core message server |
 | provisioning | 8080 | Tenant management API |
 | Redpanda | 9092 | Kafka-compatible broker |
-| NATS | 4222 | Broadcast bus |
+| Valkey | 6379 | Broadcast bus |
 
 ## Verify
 
@@ -75,7 +75,7 @@ The local stack mirrors production:
 ```
 Client → ws-gateway (:3000) → ws-server (:3005)
                                     ↓
-                              NATS broadcast
+                              Valkey broadcast
                                     ↓
                               ws-server shards → Clients
                                     ↑

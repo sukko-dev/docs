@@ -53,7 +53,7 @@ sukko version
 
 ## Step 2: Initialize and Start Sukko
 
-Initialize a local environment with default settings (SQLite + NATS + direct messaging):
+Initialize a local environment with default settings (SQLite + Valkey + direct messaging):
 
 ```bash
 sukko init --defaults
@@ -71,7 +71,7 @@ Docker images are pulled and services start up:
 - **Gateway** — WebSocket reverse proxy (port 3000)
 - **Core** — Message server
 - **Provisioning** — Multi-tenant management API (port 8080)
-- **NATS** — Broadcast bus
+- **Valkey** — Broadcast bus
 
 A `demo` tenant is automatically created with catch-all routing and public channel rules. Wait for all services to be healthy (~30 seconds):
 

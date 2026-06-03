@@ -109,7 +109,7 @@ Tracing is instrumented on **cold paths only** — operations that happen infreq
 
 **Instrumented paths:**
 - Gateway: WebSocket upgrade, auth validation, auth refresh, publish authorization
-- Core: Kafka consumer setup/rebalance, NATS connection lifecycle, shard creation
+- Core: Kafka consumer setup/rebalance, shard creation
 - Provisioning: API request handling, database queries, gRPC stream events
 
 **Exporters:** OTLP/gRPC (default), OTLP/HTTP, stdout (development)

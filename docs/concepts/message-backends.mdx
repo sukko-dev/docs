@@ -1,11 +1,11 @@
 ---
 title: Message Backends
-description: Direct, Kafka, and NATS JetStream message backends
+description: Direct and Kafka message backends
 ---
 
 # Message Backends
 
-Sukko supports three pluggable message backends. All three deliver messages through the same broadcast bus to WebSocket clients — they differ in how messages enter the system.
+Sukko supports two pluggable message backends. Both deliver messages through the same broadcast bus to WebSocket clients — they differ in how messages enter the system.
 
 ## Direct
 
@@ -13,7 +13,7 @@ Zero-dependency mode for local development and testing.
 
 - Client publishes via WebSocket, server routes directly to broadcast bus
 - No persistence, no replay
-- No external dependencies (no Kafka, no JetStream)
+- No external dependencies (no Kafka)
 
 ```bash
 # Default for sukko up
@@ -45,35 +45,22 @@ Example: `prod.acme.messages`, `dev.demo.chat`
 - **Shared** — all tenants on one consumer group (default)
 - **Dedicated** — per-tenant consumer group for high-volume tenants
 
-## NATS JetStream
-
-Kafka alternative using NATS built-in persistence.
-
-- Lighter than Kafka, uses sequence-based replay
-- Auto-created streams per tenant
-- Configurable retention and replication
-
-```bash
-MESSAGE_BACKEND=nats
-NATS_JETSTREAM_URLS=nats://nats:4222
-```
-
 ## Comparison
 
-| | Direct | Kafka | JetStream |
-|---|---|---|---|
-| **Persistence** | None | Offset-based | Sequence-based |
-| **Replay** | No | Yes | Yes |
-| **Dependencies** | None | Kafka/Redpanda | NATS |
-| **Use Case** | Testing | Production | Alternative production |
-| **Backpressure** | No | Yes (CPU brake) | No |
+| | Direct | Kafka |
+|---|---|---|
+| **Persistence** | None | Offset-based |
+| **Replay** | No | Yes |
+| **Dependencies** | None | Kafka/Redpanda |
+| **Use Case** | Testing | Production |
+| **Backpressure** | No | Yes (CPU brake) |
 
 ## Broadcast Bus
 
-All three backends route messages through the **broadcast bus** (NATS or Valkey) for inter-pod fan-out. The backend is how messages get IN — the bus is how they get distributed.
+Both backends route messages through the **broadcast bus** (Valkey) for inter-pod fan-out. The backend is how messages get IN — the bus is how they get distributed.
 
 ```bash
-BROADCAST_TYPE=valkey   # default; use nats for NATS Core Pub/Sub
+BROADCAST_TYPE=valkey   # Valkey Pub/Sub for inter-instance fan-out
 VALKEY_ADDRS=valkey:6379
 ```
 

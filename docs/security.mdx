@@ -17,7 +17,7 @@ Sukko is built with security as a core design principle, not an afterthought. Ev
 | **Channel** | Tenant-scoped namespacing, public/user-scoped/group-scoped access patterns |
 | **Topic** | Tenant-prefixed Kafka topics, isolated consumer groups |
 | **Data** | Tenant-scoped database queries, AES-256-GCM credential encryption |
-| **Transport** | TLS encryption for all backend connections (Kafka, NATS, Valkey) |
+| **Transport** | TLS encryption for all backend connections (Kafka, Valkey) |
 
 ## Authentication
 
@@ -90,8 +90,7 @@ All rate limit violations are tracked via Prometheus metrics, giving operators v
 All backend connections between Sukko services and infrastructure support TLS encryption, ensuring data is protected in transit across your network.
 
 - **Kafka / Redpanda** — TLS encryption with optional SASL authentication (SCRAM-SHA-256, SCRAM-SHA-512). CA certificate verification prevents man-in-the-middle attacks.
-- **NATS** — TLS with CA certificate verification for the broadcast bus connection between gateway and server.
-- **Valkey** — TLS with CA certificate verification for the optional caching layer.
+- **Valkey** — TLS with CA certificate verification for the broadcast bus.
 
 Each backend connection supports configurable CA certificate paths and an insecure mode for development environments with self-signed certificates.
 
