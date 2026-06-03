@@ -12,7 +12,7 @@ When a client is offline or disconnected, Sukko can deliver messages via push no
 ## Architecture
 
 ```
-Message Backend (Kafka/NATS)
+Message Backend (Kafka)
         │
         ▼
   Push Service              consumes push-eligible messages
@@ -161,7 +161,7 @@ In dry-run mode, push payloads are logged instead of sent to providers. Register
 | `PUSH_WORKER_POOL_SIZE` | `200` | Number of dispatch workers |
 | `PUSH_DRY_RUN` | `false` | Log payloads instead of sending |
 | `PUSH_DATABASE_URL` | — | PostgreSQL connection string |
-| `MESSAGE_BACKEND` | — | Must be `kafka` or `nats` (not `direct`) |
+| `MESSAGE_BACKEND` | — | Must be `kafka` (not `direct`) |
 
 ## Next Steps
 

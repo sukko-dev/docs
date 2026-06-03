@@ -5,7 +5,7 @@ description: How Sukko components work together to deliver real-time messages
 
 # Architecture
 
-Sukko is a multi-service platform that ingests messages from a pluggable message backend (Kafka/Redpanda, NATS JetStream, or direct) and delivers them to clients via WebSocket, SSE, and push notifications (FCM, APNs, Web Push).
+Sukko is a multi-service platform that ingests messages from a pluggable message backend (Kafka/Redpanda or direct) and delivers them to clients via WebSocket, SSE, and push notifications (FCM, APNs, Web Push).
 
 ## Components
 
@@ -14,7 +14,7 @@ Sukko is a multi-service platform that ingests messages from a pluggable message
 | **Gateway** | Single entry point. WebSocket/SSE reverse proxy, REST publish, push device registration. Also proxies provisioning API requests — no need to expose provisioning separately. | 3000 |
 | **Core** | Message server. Backend consumption, broadcast bus, sharded connections with internal load balancer. | 3005 |
 | **Provisioning** | Internal REST + gRPC API. Tenants, keys, channel rules, routing rules, quotas. Accessed through the gateway proxy. Streams config to gateway and core via gRPC. | 8080 (internal) |
-| **Push** | Push notification service. Consumes from Kafka or NATS, dispatches to FCM, APNs, and Web Push. Requires a persistent backend (not direct). | 3009 |
+| **Push** | Push notification service. Consumes from Kafka, dispatches to FCM, APNs, and Web Push. Requires a persistent backend (not direct). | 3009 |
 | **Tester** | Test orchestration. Smoke, load, stress, soak, and validation suites. | 8090 |
 
 ## Data Flow
@@ -25,13 +25,13 @@ Sukko is a multi-service platform that ingests messages from a pluggable message
 External API / Producer
         │
         ▼
-  Message Backend             Kafka/Redpanda, NATS JetStream, or direct
+  Message Backend             Kafka/Redpanda or direct
         │
         ▼
   Core: Consumer Pool         consume, rate limit, CPU backpressure
         │
         ▼
-  Core: Broadcast Bus         NATS or Valkey, fan-out across all replicas
+  Core: Broadcast Bus         Valkey, fan-out across all replicas
         │
    ┌────┼────┐
    ▼    ▼    ▼
@@ -53,7 +53,7 @@ Every Core instance both consumes from the message backend and subscribes to the
 ### Push Notifications (Backend → Mobile/Browser)
 
 ```
-  Message Backend             (Kafka/Redpanda or NATS JetStream)
+  Message Backend             (Kafka/Redpanda)
         │
         ▼
   Push Service                (consumes push-eligible messages)
@@ -94,7 +94,7 @@ The internal **load balancer** (port 3005) sits in front of the shards and distr
 
 ## Broadcast Bus
 
-The broadcast bus (NATS or Valkey, configurable via `BROADCAST_TYPE`) handles inter-instance message distribution:
+The broadcast bus (Valkey, configurable via `BROADCAST_TYPE`) handles inter-instance message distribution:
 
 1. A shard on the consuming Core instance delivers to its local subscribers, then publishes to the bus
 2. Shards on every other Core instance receive the message from the bus

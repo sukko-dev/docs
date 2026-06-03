@@ -48,7 +48,7 @@ const features = [
   {
     title: 'Pluggable Backends',
     description:
-      'Swap the message backend (direct, Kafka/Redpanda, NATS JetStream) and broadcast bus (NATS, Valkey) independently. Start simple with direct mode, move to Kafka for production — no code changes.',
+      'Swap the message backend (direct, Kafka/Redpanda) and broadcast bus (Valkey) independently. Start simple with direct mode, move to Kafka for production — no code changes.',
   },
   {
     title: 'Kafka-Native Ingestion',

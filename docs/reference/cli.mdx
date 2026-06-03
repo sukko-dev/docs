@@ -360,7 +360,7 @@ a local context with dev credentials. Run 'sukko up' to start services.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + NATS + direct) |
+| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + Valkey + direct) |
 
 ---
 
@@ -785,7 +785,7 @@ Sustained load test with configurable connections
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka, nats) |
+| `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
@@ -802,7 +802,7 @@ Quick connectivity and health check
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka, nats) |
+| `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |
 
@@ -819,7 +819,7 @@ Long-running stability test
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka, nats) |
+| `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
@@ -838,7 +838,7 @@ Push to maximum capacity and find limits
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka, nats) |
+| `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
@@ -855,7 +855,7 @@ Run validation suites
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka, nats) |
+| `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--suite` | string | `auth` | Validation suite (fetch available suites from tester via --help) |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |

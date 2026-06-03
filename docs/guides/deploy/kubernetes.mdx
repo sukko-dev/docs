@@ -60,9 +60,6 @@ redpanda:
   enabled: true
   replicaCount: 1
 
-nats:
-  enabled: true
-
 monitoring:
   enabled: true
 ```
@@ -72,9 +69,8 @@ monitoring:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `ws-gateway.replicaCount` | Gateway replicas | 1 |
-| `ws-server.messageBackend` | `direct`, `kafka`, or `nats` | kafka |
+| `ws-server.messageBackend` | `direct` or `kafka` | kafka |
 | `redpanda.enabled` | Deploy Redpanda (Kafka) | true |
-| `nats.enabled` | Deploy NATS (broadcast bus) | true |
 | `monitoring.enabled` | Deploy Prometheus + Grafana | true |
 
 ## Step 3: Deploy
