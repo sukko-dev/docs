@@ -23,8 +23,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `PYROSCOPE_ADDR` | string | `http://localhost:4040` |  |
 | `AUTH_MODE` | string | `required` | AuthMode is the authentication model. Only "required" is supported. Kept temporarily for backward compatibility with deployments that set AUTH_MODE=required. Extensible to "public-read" in the future (anonymous subscribe for public channels). |
 | `PROVISIONING_GRPC_ADDR` | string | `localhost:9090` |  |
-| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` |  |
-| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` |  |
+| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Valid range: [100ms, 5m]. New upper bound added in v1.23.0 — deployments with values >5m must be updated before upgrading. |
+| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Valid range: [delay, 5m]. Must be ≥ `PROVISIONING_GRPC_RECONNECT_DELAY`. |
 | `HTTP_READ_TIMEOUT` | time.Duration | `15s` |  |
 | `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` |  |
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` |  |
@@ -217,6 +217,11 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_ADDR` | string | `:8080` | Server |
 | `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
 | `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key). Silently skipped if admin keys already exist in the database — safe to leave set across restarts. |
+| `ADMIN_UI_ENABLED` | bool | `false` | Admin UI — enable the web-based operator dashboard at `/admin/`. Requires Pro/Enterprise. When enabled, `ADMIN_TOKEN` must also be set. Community deployments see an upgrade notice page. |
+| `ADMIN_TOKEN` | string | — | Admin UI — token for session-cookie authentication. Must be at least 32 characters. Required when `ADMIN_UI_ENABLED=true`. **Treat as a secret** — use a Kubernetes Secret or equivalent; never commit to version control. |
+| `ADMIN_SESSION_TTL` | duration | `8h` | Admin UI — session lifetime after successful login. Valid range: `1m` to `720h` (30 days). Sessions do not survive service restarts. |
+| `WS_SERVER_HEALTH_URL` | string | — | Admin UI — URL for the `GET /health` endpoint of the ws-server pod, used by `GET /admin/system/health`. When empty, ws-server shows as "unconfigured" in the status page. Example: `http://ws-server:8080/health`. |
+| `GATEWAY_HEALTH_URL` | string | — | Admin UI — URL for the `GET /health` endpoint of the ws-gateway pod, used by `GET /admin/system/health`. When empty, gateway shows as "unconfigured" in the status page. Example: `http://ws-gateway:8080/health`. |
 | `DEFAULT_PARTITIONS` | int | `3` | Topic Defaults |
 | `DEFAULT_RETENTION_MS` | int64 | `604800000` | 7 days |
 | `MAX_TOPICS_PER_TENANT` | int | `50` | Quotas (defaults per tenant) |
@@ -242,6 +247,36 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Provisioning-specific externalized constants |
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` |  |
 | `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum lifetime for token revocation entries before automatic pruning. Controls how long a revoked token remains in the revocation store. Client-supplied `exp` values are capped at this limit. Zero or negative values are rejected at startup. |
+| `MAX_WEBHOOKS_PER_TENANT` | int | `10` | Webhook delivery (Pro/Enterprise). Maximum registered webhooks per tenant. Range: [1, 100]. |
+| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow `http://` webhook URLs. Must be `false` in production — only permitted when `ENVIRONMENT=local`. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for provisioning ↔ webhook-worker gRPC authentication (bidirectional). Required for Pro/Enterprise editions. Minimum 32 characters. Inject via Kubernetes Secret — never plaintext in configuration files. |
+| `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` | How often to poll for edition downgrade events and suspend webhooks. Range: [1m, 1h]. Pro/Enterprise only. |
+| `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | Port provisioning **listens on** for inbound webhook-worker connections (`WebhookWorkerService`; direction: worker → provisioning). Separate from `GRPC_PORT` (9090) to enforce auth at the listener level. |
+| `WEBHOOK_WORKER_GRPC_ADDR` | string | — | Address provisioning **dials out to** for the worker's `TestDeliver` RPC (direction: provisioning → worker). **Required** for Pro/Enterprise — startup fails if empty. Helm wires this automatically to `{release}-webhook-worker:9095`. |
+
+## Webhook Worker
+
+The webhook-worker is a standalone service (Pro/Enterprise editions only) that subscribes to the Valkey broadcast bus and delivers signed HTTP POSTs to registered endpoints.
+
+:::note
+`WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` has no Go default — operators **must** set it explicitly. Helm wires it automatically to `{release}-provisioning:9091`.
+:::
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP server port for `/health` and `/metrics` endpoints. |
+| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | Port the worker's internal gRPC server listens on for `TestDeliver` RPCs from provisioning. Distinct from provisioning's `WEBHOOK_WORKER_GRPC_PORT` (9091), which is a different service direction. Must differ from `WEBHOOK_HTTP_PORT`. |
+| `WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `10s` | Per-attempt HTTP delivery timeout. Range: [1s, 30s]. |
+| `WEBHOOK_WORKER_CONCURRENCY` | int | `50` | Maximum concurrent delivery goroutines. Range: [1, 500]. |
+| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | Capacity of the bounded retry queue. Range: [100, 100000]. When full, the task with the furthest-future `nextAt` is dropped. **Renamed** from `WEBHOOK_RETRY_QUEUE_SIZE` — update any dev/test environments using the old name. |
+| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | Background TTL refresh interval for the in-memory webhook cache. Range: [5s, 5m]. |
+| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow `http://` webhook URLs. Must be `false` outside `ENVIRONMENT=local`. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for worker ↔ provisioning gRPC authentication. **Required**. Minimum 32 characters. Must match the value set in the provisioning service. Inject via Kubernetes Secret (see Helm chart). |
+| `CREDENTIALS_ENCRYPTION_KEY` | string | — | AES-256-GCM key for decrypting webhook secrets. **Required**. Must match the value configured in the provisioning service. 64-char hex or base64-encoded 32 bytes. |
+| `WEBHOOK_WORKER_VALKEY_ADDRS` | string | — | Valkey address(es) for the broadcast bus and cache invalidation PSUBSCRIBE. **Required** — no default. Multiple addresses (comma-separated) enable Sentinel mode. |
+| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | Provisioning gRPC address for the worker to dial (`WebhookWorkerService`). **Required** — startup fails if empty. Helm wires automatically to `{release}-provisioning:9091`. |
+| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Initial gRPC reconnect backoff delay. Range: [100ms, 5m]. |
+| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Maximum gRPC reconnect backoff delay. Range: [delay, 5m]. |
 
 ## Tester
 
@@ -259,4 +294,10 @@ All configurable environment variables across Sukko services. Values are set via
 | `TESTER_JWT_LIFETIME` | time.Duration | `15m` | JWT auth configuration |
 | `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` |  |
 | `TESTER_KEY_EXPIRY` | time.Duration | `24h` |  |
+| `TESTER_AUTH_MODE` | string | `jwt` | Credential mode for connections: `jwt` (JWT only), `api-key` (static API key, validate only), `upgrade` (connect with API key then upgrade to JWT, validate only), or `mixed` (split by `TESTER_AUTH_MIX_RATIO`, load/soak only). |
+| `TESTER_API_KEY` | string | — | Static pre-provisioned API key for `api-key`, `upgrade`, and `mixed` modes. Required when `TESTER_AUTH_MODE` is `api-key` or `upgrade`. Redacted from `/config` endpoint output. |
+| `TESTER_AUTH_MIX_RATIO` | float64 | `0.5` | Fraction of connections using API key in `mixed` mode. Range: 0.0–1.0. Applies to load/soak only. |
+| `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` | Timeout waiting for `auth_ack` during auth upgrade flow. Range: (0s, 60s]. |
+| `TESTER_GATEWAY_METRICS_URL` | string | — | Base URL of the gateway's Prometheus metrics endpoint (e.g. `http://gateway:9090`). Required for metric-dependent acceptance criteria in `stress:revocation` (S1-AC2) and `soak:revocation` (S3, S4). Omit to skip metric-dependent checks. |
+| `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` | How often the soak runner polls the gateway metrics endpoint for memory/goroutine drift during `soak:revocation`. Must be positive. |
 
