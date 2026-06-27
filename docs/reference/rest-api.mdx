@@ -15,7 +15,7 @@ Full OpenAPI specification: `ws/docs/openapi/provisioning.openapi.yaml`
 
 Webhook management requires a Pro or Enterprise license. All webhook endpoints return `403 EDITION_LIMIT` on Community edition.
 
-### POST /api/v1/tenants/{slug}/webhooks/{webhookID}/test
+### POST /api/v1/tenants/\{slug\}/webhooks/\{webhookID\}/test
 
 Performs a single synchronous test delivery to the registered webhook URL. Useful for verifying that an endpoint is reachable before relying on it in production.
 
