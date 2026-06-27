@@ -1,8 +1,59 @@
 ---
-title: Rest Api Reference
-description: Rest Api reference documentation
+title: REST API Reference
+description: Sukko Provisioning REST API reference
 ---
 
-# Rest Api Reference
+# REST API Reference
 
-*Auto-generated content coming soon.*
+The Sukko Provisioning API is versioned at `/api/v1/`. All requests require a tenant JWT or admin JWT as a `Bearer` token in the `Authorization` header.
+
+Full OpenAPI specification: `ws/docs/openapi/provisioning.openapi.yaml`
+
+---
+
+## Webhooks (Pro/Enterprise)
+
+Webhook management requires a Pro or Enterprise license. All webhook endpoints return `403 EDITION_LIMIT` on Community edition.
+
+### POST /api/v1/tenants/\{slug\}/webhooks/\{webhookID\}/test
+
+Performs a single synchronous test delivery to the registered webhook URL. Useful for verifying that an endpoint is reachable before relying on it in production.
+
+**Key behaviours:**
+- No retry is performed and no delivery record is written to `webhook_deliveries`
+- FR-017's status gate does **not** apply — suspended and degraded webhooks can be test-delivered so operators can verify before re-enabling
+- The provisioning service calls the webhook-worker's internal `TestDeliver` gRPC RPC with a fixed 30.5-second deadline
+
+**Rate limits:** 10 requests per webhook per minute, 30 per tenant per minute (enforced via Valkey). When the Valkey rate-limit store is unavailable, the handler fails open (allows the request and logs a warning).
+
+**Request:** No body required.
+
+**Response 200 — TestDeliveryResult**
+
+HTTP 200 is always returned when the test delivery RPC itself succeeded. The `status_code` field reflects the destination's HTTP response; an empty `error` with a 2xx `status_code` indicates a fully successful delivery.
+
+```json
+{
+  "status_code": 200,
+  "latency_ms": 142,
+  "response_body_preview": "{\"received\":true}",
+  "error": ""
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status_code` | integer | HTTP status from destination. `0` = connection-level error (SSRF block, timeout, DNS failure). |
+| `latency_ms` | integer | Round-trip delivery latency in milliseconds. `0` on connection error. |
+| `response_body_preview` | string | First 512 bytes of the destination's response body. Empty on connection error. |
+| `error` | string | Human-readable description for connection failures (`ssrf_blocked`, `timeout`, `decryption_failure`). Empty on success. |
+
+**Error responses:**
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `UNAUTHORIZED` | Missing or invalid tenant JWT |
+| `403` | `EDITION_LIMIT` | Feature not available in current edition |
+| `404` | `WEBHOOK_NOT_FOUND` | Webhook not found for this tenant |
+| `429` | `RATE_LIMIT_EXCEEDED` | Rate limit exceeded. `Retry-After` header indicates reset time in seconds. |
+| `503` | `WEBHOOK_WORKER_UNAVAILABLE` | Webhook worker unreachable or `TestDeliver` deadline (30.5s) exceeded |

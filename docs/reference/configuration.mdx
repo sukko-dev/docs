@@ -23,15 +23,13 @@ All configurable environment variables across Sukko services. Values are set via
 | `PYROSCOPE_ADDR` | string | `http://localhost:4040` |  |
 | `AUTH_MODE` | string | `required` | AuthMode is the authentication model. Only "required" is supported. Kept temporarily for backward compatibility with deployments that set AUTH_MODE=required. Extensible to "public-read" in the future (anonymous subscribe for public channels). |
 | `PROVISIONING_GRPC_ADDR` | string | `localhost:9090` |  |
-| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` |  |
-| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` |  |
 | `HTTP_READ_TIMEOUT` | time.Duration | `15s` |  |
 | `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` |  |
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` |  |
 | `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | KafkaTopicNamespaceOverride overrides ENVIRONMENT for Kafka topic naming only. If empty, defaults to normalized ENVIRONMENT value via kafka.ResolveNamespace(). NOT allowed in production — startup validation blocks this. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | ValidNamespaces is a comma-separated list of allowed topic namespace prefixes. |
-| `MESSAGE_BACKEND` | string | `direct` | Message Backend Selection |
-| `KAFKA_BROKERS` | string | `localhost:19092` | Kafka Configuration (only used when MESSAGE_BACKEND=kafka) |
+| `MESSAGE_BACKEND` | string | `direct` |  |
+| `KAFKA_BROKERS` | string | `localhost:19092` |  |
 | `KAFKA_SASL_ENABLED` | bool | `false` | Kafka Security - SASL Authentication  For connecting to managed Kafka/Redpanda services that require authentication. When KafkaSASLEnabled=false (default), connects without authentication (local dev).  Supported mechanisms: - scram-sha-256: SCRAM-SHA-256 (recommended, widely supported) - scram-sha-512: SCRAM-SHA-512 (stronger, less common) |
 | `KAFKA_SASL_MECHANISM` | string | — | scram-sha-256 or scram-sha-512 |
 | `KAFKA_SASL_USERNAME` | string | — |  |
@@ -71,6 +69,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `GATEWAY_AUTH_VALIDATION_TIMEOUT` | time.Duration | `5s` | Auth validation timeout for intercepting auth refresh operations |
 | `REVOCATION_MAX_LIFETIME` | time.Duration | `24h` | Max time a revocation entry lives when exp is not provided |
 | `GATEWAY_SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
+| `WS_INTERNAL_SECRET` | string | — | InternalSecret is forwarded verbatim as X-Sukko-Internal-Secret to ws-server. No envDefault — empty string is valid when ws-server WS_INTERNAL_SECRET_ENABLED=false. redact:"true" prevents the /config endpoint from exposing this value. |
 | `SERVER_GRPC_ADDR` | string | `localhost:3006` | ws-server gRPC address for RealtimeService |
 | `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for PushService (RegisterDevice, UnregisterDevice, GetVAPIDKey) |
 | `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | SSE keepalive comment interval (prevents proxy timeouts) |
@@ -120,18 +119,20 @@ All configurable environment variables across Sukko services. Values are set via
 | `ALERT_RATE_LIMIT_WINDOW` | time.Duration | `5m` |  |
 | `ALERT_RATE_LIMIT_MAX` | int | `3` |  |
 | `ALERT_CONSOLE_ENABLED` | bool | `false` |  |
-| `VALKEY_ADDRS` | []string | — | Valkey Configuration (for BroadcastBus when BROADCAST_TYPE=valkey) Supports both self-hosted Sentinel (3 addresses) and single instance (1 address) |
+| `VALKEY_ADDRS` | []string | `localhost:6379` | Valkey Configuration (for BroadcastBus when BROADCAST_TYPE=valkey) Supports both self-hosted Sentinel (3 addresses) and single instance (1 address) |
 | `VALKEY_MASTER_NAME` | string | `mymaster` |  |
 | `VALKEY_PASSWORD` | string | — |  |
 | `VALKEY_DB` | int | `0` |  |
 | `VALKEY_CHANNEL` | string | `ws.broadcast` |  |
 | `WS_SLOW_CLIENT_MAX_ATTEMPTS` | int | `3` | Slow Client Detection  When a client's send buffer is full, the server tracks consecutive failed send attempts. After SlowClientMaxAttempts consecutive failures, the client is disconnected.  Industry comparison:   - Coinbase: 2 attempts (aggressive)   - Binance: No automatic disconnect (relies on ping timeout)   - FIX protocol: 5 second timeout (lenient)  Default: 3 (balanced - tolerates brief hiccups, disconnects persistent slow clients) Range: 1-10 (1 = aggressive, 10 = very lenient) |
 | `WS_CLIENT_SEND_BUFFER_SIZE` | int | `512` | Client Send Buffer Size Controls the per-client send channel buffer (memory vs slow-client tolerance trade-off)  Buffer sizing at 125 msg/sec broadcast rate (25 msg/sec × 5 channel subscriptions): - 512 slots: ~256KB/client, 4.1s buffer, ~3.5GB heap at 13.5K clients - 1024 slots: ~512KB/client, 8.2s buffer, ~6.9GB heap at 13.5K clients  Trade-off: - Smaller buffer = less memory = less GC pressure = lower CPU spikes - Larger buffer = more tolerance for slow clients and network hiccups  Default: 512 (reduced from 1024 to cut heap size by 50%, reduce GC pressure) Production guidance: Start with 512, increase to 768 or 1024 if cascade disconnects occur |
-| `BROADCAST_TYPE` | string | `valkey` | Broadcast Bus Configuration. Backend for inter-instance messaging. Currently only `valkey` (Redis-compatible Pub/Sub, ~1-2ms latency) is supported. |
+| `WS_GAP_NOTIFY_BUFFER_SIZE` | int | `8` | GapNotifyBufferSize is the per-client buffer for low-priority gap notifications. Must be 1-MaxGapNotifyBufferSize (64); 0 would make the channel unbuffered (blocks Broadcast hot path). Keep small relative to ClientSendBufferSize — gaps are low-frequency out-of-band events. Drops beyond capacity are counted via ws_gap_notifications_dropped_total\{reason="buffer_full"\}. |
+| `WS_REPLAY_RATE_LIMIT_INTERVAL` | time.Duration | `10s` | ReplayRateLimitInterval is the minimum time between live replay requests per (client, channel) pair. Prevents unbounded Kafka reads per client. |
+| `BROADCAST_TYPE` | string | `valkey` | Broadcast Bus Configuration  BroadcastType: Backend for inter-instance messaging ("valkey") - valkey: Redis-compatible Pub/Sub (default, ~1-2ms latency, required for message history) |
 | `VALKEY_TLS_ENABLED` | bool | `false` | Valkey Broadcast Bus TLS (for managed Valkey/Redis: ElastiCache, Memorystore, Upstash, etc.) |
 | `VALKEY_TLS_INSECURE` | bool | `false` |  |
 | `VALKEY_TLS_CA_PATH` | string | — |  |
-| `TOPIC_REFRESH_INTERVAL` | time.Duration | `60s` | Topic Refresh Interval  How often to periodically re-sync tenant topics/streams from the registry. This is a safety net — primary updates come from the gRPC stream. The periodic refresh catches any events missed during transient disconnects. Applies to Kafka (MultiTenantConsumerPool) backends. |
+| `TOPIC_REFRESH_INTERVAL` | time.Duration | `60s` | TopicRefreshInterval is how often to re-sync tenant topics from the registry. Safety net — primary updates come from the gRPC stream. |
 | `WS_PONG_WAIT` | time.Duration | `60s` | WebSocket Ping/Pong Configuration  These settings control the keep-alive mechanism between the shard and clients. In a proxied architecture (gateway → ws-server → shard), pings travel through multiple hops, requiring a larger buffer than direct connections.  Buffer = PongWait - PingPeriod The buffer must accommodate the round-trip time through all proxies. With 8 network hops (local Kind + port-forward), 15+ seconds is recommended.  Example with defaults (60s/45s):   - Shard sends ping at t=0   - Ping travels: Shard → ShardProxy → ws-server → Gateway → Client   - Client sends pong   - Pong travels: Client → Gateway → ws-server → ShardProxy → Shard   - If pong arrives by t=60s, connection is healthy   - 15 second buffer for network latency, GC pauses, etc.  Common issues:   - Buffer too small (&lt;5s): Connections drop during GC pauses or network hiccups   - PingPeriod &gt;= PongWait: Invalid, ping would always timeout |
 | `WS_PING_PERIOD` | time.Duration | `45s` |  |
 | `WS_WRITE_WAIT` | time.Duration | `5s` | WriteWait is the timeout for WebSocket write operations. 5s is sufficient for local writes; network latency is handled by TCP. |
@@ -154,7 +155,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `WS_BUFFER_POPULATION_WARN_PERCENT` | int | `25` |  |
 | `CONN_RATE_LIMIT_IP_TTL` | time.Duration | `5m` | Connection rate limiter internals |
 | `CONN_RATE_LIMIT_CLEANUP_INTERVAL` | time.Duration | `1m` |  |
-| `BROADCAST_BUFFER_SIZE` | int | `1024` | Broadcast bus |
+| `BROADCAST_BUFFER_SIZE` | int | `256` | Broadcast bus |
 | `BROADCAST_SHUTDOWN_TIMEOUT` | time.Duration | `5s` |  |
 | `VALKEY_WRITE_TIMEOUT` | time.Duration | `3s` | Valkey broadcast tuning |
 | `VALKEY_PUBLISH_TIMEOUT` | time.Duration | `100ms` |  |
@@ -174,49 +175,58 @@ All configurable environment variables across Sukko services. Values are set via
 | `KAFKA_REBALANCE_TIMEOUT` | time.Duration | `60s` |  |
 | `KAFKA_REPLAY_FETCH_MAX_BYTES` | int32 | `5242880` |  |
 | `KAFKA_BACKPRESSURE_CHECK_INTERVAL` | time.Duration | `100ms` |  |
+| `KAFKA_COMMIT_ON_REVOKE_TIMEOUT` | time.Duration | `5s` | KafkaCommitOnRevokeTimeout controls how long OnPartitionsRevoked waits for CommitMarkedOffsets to complete before returning. Must be &gt; 0 and &lt; KafkaRebalanceTimeout. |
+| `KAFKA_AUTO_COMMIT_INTERVAL` | time.Duration | `5s` | KafkaAutoCommitInterval controls the background auto-commit interval. Must be &gt;= MinAutoCommitInterval (100ms). Franz-go enforces this floor; pre-validation here produces a clear error per Constitution §I. |
 | `KAFKA_PRODUCER_BATCH_MAX_BYTES` | int | `1048576` | Kafka producer tuning |
 | `KAFKA_PRODUCER_MAX_BUFFERED_RECORDS` | int | `10000` |  |
 | `KAFKA_PRODUCER_RECORD_RETRIES` | int | `8` |  |
 | `KAFKA_PRODUCER_CB_TIMEOUT` | time.Duration | `30s` |  |
 | `KAFKA_PRODUCER_CB_MAX_FAILURES` | int | `5` |  |
 | `KAFKA_PRODUCER_CB_HALF_OPEN_REQS` | int | `1` |  |
-| `JETSTREAM_RECONNECT_WAIT` | time.Duration | `2s` | JetStream backend tuning |
-| `JETSTREAM_MAX_DELIVER` | int | `3` |  |
-| `JETSTREAM_ACK_WAIT` | time.Duration | `30s` |  |
-| `JETSTREAM_REFRESH_TIMEOUT` | time.Duration | `30s` |  |
-| `JETSTREAM_REFRESH_INTERVAL` | time.Duration | `60s` |  |
-| `JETSTREAM_REPLAY_FETCH_WAIT` | time.Duration | `2s` |  |
-| `JETSTREAM_MAX_AGE` | time.Duration | `24h` |  |
 | `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Routing fan-out worker pool |
 | `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` |  |
 | `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Dead-letter queue retry pool |
 | `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` |  |
 | `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` |  |
 | `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` |  |
-| `WS_POD_ID` | string | *(hostname)* | Pod identity — stable pod name for distributed history writer lock ownership. In Kubernetes, inject via Downward API (`metadata.name`). Falls back to `os.Hostname()` if unset. |
-| `WS_MAX_CHANNELS_PER_CLIENT` | int | `100` | Per-client channel subscription limit. Prevents fan-out attacks. Max: 1000. |
-| `WS_HISTORY_ENABLED` | bool | `false` | Message History — enable per-channel Valkey Streams ring buffer. Requires `BROADCAST_TYPE=valkey` and Valkey Streams support. |
-| `WS_HISTORY_BUFFER_DEPTH` | int | `1000` | Max messages retained per channel stream (Valkey XADD MAXLEN ~). Range: 1–10000. |
-| `WS_HISTORY_TTL` | time.Duration | `24h` | Per-stream key expiry applied on every write (EXPIRE). Max: 90d. |
-| `WS_HISTORY_MAX_LIMIT` | int | `100` | Maximum entries a client may request per history call. Range: 1–1000. |
-| `WS_HISTORY_DELIVERY_TIMEOUT` | time.Duration | `30s` | Per-request deadline for history XREVRANGE. Max: 5m. |
-| `WS_HISTORY_WRITER_BUFFER` | int | `10000` | History writer work channel capacity (messages in-flight before drops). Max: 50000. |
-| `WS_HISTORY_WRITER_PIPELINE_BATCH` | int | `50` | Max XADD+EXPIRE command pairs per DoMulti pipeline flush. Max: 500. |
-| `WS_HISTORY_WRITER_LOCK_TTL` | time.Duration | `10s` | Distributed active-writer lock TTL. Must be ≥ 1s and ≤ 60s. The heartbeat interval must be ≤ TTL/3. |
-| `WS_HISTORY_WRITER_HEARTBEAT_INTERVAL` | time.Duration | `3s` | Ticker interval for lock renewal and bus health checks. Must be ≤ WS_HISTORY_WRITER_LOCK_TTL/3. |
-| `WS_HISTORY_MAX_CONSECUTIVE_LOCK_FAILURES` | int | `3` | Consecutive heartbeat lock failures before the writer exits runOnce and re-enters the supervised restart loop. |
-| `WS_HISTORY_WRITER_RESTART_INITIAL_BACKOFF` | time.Duration | `500ms` | Starting delay before re-entering runOnce after a failure. |
-| `WS_HISTORY_WRITER_RESTART_MAX_BACKOFF` | time.Duration | `30s` | Maximum backoff cap for history writer restarts. Max: 5m. |
-| `WS_HISTORY_VALKEY_CMD_TIMEOUT` | time.Duration | `2s` | Per-command timeout for history Valkey operations (XADD, XREVRANGE, EXPIRE, lock). |
+| `-` | string | — | PodID is the resolved pod identity, populated by Normalize() from PodIdentityConfig.PodID(). Not an env var — configure via PodIdentityConfig (SUKKO_POD_ID / WS_POD_ID). Kept as a plain string so hot-path code (history writer, registry) avoids repeated method calls. |
+| `WS_MAX_CHANNELS_PER_CLIENT` | int | `100` | MaxChannelsPerClient limits the number of concurrent channel subscriptions per client. Prevents channel-fan-out attacks. Validated against MaxChannelsPerClientLimit (1000). |
+| `WS_HISTORY_ENABLED` | bool | `false` | Message History (two-tier: Valkey Streams ring buffer + Kafka fallback) |
+| `WS_HISTORY_BUFFER_DEPTH` | int | `1000` | HistoryBufferDepth is the Valkey Streams MAXLEN ~ per-channel (XADD MAXLEN ~). |
+| `WS_HISTORY_TTL` | time.Duration | `24h` | HistoryTTL is the per-stream key expiry (EXPIRE) applied on every write. |
+| `WS_HISTORY_WRITER_BUFFER` | int | `10000` | HistoryWriterBuffer is the historyWriter workChan capacity (messages in-flight before drops). |
+| `WS_HISTORY_MAX_LIMIT` | int | `100` | HistoryMaxLimit is the maximum number of entries a client may request per history call. |
+| `WS_HISTORY_DELIVERY_TIMEOUT` | time.Duration | `30s` | HistoryDeliveryTimeout is the per-request deadline for XREVRANGE + Kafka fallback. |
+| `WS_HISTORY_WRITER_PIPELINE_BATCH` | int | `50` | HistoryWriterPipelineBatch is the max number of XADD commands per DoMulti pipeline. |
+| `WS_HISTORY_WRITER_LOCK_TTL` | time.Duration | `10s` | HistoryWriterLockTTL is the distributed lock TTL for the active historyWriter pod. |
+| `-` | int64 | — | HistoryWriterLockTTLMs is pre-computed from HistoryWriterLockTTL in Normalize(). Used by Valkey SET PX (milliseconds). Not an env var. |
+| `WS_HISTORY_WRITER_RESTART_INITIAL_BACKOFF` | time.Duration | `500ms` | HistoryWriterRestartInitialBackoff is the starting delay before re-entering runOnce after a failure. |
+| `WS_HISTORY_WRITER_RESTART_MAX_BACKOFF` | time.Duration | `30s` | HistoryWriterRestartMaxBackoff caps the exponential backoff for historyWriter restarts. |
+| `WS_HISTORY_VALKEY_CMD_TIMEOUT` | time.Duration | `2s` | HistoryValkeyCmdTimeout is the per-command timeout for history Valkey operations (XADD, XREVRANGE, EXPIRE). |
+| `WS_HISTORY_MAX_CONSECUTIVE_LOCK_FAILURES` | int | `3` | HistoryMaxConsecutiveLockFailures is the number of consecutive heartbeat lock failures before the historyWriter exits runOnce and re-enters the supervised restart loop. |
+| `WS_HISTORY_WRITER_HEARTBEAT_INTERVAL` | time.Duration | `3s` | HistoryWriterHeartbeatInterval is the ticker interval for lock renewal and bus health checks. |
+| `WS_CONNECTIONS_REGISTRY_ENABLED` | bool | `false` | Connections Registry (Connections Management API — Pro edition) When false, registryWriter and adminListeners are skipped entirely. X-Sukko-Tenant-ID is still read unconditionally (tenantHooks and channel subscription require it regardless). |
+| `WS_CONNECTIONS_REGISTRY_TTL` | time.Duration | `120s` | ConnectionsRegistryTTL is the Valkey EXPIRE duration for each connection hash. Heartbeats renew the TTL; if a pod dies without heartbeat, entries expire after this. |
+| `WS_CONNECTIONS_REGISTRY_BUFFER` | int | `1024` | ConnectionsRegistryBuffer is the internal channel buffer for registry events (connect, disconnect, subscribe, unsubscribe, heartbeat). |
+| `WS_CONNECTIONS_REGISTRY_FLUSH_INTERVAL` | time.Duration | `5s` | ConnectionsRegistryFlushInterval is the tick interval for flushing buffered events to Valkey. |
+| `WS_CONNECTIONS_REGISTRY_HEARTBEAT_INTERVAL` | time.Duration | `30s` | ConnectionsRegistryHeartbeatInterval is how often the registry writer renews TTLs and writes health keys. |
+| `WS_CONNECTIONS_REGISTRY_RESTART_INITIAL_BACKOFF` | time.Duration | `100ms` | ConnectionsRegistryRestartInitialBackoff is the initial restart delay after a registryWriter failure. |
+| `WS_CONNECTIONS_REGISTRY_RESTART_MAX_BACKOFF` | time.Duration | `30s` | ConnectionsRegistryRestartMaxBackoff is the maximum restart delay after repeated failures. |
+| `WS_CONNECTIONS_REGISTRY_SHUTDOWN_DRAIN_TIMEOUT` | time.Duration | `100ms` | ConnectionsRegistryShutdownDrainTimeout is how long to wait draining buffered events on shutdown. 0 = skip drain entirely (useful for tests). |
+| `WS_ADMIN_CHANNEL_SUBSCRIBE_TIMEOUT` | time.Duration | `10s` | AdminChannelSubscribeTimeout is the timeout for each shard's synchronous SUBSCRIBE call at startup. |
+| `WS_INTERNAL_SECRET_ENABLED` | bool | `false` | InternalSecretEnabled controls whether ws-server validates X-Sukko-Internal-Secret. When true, WS_INTERNAL_SECRET must be non-empty or startup fails. |
+| `WS_INTERNAL_SECRET` | string | — | InternalSecret is the shared secret forwarded by the gateway as X-Sukko-Internal-Secret. redact:"true" prevents the /config endpoint from exposing this value. |
 
 ## Provisioning
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by migration tools (e.g., migrate-dlq) that need Kafka access. Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
+| `ANALYTICS_PARTMAN_INTERVAL` | time.Duration | `15m` | Analytics — provisioning-only fields |
+| `ANALYTICS_SSE_MAX_CONNS` | int | `10` |  |
+| `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by the provisioning service for topic management (create/delete). Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
 | `PROVISIONING_ADDR` | string | `:8080` | Server |
 | `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
-| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key). Silently skipped if admin keys already exist in the database — safe to leave set across restarts. |
+| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key) |
 | `DEFAULT_PARTITIONS` | int | `3` | Topic Defaults |
 | `DEFAULT_RETENTION_MS` | int64 | `604800000` | 7 days |
 | `MAX_TOPICS_PER_TENANT` | int | `50` | Quotas (defaults per tenant) |
@@ -238,25 +248,34 @@ All configurable environment variables across Sukko services. Values are set via
 | `SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
 | `CORS_ALLOWED_ORIGINS` | []string | `http://localhost:3000` | CORS settings |
 | `CORS_MAX_AGE` | int | `3600` |  |
-| `CREDENTIALS_ENCRYPTION_KEY` | string | — | Credentials Encryption — AES-256-GCM key for encrypting push credentials and license keys at rest. Required. Fail fast at startup if not set. Auto-generated by sukko init (docker-compose) and Helm. |
 | `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Provisioning-specific externalized constants |
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` |  |
-| `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum lifetime for token revocation entries before automatic pruning. Controls how long a revoked token remains in the revocation store. Client-supplied `exp` values are capped at this limit. Zero or negative values are rejected at startup. |
+| `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | SlugRenameTopicHoldPeriod is how long old Kafka topics and ACLs are retained after a slug rename. During this window the old slug is still accepted by the JWT grace-period check. Must be &gt;= MinSlugRenameHoldPeriod (24h). Default: 168h (7 days). |
+| `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | TokenRevocationMaxLifetime is the maximum duration a revoked token entry is retained before the background prune loop removes it. Must be &gt; 0. Default: 1h. |
+| `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | BulkDisconnectConcurrency controls the maximum number of concurrent pub/sub publishes during a bulk DELETE /connections request. |
+| `MAX_WEBHOOKS_PER_TENANT` | int | `10` |  |
+| `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` |  |
+| `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | WebhookWorkerGRPCPort is the dedicated port for the webhook-worker gRPC service. Separate from GRPC_PORT (ProvisioningInternalService) so auth is enforced at the listener level rather than via FullMethod filtering inside a shared interceptor. Direction: webhook-worker → provisioning (WebhookWorkerService). |
+| `WEBHOOK_WORKER_GRPC_ADDR` | string | — | WebhookWorkerGRPCAddr is the address provisioning dials to call the worker's WebhookWorkerInternalService.TestDeliver RPC (reverse direction: provisioning → worker). No envDefault — required only when EditionHasFeature(Webhooks); validated conditionally. |
 
 ## Tester
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `TESTER_PORT` | int | `8090` |  |
-| `TESTER_AUTH_TOKEN` | string | — | Bearer token required by the tester API. Must be explicitly set in production — no default. Note: missing auto-redact tag means this value may appear in `/config` endpoint output; treat any exposure as a rotation event. |
-| `TESTER_ADMIN_KEY_FILE` | string | — | Path to the raw 64-byte Ed25519 binary private key file used to sign admin JWTs. Required for the `provisioning`, `tenant-isolation`, and `token-revocation` suites. Must be a raw binary file — not PEM or PKCS#8 encoded. See the [testing guide](../guides/testing) for format details. |
-| `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | Key ID embedded in admin JWTs. In local Docker, the default (`bootstrap-0`) matches the provisioning service bootstrap key. For remote/staging deployments, set to the key ID returned by `sukko auth register`. |
+| `TESTER_AUTH_TOKEN` | string | — | no default — must be explicitly set for production |
 | `GATEWAY_URL` | string | `ws://localhost:3000` |  |
 | `PROVISIONING_URL` | string | `http://localhost:8080` |  |
-| `KAFKA_BROKERS` | string | — |  |
-| `MESSAGE_BACKEND` | string | `direct` |  |
 | `TESTER_SIGNING_KEY_FILE` | string | — | License reload suite — Ed25519 private key for signing test license keys |
+| `TESTER_ADMIN_KEY_FILE` | string | — | Admin keypair for remote mode (required when targeting a deployed provisioning service). When unset, the tester generates an ephemeral keypair per test run (local dev mode only). |
+| `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | AdminKeyID is the kid embedded in admin JWTs; must match BootstrapAdminKeyID unless a custom key was registered with provisioning under a different ID. envDefault must stay in sync with provauth.BootstrapAdminKeyID; enforced by TestTesterConfig_DefaultAdminKeyID_EqualsBootstrapConstant. |
 | `TESTER_JWT_LIFETIME` | time.Duration | `15m` | JWT auth configuration |
 | `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` |  |
 | `TESTER_KEY_EXPIRY` | time.Duration | `24h` |  |
+| `TESTER_AUTH_MODE` | runner.AuthMode | `jwt` | Auth mode configuration (FR-001, FR-002, SC-001) AuthMode controls the credential mode for connections: jwt, api-key, upgrade, or mixed. |
+| `TESTER_API_KEY` | string | — | APIKey is a static pre-provisioned API key for api-key, upgrade, and mixed modes. Tagged redact:"true" so the /config endpoint never echoes it (§IX). |
+| `TESTER_AUTH_MIX_RATIO` | float64 | `0.5` |  |
+| `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` |  |
+| `TESTER_GATEWAY_METRICS_URL` | string | — | Gateway metrics scraping for revocation load suites. GatewayMetricsURL is the Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks are skipped (not an error — recorded as skipped_checks). |
+| `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` |  |
 
