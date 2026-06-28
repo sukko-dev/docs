@@ -69,7 +69,7 @@ Downgrades are graceful — existing resources are preserved, but new creation i
 |-----------|----------|
 | **Existing tenants** | Preserved. New creation blocked if count exceeds 3. |
 | **Existing connections** | Maintained. New connections rejected if over 500. |
-| **Kafka backend** | Continues running but flagged as mismatched. `ws_license_backend_mismatch` metric set to 1. **Restart required** to switch to `direct` backend. |
+| **Kafka backend** | Continues running but flagged as mismatched. **Restart required** to switch to `direct` backend. |
 | **SSE transport** | New SSE connections return `403 EDITION_LIMIT`. Existing SSE connections maintained. |
 | **Per-tenant channel rules** | Existing rules preserved in database. New rules creation blocked. Gateway continues enforcing existing rules. |
 | **Push notifications** | New subscriptions blocked. Existing registrations preserved. |
@@ -111,7 +111,7 @@ Set up an alert to catch upcoming expirations:
 
 **No data deletion** — Tenants, channel rules, routing rules, audit logs, and push registrations are never deleted on downgrade. They remain in the database and become accessible again on upgrade.
 
-**Backend mismatch requires restart** — If running Kafka when the license drops to Community, the services continue operating but log a warning and set `ws_license_backend_mismatch=1`. A restart is required to switch to the `direct` backend.
+**Backend mismatch requires restart** — If running Kafka when the license drops to Community, the services continue operating but log a warning. A restart is required to switch to the `direct` backend.
 
 **Replay protection** — License keys include an `iat` (issued-at) timestamp. Older keys are rejected to prevent replay attacks.
 

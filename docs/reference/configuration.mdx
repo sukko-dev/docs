@@ -28,8 +28,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` |  |
 | `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | KafkaTopicNamespaceOverride overrides ENVIRONMENT for Kafka topic naming only. If empty, defaults to normalized ENVIRONMENT value via kafka.ResolveNamespace(). NOT allowed in production — startup validation blocks this. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | ValidNamespaces is a comma-separated list of allowed topic namespace prefixes. |
-| `MESSAGE_BACKEND` | string | `direct` |  |
-| `KAFKA_BROKERS` | string | `localhost:19092` |  |
+| `MESSAGE_BACKEND` | string | `direct` | valid: direct, kafka — applies to ws-server and tester only (not gateway or provisioning) |
+| `KAFKA_BROKERS` | string | `localhost:19092` | Kafka Configuration (only used when MESSAGE_BACKEND=kafka) |
 | `KAFKA_SASL_ENABLED` | bool | `false` | Kafka Security - SASL Authentication  For connecting to managed Kafka/Redpanda services that require authentication. When KafkaSASLEnabled=false (default), connects without authentication (local dev).  Supported mechanisms: - scram-sha-256: SCRAM-SHA-256 (recommended, widely supported) - scram-sha-512: SCRAM-SHA-512 (stronger, less common) |
 | `KAFKA_SASL_MECHANISM` | string | — | scram-sha-256 or scram-sha-512 |
 | `KAFKA_SASL_USERNAME` | string | — |  |
@@ -224,6 +224,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `ANALYTICS_PARTMAN_INTERVAL` | time.Duration | `15m` | Analytics — provisioning-only fields |
 | `ANALYTICS_SSE_MAX_CONNS` | int | `10` |  |
 | `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by the provisioning service for topic management (create/delete). Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
+| `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey node addresses for the connections registry (token revocation, bulk disconnect pub/sub). No envDefault — must always be set explicitly. Format: `host:port`. Comma-separated for cluster mode (e.g. `valkey:6379`). |
 | `PROVISIONING_ADDR` | string | `:8080` | Server |
 | `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
 | `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key) |
