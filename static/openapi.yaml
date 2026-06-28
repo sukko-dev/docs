@@ -429,11 +429,57 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items, total, limit, offset]
                 properties:
-                  rules:
+                  items:
                     type: array
                     items:
                       $ref: '#/components/schemas/RoutingRule'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+    post:
+      # Note: source spec uses {tenantSlug} but this file uses {tenantID} throughout — preserved for consistency.
+      tags: [Routing Rules]
+      summary: Add a routing rule
+      description: Adds a single routing rule without replacing existing rules. Returns 409 on duplicate priority or pattern.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rule]
+              properties:
+                rule:
+                  $ref: '#/components/schemas/RoutingRule'
+      responses:
+        '201':
+          description: Rule added
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [rule]
+                properties:
+                  rule:
+                    $ref: '#/components/schemas/RoutingRule'
+        '400':
+          description: Validation error or rule limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict — duplicate priority or duplicate pattern
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     put:
       tags: [Routing Rules]
@@ -452,7 +498,30 @@ paths:
                     $ref: '#/components/schemas/RoutingRule'
       responses:
         '200':
-          description: Routing rules updated
+          description: Routing rules set
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, total, limit, offset]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoutingRule'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+        '400':
+          description: Validation error — includes empty rules, invalid pattern, too many rules, duplicate pattern, or duplicate priority.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
     delete:
       tags: [Routing Rules]
@@ -581,16 +650,24 @@ components:
 
     RoutingRule:
       type: object
-      required: [pattern, topic_suffix]
+      required: [pattern, topics, priority]
       properties:
         pattern:
           type: string
-          description: Channel pattern (glob syntax)
-          example: "*.trade"
-        topic_suffix:
-          type: string
-          description: Kafka topic suffix
-          example: trade
+          description: "Channel pattern. Use ** for multi-segment wildcard (e.g. trades.**, **). Bare * is accepted and normalized to **."
+          example: "trades.**"
+        topics:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: "One or more Kafka topic suffixes. Full topic name: {namespace}.{tenant_slug}.{suffix}."
+          example: ["trades"]
+        priority:
+          type: integer
+          minimum: 0
+          description: "Rule evaluation priority — lower value matches first. Must be unique per tenant."
+          example: 100
 
     Error:
       type: object
