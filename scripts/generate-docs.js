@@ -245,7 +245,6 @@ function formatLimit(value) {
 // Normalize feature names to human-readable labels (used by editions + roadmap)
 const featureLabels = {
   'MESSAGE_BACKEND=kafka': 'Kafka/Redpanda Backend',
-  'MESSAGE_BACKEND=nats': 'NATS JetStream Backend',
   'DATABASE_DRIVER=postgres': 'PostgreSQL for Provisioning',
   'SSE transport': 'SSE Transport',
   'GATEWAY_PER_TENANT_CHANNEL_RULES': 'Per-Tenant Channel Rules',
@@ -254,6 +253,9 @@ const featureLabels = {
   'tenant lifecycle manager': 'Tenant Lifecycle Manager',
   'ALERT_ENABLED': 'Alerting (AlertManager)',
   'real-time analytics': 'Real-Time Analytics',
+  'real-time analytics for push': 'Real-Time Analytics for Push',
+  'live gap recovery': 'Live Gap Recovery',
+  'connections management API': 'Connections Management API',
   'connection tracing': 'Connection Tracing (OpenTelemetry)',
   'admin UI': 'Admin UI',
   'token revocation': 'Token Revocation',
