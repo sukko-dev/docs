@@ -123,7 +123,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALKEY_MASTER_NAME` | string | `mymaster` |  |
 | `VALKEY_PASSWORD` | string | — |  |
 | `VALKEY_DB` | int | `0` |  |
-| `VALKEY_CHANNEL` | string | `ws.broadcast` |  |
+| `VALKEY_CHANNEL` | string | `ws.broadcast` | Valkey pub/sub channel prefix. The full per-tenant channel is `{VALKEY_CHANNEL}:{tenantID}` (where `tenantID` is the tenant slug, e.g. `ws.broadcast:acme-corp`). All ws-server pods must use the same prefix. If Valkey ACLs restrict pub/sub by channel pattern, update patterns from `ws.broadcast` to `ws.broadcast:*`. |
 | `WS_SLOW_CLIENT_MAX_ATTEMPTS` | int | `3` | Slow Client Detection  When a client's send buffer is full, the server tracks consecutive failed send attempts. After SlowClientMaxAttempts consecutive failures, the client is disconnected.  Industry comparison:   - Coinbase: 2 attempts (aggressive)   - Binance: No automatic disconnect (relies on ping timeout)   - FIX protocol: 5 second timeout (lenient)  Default: 3 (balanced - tolerates brief hiccups, disconnects persistent slow clients) Range: 1-10 (1 = aggressive, 10 = very lenient) |
 | `WS_CLIENT_SEND_BUFFER_SIZE` | int | `512` | Client Send Buffer Size Controls the per-client send channel buffer (memory vs slow-client tolerance trade-off)  Buffer sizing at 125 msg/sec broadcast rate (25 msg/sec × 5 channel subscriptions): - 512 slots: ~256KB/client, 4.1s buffer, ~3.5GB heap at 13.5K clients - 1024 slots: ~512KB/client, 8.2s buffer, ~6.9GB heap at 13.5K clients  Trade-off: - Smaller buffer = less memory = less GC pressure = lower CPU spikes - Larger buffer = more tolerance for slow clients and network hiccups  Default: 512 (reduced from 1024 to cut heap size by 50%, reduce GC pressure) Production guidance: Start with 512, increase to 768 or 1024 if cascade disconnects occur |
 | `WS_GAP_NOTIFY_BUFFER_SIZE` | int | `8` | GapNotifyBufferSize is the per-client buffer for low-priority gap notifications. Must be 1-MaxGapNotifyBufferSize (64); 0 would make the channel unbuffered (blocks Broadcast hot path). Keep small relative to ClientSendBufferSize — gaps are low-frequency out-of-band events. Drops beyond capacity are counted via ws_gap_notifications_dropped_total\{reason="buffer_full"\}. |
@@ -155,7 +155,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `WS_BUFFER_POPULATION_WARN_PERCENT` | int | `25` |  |
 | `CONN_RATE_LIMIT_IP_TTL` | time.Duration | `5m` | Connection rate limiter internals |
 | `CONN_RATE_LIMIT_CLEANUP_INTERVAL` | time.Duration | `1m` |  |
-| `BROADCAST_BUFFER_SIZE` | int | `256` | Broadcast bus |
+| `BROADCAST_BUFFER_SIZE` | int | `256` | Per-tenant per-shard broadcast message buffer. When this buffer is full, messages for that tenant are dropped (counted in `ws_broadcast_bus_dropped_total`). Maximum: 65,536 (`BROADCAST_BUFFER_SIZE_MAX`); values above this cause a startup failure. **High-throughput workloads**: at 100K msg/s per tenant, the default 256 provides approximately 2.5ms of burst buffer — set `BROADCAST_BUFFER_SIZE=1024` or higher for such workloads. **Memory**: total broadcast buffer slots = `BROADCAST_BUFFER_SIZE × MaxTenants (license) × WS_NUM_SHARDS`; at the default 256 with 100 tenants and 8 shards this is 204,800 message slots. |
 | `BROADCAST_SHUTDOWN_TIMEOUT` | time.Duration | `5s` |  |
 | `VALKEY_WRITE_TIMEOUT` | time.Duration | `3s` | Valkey broadcast tuning |
 | `VALKEY_PUBLISH_TIMEOUT` | time.Duration | `100ms` |  |
