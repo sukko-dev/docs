@@ -83,7 +83,8 @@ function SendButton() {
 ## Platform Notes
 
 - **WebSocket** — React Native includes a built-in WebSocket implementation. The `@sukko/websocket` transport uses it automatically.
-- **Background** — WebSocket connections are closed when the app is backgrounded on iOS/Android. The SDK auto-reconnects when the app returns to the foreground.
+- **Background** — WebSocket connections are closed when the app is backgrounded on iOS/Android. The SDK auto-reconnects when the app returns to the foreground. Call `client.reconnectWithReplay()` after reconnection to replay any Kafka messages missed while offline — see the [gap-free reconnect guide](./vanilla-ts#gap-free-reconnect) for the pattern. `pos` state is held in memory, so it persists across background/foreground cycles within the same app session.
+- **Client ID persistence** — Unlike web, React Native has no `localStorage`. For cross-session replay, store the `client_id` in `AsyncStorage` and pass it to the client on startup. See the [Vanilla TypeScript guide](./vanilla-ts#gap-free-reconnect) for `CLIENT_ID_KEY`.
 - **Token refresh** — The `getToken` callback is called automatically before token expiry, same as web.
 
 ## Next Steps

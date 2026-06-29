@@ -60,6 +60,37 @@ client.on('disconnected', () => console.log('Disconnected'));
 client.on('reconnecting', () => console.log('Reconnecting...'));
 ```
 
+## Gap-Free Reconnect
+
+When the connection drops and reconnects, the SDK can replay messages that arrived during the gap. Messages sourced from the Kafka backend include an optional `pos` field — an opaque cursor the SDK tracks per channel automatically.
+
+```typescript
+import { CLIENT_ID_KEY } from '@sukko/sdk';
+
+let hasConnectedBefore = false;
+
+client.on('stateChange', (state) => {
+  if (state === 'connected') {
+    if (hasConnectedBefore) {
+      // Replay missed messages from the last known pos on each channel
+      client.reconnectWithReplay();
+    }
+    hasConnectedBefore = true;
+  }
+});
+
+client.on('message', (msg) => {
+  console.log(msg.channel, msg.data);
+  // msg.pos is tracked by the SDK automatically — no manual handling needed
+});
+```
+
+The SDK sends `last_pos` on reconnect and the server replays up to 100 missed messages per channel within a 5-second window. The `client_id` is stored in `localStorage` under `CLIENT_ID_KEY` so replay works across page reloads.
+
+:::note
+`msg.pos` is absent for messages delivered by the Direct backend (`MESSAGE_BACKEND=direct`). `reconnectWithReplay()` is a no-op when no Kafka messages have been received on the current page session.
+:::
+
 ## Complete Example
 
 ```typescript

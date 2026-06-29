@@ -95,6 +95,34 @@ function MessageInput() {
 }
 ```
 
+## Gap-Free Reconnect
+
+Access the underlying `SukkoClient` with `useSukkoClient()` to call `reconnectWithReplay()` after a reconnection:
+
+```tsx
+import { useSukkoClient, useConnectionState } from '@sukko/react';
+import { useEffect, useRef } from 'react';
+
+function GapFreeReconnect() {
+  const client = useSukkoClient();
+  const state = useConnectionState();
+  const hasConnectedBefore = useRef(false);
+
+  useEffect(() => {
+    if (state === 'connected') {
+      if (hasConnectedBefore.current) {
+        client.reconnectWithReplay();
+      }
+      hasConnectedBefore.current = true;
+    }
+  }, [state, client]);
+
+  return null;
+}
+```
+
+Place this component inside `SukkoProvider`. The SDK tracks the latest `pos` cursor per channel automatically and replays missed Kafka messages on reconnect. See the [Vanilla TypeScript guide](./vanilla-ts#gap-free-reconnect) for details on `pos` and `CLIENT_ID_KEY`.
+
 ## Complete Example
 
 ```tsx
