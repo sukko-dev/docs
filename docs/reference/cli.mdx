@@ -360,7 +360,7 @@ a local context with dev credentials. Run 'sukko up' to start services.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + Valkey + direct) |
+| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + valkey + direct) |
 
 ---
 
@@ -822,6 +822,7 @@ Long-running stability test
 | `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
+| `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |
 
@@ -841,6 +842,7 @@ Push to maximum capacity and find limits
 | `--message-backend` | string | — | Publisher backend (direct, kafka) |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
+| `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |
 
