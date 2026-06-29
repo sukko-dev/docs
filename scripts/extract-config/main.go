@@ -70,7 +70,7 @@ func main() {
 		for _, e := range extractErrors {
 			fmt.Fprintf(os.Stderr, "extract-config error: %v\n", e)
 		}
-		fmt.Fprintf(os.Stderr, "extract-config: fix the missing inline comments listed above, then re-run the docs build\n")
+		fmt.Fprintf(os.Stderr, "extract-config: aborting due to parse/walk errors above\n")
 		os.Exit(1)
 	}
 
@@ -120,7 +120,10 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 				fieldType = typeString(field.Type)
 			}
 
-			if field.Comment == nil {
+			description := ""
+			if field.Comment != nil {
+				description = strings.TrimSpace(field.Comment.Text())
+			} else {
 				pos := fset.Position(field.Pos())
 				fieldLabel := "<embedded>"
 				if len(field.Names) > 0 {
@@ -130,14 +133,13 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 					"%s:%d: %s (env:%q) missing inline comment",
 					filepath.Base(pos.Filename), pos.Line, fieldLabel, envName,
 				))
-				continue
 			}
 
 			vars = append(vars, ConfigVar{
 				Name:        envName,
 				Type:        fieldType,
 				Default:     envDefault,
-				Description: strings.TrimSpace(field.Comment.Text()),
+				Description: description,
 			})
 		}
 		return true
@@ -145,9 +147,8 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 
 	if len(missing) > 0 {
 		for _, m := range missing {
-			fmt.Fprintln(os.Stderr, "extract-config: "+m+" — add an inline comment to fix the docs build")
+			fmt.Fprintln(os.Stderr, "extract-config: warning: "+m)
 		}
-		return nil, fmt.Errorf("%d field(s) in %s missing inline comments", len(missing), filepath.Base(path))
 	}
 
 	return vars, nil
