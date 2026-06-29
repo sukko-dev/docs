@@ -62,7 +62,7 @@ jobs:
       # --- Deploy (main only) ---
 
       - name: Deploy to Cloudflare Pages
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: false # disabled until CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are configured
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
