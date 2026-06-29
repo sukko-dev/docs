@@ -1,20 +1,224 @@
 {
   "services": [
     {
+      "name": "gateway",
+      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/gateway_config.go",
+      "vars": [
+        {
+          "name": "GATEWAY_PORT",
+          "type": "int",
+          "default": "3000",
+          "description": "HTTP listen port for the WebSocket gateway."
+        },
+        {
+          "name": "GATEWAY_READ_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "HTTP server read timeout. Applies to the WebSocket upgrade handshake and HTTP request reads."
+        },
+        {
+          "name": "GATEWAY_WRITE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "HTTP server write timeout."
+        },
+        {
+          "name": "GATEWAY_IDLE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "60s",
+          "description": "HTTP keep-alive idle timeout. Connections idle longer than this are closed."
+        },
+        {
+          "name": "GATEWAY_BACKEND_URL",
+          "type": "string",
+          "default": "ws://localhost:3005/ws",
+          "description": "WebSocket URL of the ws-server backend the gateway proxies connections to. Must include the /ws path."
+        },
+        {
+          "name": "GATEWAY_DIAL_TIMEOUT",
+          "type": "time.Duration",
+          "default": "10s",
+          "description": "Timeout for dialing the ws-server backend when establishing a new proxied connection."
+        },
+        {
+          "name": "GATEWAY_MESSAGE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "60s",
+          "description": "Timeout for forwarding a single message between a client and the ws-server backend."
+        },
+        {
+          "name": "GATEWAY_MAX_FRAME_SIZE",
+          "type": "int",
+          "default": "1048576",
+          "description": "Maximum WebSocket frame size in bytes. Frames larger than this are rejected before allocation. Default: 1MB."
+        },
+        {
+          "name": "GATEWAY_PER_TENANT_CHANNEL_RULES",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, channel permissions are resolved per-tenant via gRPC streaming rules (Pro edition)."
+        },
+        {
+          "name": "GATEWAY_FALLBACK_PUBLIC_CHANNELS",
+          "type": "[]string",
+          "default": "*.metadata",
+          "description": "Channel patterns treated as public when a tenant has no per-tenant channel rules configured."
+        },
+        {
+          "name": "REQUIRE_TENANT_ID",
+          "type": "bool",
+          "default": "true",
+          "description": "When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit."
+        },
+        {
+          "name": "DEFAULT_TENANT_CONNECTION_LIMIT",
+          "type": "int",
+          "default": "1000",
+          "description": "Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true."
+        },
+        {
+          "name": "TENANT_CONNECTION_LIMIT_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap."
+        },
+        {
+          "name": "GATEWAY_PUBLIC_PATTERNS",
+          "type": "[]string",
+          "default": "*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social",
+          "description": "Channel patterns accessible without authentication. Supports wildcards. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_USER_SCOPED_PATTERNS",
+          "type": "[]string",
+          "default": "*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}",
+          "description": "Channel patterns restricted to the authenticated principal. {principal} is substituted with the JWT subject at connection time. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_GROUP_SCOPED_PATTERNS",
+          "type": "[]string",
+          "default": "*.community.{group_id},community.{group_id},social.{group_id}",
+          "description": "Channel patterns restricted to a specific group. {group_id} is substituted with the JWT group claim at connection time. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_ENABLED",
+          "type": "bool",
+          "default": "true",
+          "description": "When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_BURST",
+          "type": "int",
+          "default": "100",
+          "description": "Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_RATE",
+          "type": "float64",
+          "default": "10.0",
+          "description": "Sustained message rate limit per authenticated principal, in messages per second."
+        },
+        {
+          "name": "GATEWAY_PUBLISH_RATE_LIMIT",
+          "type": "float64",
+          "default": "10.0",
+          "description": "Sustained rate limit for REST publish requests per authenticated principal, in messages per second."
+        },
+        {
+          "name": "GATEWAY_PUBLISH_BURST",
+          "type": "int",
+          "default": "100",
+          "description": "Burst allowance for the REST publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in."
+        },
+        {
+          "name": "GATEWAY_MAX_PUBLISH_SIZE",
+          "type": "int",
+          "default": "65536",
+          "description": "Maximum REST publish payload size in bytes. Payloads exceeding this are rejected. Default: 64KB."
+        },
+        {
+          "name": "GATEWAY_AUTH_REFRESH_RATE_INTERVAL",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Minimum interval between JWT refresh operations per connection. Prevents refresh storms under load."
+        },
+        {
+          "name": "GATEWAY_AUTH_VALIDATION_TIMEOUT",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Timeout for validating auth refresh operations per connection."
+        },
+        {
+          "name": "REVOCATION_MAX_LIFETIME",
+          "type": "time.Duration",
+          "default": "24h",
+          "description": "Max time a revocation entry lives when exp is not provided"
+        },
+        {
+          "name": "GATEWAY_SHUTDOWN_TIMEOUT",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum time the gateway waits for active connections to drain before forcing shutdown."
+        },
+        {
+          "name": "WS_INTERNAL_SECRET",
+          "type": "string",
+          "default": "",
+          "description": "Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce."
+        },
+        {
+          "name": "SERVER_GRPC_ADDR",
+          "type": "string",
+          "default": "localhost:3006",
+          "description": "ws-server gRPC address for RealtimeService"
+        },
+        {
+          "name": "PUSH_GRPC_ADDR",
+          "type": "string",
+          "default": "localhost:3008",
+          "description": "Push service gRPC address for device registration and VAPID key endpoints."
+        },
+        {
+          "name": "SSE_KEEPALIVE_INTERVAL",
+          "type": "time.Duration",
+          "default": "45s",
+          "description": "SSE keepalive comment interval (prevents proxy timeouts)"
+        },
+        {
+          "name": "GATEWAY_CORS_ORIGINS",
+          "type": "[]string",
+          "default": "*",
+          "description": "CORS allowed origins (* = all, production: restrict)"
+        },
+        {
+          "name": "GATEWAY_CHANNEL_RULES_CACHE_TTL",
+          "type": "time.Duration",
+          "default": "1m",
+          "description": "How long per-tenant channel rules are cached locally before re-fetching from the provisioning service."
+        },
+        {
+          "name": "GATEWAY_REGISTRY_QUERY_TIMEOUT",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Timeout for querying the connections registry when enforcing per-tenant connection limits."
+        }
+      ]
+    },
+    {
       "name": "server",
-      "file": "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/server_config.go",
+      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/server_config.go",
       "vars": [
         {
           "name": "WS_ADDR",
           "type": "string",
           "default": ":3002",
-          "description": "Server basics"
+          "description": "HTTP listen address for the WebSocket load balancer."
         },
         {
           "name": "WS_NUM_SHARDS",
           "type": "int",
           "default": "1",
-          "description": "Number of server shards"
+          "description": "Number of independent connection-routing shards. Higher values reduce lock contention; increase WS_BASE_PORT range accordingly."
         },
         {
           "name": "WS_BASE_PORT",
@@ -38,49 +242,49 @@
           "name": "KAFKA_CONSUMER_ENABLED",
           "type": "bool",
           "default": "true",
-          "description": "KafkaConsumerEnabled controls whether the Kafka consumer pool is started.\nWhen false, the consumer pool is not created — no consumer group join, no message\nconsumption. WebSocket connections still work (connection-only mode for loadtesting).\nDefault: true"
+          "description": "When false, the Kafka consumer pool is disabled and no messages are consumed from Kafka topics. Useful for debug deployments or when using an alternative message backend."
         },
         {
           "name": "KAFKA_DEFAULT_PARTITIONS",
           "type": "int",
           "default": "1",
-          "description": "Kafka Topic Defaults (for on-demand topic creation by KafkaBackend)"
+          "description": "Default partition count for Kafka topics created on demand by ws-server."
         },
         {
           "name": "KAFKA_DEFAULT_REPLICATION_FACTOR",
           "type": "int",
           "default": "1",
-          "description": ""
+          "description": "Default replication factor for Kafka topics created on demand by ws-server."
         },
         {
           "name": "WS_MEMORY_LIMIT",
           "type": "int64",
           "default": "536870912",
-          "description": "512MB"
+          "description": "Memory limit in bytes. New connections are rejected (HTTP 503) when exceeded. Default: 512MB."
         },
         {
           "name": "WS_MAX_CONNECTIONS",
           "type": "int",
           "default": "500",
-          "description": "Capacity"
+          "description": "Maximum simultaneous WebSocket client connections per pod. New connections are rejected with HTTP 503 when this limit is reached."
         },
         {
           "name": "WS_MAX_KAFKA_RATE",
           "type": "int",
           "default": "1000",
-          "description": "Kafka message consumption rate"
+          "description": "Maximum Kafka messages per second the server will consume across all topics."
         },
         {
           "name": "WS_MAX_BROADCAST_RATE",
           "type": "int",
           "default": "25",
-          "description": ""
+          "description": "Maximum Valkey broadcast fan-out rate in messages per second. Messages above this rate are dropped and counted in ws_broadcast_bus_dropped_total."
         },
         {
           "name": "WS_MAX_GOROUTINES",
           "type": "int",
           "default": "100000",
-          "description": ""
+          "description": "Maximum number of goroutines allowed per pod. New connections are rejected when this limit is reached."
         },
         {
           "name": "WS_RATE_LIMIT_BURST_MULTIPLIER",
@@ -92,7 +296,7 @@
           "name": "WS_CLIENT_MSG_BURST_LIMIT",
           "type": "int",
           "default": "100",
-          "description": "Per-client burst capacity"
+          "description": "Per-client inbound message burst capacity (token bucket). Clients exceeding this are disconnected."
         },
         {
           "name": "WS_CLIENT_MSG_RATE_PER_SEC",
@@ -104,37 +308,37 @@
           "name": "CONN_RATE_LIMIT_ENABLED",
           "type": "bool",
           "default": "true",
-          "description": "Connection rate limiting (DoS protection)"
+          "description": "When true, connection rate limiting is enforced per source IP and globally to protect against connection flood attacks. Controlled by CONN_RATE_LIMIT_IP_RATE, CONN_RATE_LIMIT_IP_BURST, CONN_RATE_LIMIT_GLOBAL_RATE, and CONN_RATE_LIMIT_GLOBAL_BURST."
         },
         {
           "name": "CONN_RATE_LIMIT_IP_BURST",
           "type": "int",
           "default": "100",
-          "description": ""
+          "description": "Burst allowance for per-source-IP connection rate limiting."
         },
         {
           "name": "CONN_RATE_LIMIT_IP_RATE",
           "type": "float64",
           "default": "100.0",
-          "description": ""
+          "description": "Sustained new-connection rate limit per source IP address, in connections per second."
         },
         {
           "name": "CONN_RATE_LIMIT_GLOBAL_BURST",
           "type": "int",
           "default": "300",
-          "description": ""
+          "description": "Burst allowance for the global (all-IP combined) new-connection rate limit."
         },
         {
           "name": "CONN_RATE_LIMIT_GLOBAL_RATE",
           "type": "float64",
           "default": "50.0",
-          "description": ""
+          "description": "Sustained new-connection rate limit across all source IPs combined, in connections per second."
         },
         {
           "name": "WS_CPU_REJECT_THRESHOLD",
           "type": "float64",
           "default": "60.0",
-          "description": "Upper: start rejecting above this %"
+          "description": "CPU percentage above which new connections are rejected with HTTP 503. Hysteresis: stop rejecting below WS_CPU_REJECT_THRESHOLD_LOWER."
         },
         {
           "name": "WS_CPU_REJECT_THRESHOLD_LOWER",
@@ -146,7 +350,7 @@
           "name": "WS_CPU_PAUSE_THRESHOLD",
           "type": "float64",
           "default": "70.0",
-          "description": "Upper: pause Kafka above this %"
+          "description": "CPU percentage above which Kafka consumption is paused. Hysteresis: resume below WS_CPU_PAUSE_THRESHOLD_LOWER."
         },
         {
           "name": "WS_CPU_PAUSE_THRESHOLD_LOWER",
@@ -170,469 +374,343 @@
           "name": "METRICS_INTERVAL",
           "type": "time.Duration",
           "default": "15s",
-          "description": "Monitoring"
+          "description": "Prometheus metrics collection interval for system-level metrics (CPU usage, memory, connection counts)."
         },
         {
           "name": "CPU_POLL_INTERVAL",
           "type": "time.Duration",
           "default": "1s",
-          "description": "CPU Polling Interval (for protection decisions)\nSeparate from MetricsInterval to allow faster CPU spike detection\nwhile keeping full metrics reporting (memory, goroutines) at a reasonable interval.\n\nCPU polling is used by:\n- ShouldPauseKafka() - backpressure when CPU \u003e 80%\n- ShouldAcceptConnection() - reject connections when CPU \u003e 75%\n\nTrade-off: 1s polling = 0.1% CPU overhead, but 15x faster spike detection"
+          "description": "Interval for CPU usage sampling used by backpressure and connection rejection decisions. Lower values detect spikes faster at marginally higher overhead."
         },
         {
           "name": "ALERT_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Alerting"
+          "description": "When true, ws-server sends operational alerts to the configured destinations (ALERT_SLACK_WEBHOOK_URL, ALERT_CONSOLE_ENABLED)."
         },
         {
           "name": "ALERT_MIN_LEVEL",
           "type": "string",
           "default": "WARNING",
-          "description": ""
+          "description": "Minimum alert severity to send. One of: DEBUG, INFO, WARNING, ERROR, CRITICAL."
         },
         {
           "name": "ALERT_SLACK_WEBHOOK_URL",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "Slack incoming webhook URL for alert delivery."
         },
         {
           "name": "ALERT_SLACK_CHANNEL",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "Slack channel to post alerts to (e.g. #ops-alerts)."
         },
         {
           "name": "ALERT_SLACK_USERNAME",
           "type": "string",
           "default": "AlertBot",
-          "description": ""
+          "description": "Display name for the Slack alert bot."
         },
         {
           "name": "ALERT_SLACK_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "HTTP request timeout for each Slack webhook delivery attempt."
         },
         {
           "name": "ALERT_RATE_LIMIT_WINDOW",
           "type": "time.Duration",
           "default": "5m",
-          "description": ""
+          "description": "Window duration for alert rate limiting. At most ALERT_RATE_LIMIT_MAX alerts are sent per window."
         },
         {
           "name": "ALERT_RATE_LIMIT_MAX",
           "type": "int",
           "default": "3",
-          "description": ""
+          "description": "Maximum alerts sent per ALERT_RATE_LIMIT_WINDOW. Excess alerts are suppressed to prevent notification floods."
         },
         {
           "name": "ALERT_CONSOLE_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": ""
+          "description": "When true, alerts are written to the structured log output in addition to any remote destinations."
         },
         {
           "name": "VALKEY_ADDRS",
           "type": "[]string",
-          "default": "",
-          "description": "Valkey Configuration (for BroadcastBus when BROADCAST_TYPE=valkey)\nSupports both self-hosted Sentinel (3 addresses) and single instance (1 address)"
+          "default": "localhost:6379",
+          "description": "Valkey server addresses, comma-separated. For Sentinel high-availability, provide all Sentinel addresses (e.g. sentinel1:26379,sentinel2:26379,sentinel3:26379). For single-instance, provide one address."
         },
         {
           "name": "VALKEY_MASTER_NAME",
           "type": "string",
           "default": "mymaster",
-          "description": ""
+          "description": "Valkey Sentinel master name. Only used when VALKEY_ADDRS contains Sentinel addresses."
         },
         {
           "name": "VALKEY_PASSWORD",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "Valkey authentication password."
         },
         {
           "name": "VALKEY_DB",
           "type": "int",
           "default": "0",
-          "description": ""
+          "description": "Valkey database index. Use 0 (the default) unless your deployment requires database isolation."
         },
         {
           "name": "VALKEY_CHANNEL",
           "type": "string",
           "default": "ws.broadcast",
-          "description": ""
+          "description": "Valkey pub/sub channel prefix. The full per-tenant channel is {VALKEY_CHANNEL}:{tenantID} (e.g. ws.broadcast:acme-corp). All ws-server pods must use the same prefix. If Valkey ACLs restrict pub/sub by channel pattern, update patterns from ws.broadcast to ws.broadcast:*."
         },
         {
           "name": "WS_SLOW_CLIENT_MAX_ATTEMPTS",
           "type": "int",
           "default": "3",
-          "description": "Slow Client Detection\n\nWhen a client's send buffer is full, the server tracks consecutive failed send attempts.\nAfter SlowClientMaxAttempts consecutive failures, the client is disconnected.\n\nIndustry comparison:\n  - Coinbase: 2 attempts (aggressive)\n  - Binance: No automatic disconnect (relies on ping timeout)\n  - FIX protocol: 5 second timeout (lenient)\n\nDefault: 3 (balanced - tolerates brief hiccups, disconnects persistent slow clients)\nRange: 1-10 (1 = aggressive, 10 = very lenient)"
+          "description": "Number of consecutive failed send attempts before a slow client is disconnected. A send attempt fails when the client's outbound buffer is full."
         },
         {
           "name": "WS_CLIENT_SEND_BUFFER_SIZE",
           "type": "int",
           "default": "512",
-          "description": "Client Send Buffer Size\nControls the per-client send channel buffer (memory vs slow-client tolerance trade-off)\n\nBuffer sizing at 125 msg/sec broadcast rate (25 msg/sec × 5 channel subscriptions):\n- 512 slots: ~256KB/client, 4.1s buffer, ~3.5GB heap at 13.5K clients\n- 1024 slots: ~512KB/client, 8.2s buffer, ~6.9GB heap at 13.5K clients\n\nTrade-off:\n- Smaller buffer = less memory = less GC pressure = lower CPU spikes\n- Larger buffer = more tolerance for slow clients and network hiccups\n\nDefault: 512 (reduced from 1024 to cut heap size by 50%, reduce GC pressure)\nProduction guidance: Start with 512, increase to 768 or 1024 if cascade disconnects occur"
+          "description": "Per-client outbound message buffer size in messages. Larger buffers tolerate temporary client slowness at the cost of higher memory usage per connection."
+        },
+        {
+          "name": "WS_GAP_NOTIFY_BUFFER_SIZE",
+          "type": "int",
+          "default": "8",
+          "description": "Per-client buffer for gap notification messages. Gap notifications are low-priority; this buffer absorbs bursts without blocking the main message pipeline."
+        },
+        {
+          "name": "WS_REPLAY_RATE_LIMIT_INTERVAL",
+          "type": "time.Duration",
+          "default": "10s",
+          "description": "Minimum interval between history replay requests per client per channel. Prevents replay storms from a single connection."
         },
         {
           "name": "BROADCAST_TYPE",
           "type": "string",
           "default": "valkey",
-          "description": "Broadcast Bus Configuration\n\nBroadcastType: Backend for inter-instance messaging (\"valkey\" or \"nats\")\n- valkey: Redis-compatible Pub/Sub (default, ~1-2ms latency)\n- nats: NATS Core Pub/Sub (sub-millisecond latency, fire-and-forget)\n\nWhen switching backends:\n1. Set BROADCAST_TYPE to the new backend\n2. Configure the corresponding backend settings (VALKEY_* or NATS_*)\n3. Restart all instances to use the same backend"
-        },
-        {
-          "name": "NATS_URLS",
-          "type": "[]string",
-          "default": "",
-          "description": "NATS Configuration (for BroadcastBus when BROADCAST_TYPE=nats)\n\nNATSURLs: Comma-separated NATS server URLs\n- Single: nats://localhost:4222\n- Cluster: nats://nats-1:4222,nats://nats-2:4222,nats://nats-3:4222\n\nNATSClusterMode: Enable cluster features (automatic failover, load balancing)\n- false: Local development (single server)\n- true: Production (cluster of NATS servers)\n\nNATSSubject: NATS subject for broadcasting (default: ws.broadcast)\n\nAuthentication (choose one):\n- NATSToken: Token-based auth (preferred for production)\n- NATSUser + NATSPassword: User/password auth (alternative)"
-        },
-        {
-          "name": "NATS_CLUSTER_MODE",
-          "type": "bool",
-          "default": "false",
-          "description": ""
-        },
-        {
-          "name": "NATS_SUBJECT",
-          "type": "string",
-          "default": "ws.broadcast",
-          "description": ""
-        },
-        {
-          "name": "NATS_TOKEN",
-          "type": "string",
-          "default": "",
-          "description": ""
-        },
-        {
-          "name": "NATS_USER",
-          "type": "string",
-          "default": "",
-          "description": ""
-        },
-        {
-          "name": "NATS_PASSWORD",
-          "type": "string",
-          "default": "",
-          "description": ""
-        },
-        {
-          "name": "NATS_TLS_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "NATS Broadcast Bus TLS (for managed NATS: Synadia Cloud, etc.)"
-        },
-        {
-          "name": "NATS_TLS_INSECURE",
-          "type": "bool",
-          "default": "false",
-          "description": ""
-        },
-        {
-          "name": "NATS_TLS_CA_PATH",
-          "type": "string",
-          "default": "",
-          "description": ""
+          "description": "Backend for inter-instance message broadcasting. Only valkey is supported — Valkey pub/sub is required for all ws-server deployments."
         },
         {
           "name": "VALKEY_TLS_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Valkey Broadcast Bus TLS (for managed Valkey/Redis: ElastiCache, Memorystore, Upstash, etc.)"
+          "description": "When true, Valkey connections use TLS encryption. Required for managed Valkey/Redis services (ElastiCache, Memorystore, Upstash)."
         },
         {
           "name": "VALKEY_TLS_INSECURE",
           "type": "bool",
           "default": "false",
-          "description": ""
+          "description": "When true, TLS certificate verification is skipped for Valkey connections. Do not use in production."
         },
         {
           "name": "VALKEY_TLS_CA_PATH",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "Path to a custom CA certificate file for Valkey TLS connections. Required when Valkey uses a private certificate authority."
         },
         {
           "name": "TOPIC_REFRESH_INTERVAL",
           "type": "time.Duration",
           "default": "60s",
-          "description": "Topic Refresh Interval\n\nHow often to periodically re-sync tenant topics/streams from the registry.\nThis is a safety net — primary updates come from the gRPC stream. The periodic\nrefresh catches any events missed during transient disconnects.\nApplies to both Kafka (MultiTenantConsumerPool) and NATS JetStream backends."
+          "description": "How often ws-server re-syncs the tenant topic list from the provisioning registry. This is a safety net; the primary update path is event-driven."
         },
         {
           "name": "WS_PONG_WAIT",
           "type": "time.Duration",
           "default": "60s",
-          "description": "WebSocket Ping/Pong Configuration\n\nThese settings control the keep-alive mechanism between the shard and clients.\nIn a proxied architecture (gateway → ws-server → shard), pings travel through\nmultiple hops, requiring a larger buffer than direct connections.\n\nBuffer = PongWait - PingPeriod\nThe buffer must accommodate the round-trip time through all proxies.\nWith 8 network hops (local Kind + port-forward), 15+ seconds is recommended.\n\nExample with defaults (60s/45s):\n  - Shard sends ping at t=0\n  - Ping travels: Shard → ShardProxy → ws-server → Gateway → Client\n  - Client sends pong\n  - Pong travels: Client → Gateway → ws-server → ShardProxy → Shard\n  - If pong arrives by t=60s, connection is healthy\n  - 15 second buffer for network latency, GC pauses, etc.\n\nCommon issues:\n  - Buffer too small (\u003c5s): Connections drop during GC pauses or network hiccups\n  - PingPeriod \u003e= PongWait: Invalid, ping would always timeout"
+          "description": "Timeout for receiving a pong response after sending a ping. Clients that do not respond within this window are disconnected. Must be greater than WS_PING_PERIOD."
         },
         {
           "name": "WS_PING_PERIOD",
           "type": "time.Duration",
           "default": "45s",
-          "description": ""
+          "description": "Interval between WebSocket ping frames sent to connected clients. Must be less than WS_PONG_WAIT."
         },
         {
           "name": "WS_WRITE_WAIT",
           "type": "time.Duration",
           "default": "5s",
-          "description": "WriteWait is the timeout for WebSocket write operations.\n5s is sufficient for local writes; network latency is handled by TCP."
+          "description": "Timeout for a single WebSocket write operation. Increase for high-latency networks."
         },
         {
           "name": "WS_REPLAY_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": "Handler timeouts"
+          "description": "Timeout for a single history replay handler to complete."
         },
         {
           "name": "WS_PUBLISH_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Timeout for a client publish operation (client to gateway to ws-server to Kafka)."
         },
         {
           "name": "WS_MAX_REPLAY_MESSAGES",
           "type": "int",
           "default": "100",
-          "description": ""
+          "description": "Maximum number of messages returned per history replay request."
         },
         {
           "name": "WS_TOPIC_CREATION_TIMEOUT",
           "type": "time.Duration",
           "default": "30s",
-          "description": "Topic/backend timeouts"
+          "description": "Timeout for on-demand Kafka topic creation."
         },
         {
           "name": "WS_SHARD_DIAL_TIMEOUT",
           "type": "time.Duration",
           "default": "10s",
-          "description": "Orchestration"
+          "description": "Timeout for the load balancer to dial a shard when proxying a new connection."
         },
         {
           "name": "WS_SHARD_MESSAGE_TIMEOUT",
           "type": "time.Duration",
           "default": "60s",
-          "description": ""
+          "description": "Timeout for forwarding a single message between the load balancer and a shard."
         },
         {
           "name": "WS_METRICS_AGGREGATION_INTERVAL",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Interval for aggregating per-shard metrics into cluster-level summaries."
         },
         {
           "name": "WS_SHUTDOWN_GRACE_PERIOD",
           "type": "time.Duration",
           "default": "30s",
-          "description": "Shutdown"
+          "description": "Maximum time ws-server waits for in-flight connections and consumers to drain during graceful shutdown."
         },
         {
           "name": "WS_SHUTDOWN_CHECK_INTERVAL",
           "type": "time.Duration",
           "default": "1s",
-          "description": ""
+          "description": "Polling interval for checking whether all connections have closed during graceful shutdown."
         },
         {
           "name": "WS_METRICS_COLLECT_INTERVAL",
           "type": "time.Duration",
           "default": "2s",
-          "description": "Internal monitoring"
+          "description": "Interval for collecting internal runtime metrics (goroutine counts, buffer saturation)."
         },
         {
           "name": "WS_MEMORY_MONITOR_INTERVAL",
           "type": "time.Duration",
           "default": "30s",
-          "description": ""
+          "description": "Interval for polling memory usage against WS_MEMORY_LIMIT."
         },
         {
           "name": "WS_MEMORY_WARNING_PERCENT",
           "type": "int",
           "default": "80",
-          "description": ""
+          "description": "Memory usage percentage of WS_MEMORY_LIMIT at which a warning log is emitted."
         },
         {
           "name": "WS_MEMORY_CRITICAL_PERCENT",
           "type": "int",
           "default": "90",
-          "description": ""
+          "description": "Memory usage percentage of WS_MEMORY_LIMIT at which new connections are rejected."
         },
         {
           "name": "WS_BUFFER_SAMPLE_INTERVAL",
           "type": "time.Duration",
           "default": "10s",
-          "description": ""
+          "description": "Interval for sampling client send buffer saturation metrics."
         },
         {
           "name": "WS_BUFFER_MAX_SAMPLES",
           "type": "int",
           "default": "100",
-          "description": ""
+          "description": "Rolling window size in samples for buffer saturation statistics."
         },
         {
           "name": "WS_BUFFER_HIGH_SATURATION_PERCENT",
           "type": "int",
           "default": "90",
-          "description": ""
+          "description": "Per-client send buffer fill percentage above which the client is considered saturated."
         },
         {
           "name": "WS_BUFFER_POPULATION_WARN_PERCENT",
           "type": "int",
           "default": "25",
-          "description": ""
+          "description": "Percentage of clients considered saturated above which a warning alert is triggered."
         },
         {
           "name": "CONN_RATE_LIMIT_IP_TTL",
           "type": "time.Duration",
           "default": "5m",
-          "description": "Connection rate limiter internals"
+          "description": "How long per-IP connection rate limit state is retained after the last connection attempt from that IP."
         },
         {
           "name": "CONN_RATE_LIMIT_CLEANUP_INTERVAL",
           "type": "time.Duration",
           "default": "1m",
-          "description": ""
+          "description": "Interval for purging expired per-IP rate limit state."
         },
         {
           "name": "BROADCAST_BUFFER_SIZE",
           "type": "int",
-          "default": "1024",
-          "description": "Broadcast bus"
+          "default": "256",
+          "description": "Per-tenant per-shard broadcast message buffer size. When this buffer is full, messages for that tenant are dropped and counted in ws_broadcast_bus_dropped_total. Maximum: 65,536 (BROADCAST_BUFFER_SIZE_MAX); values above this cause a startup failure. Operators running high-throughput single-tenant workloads should increase this value."
         },
         {
           "name": "BROADCAST_SHUTDOWN_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
-        },
-        {
-          "name": "NATS_RECONNECT_BUF_SIZE",
-          "type": "int",
-          "default": "5242880",
-          "description": "NATS broadcast tuning"
-        },
-        {
-          "name": "NATS_PING_INTERVAL",
-          "type": "time.Duration",
-          "default": "10s",
-          "description": ""
-        },
-        {
-          "name": "NATS_MAX_PINGS_OUTSTANDING",
-          "type": "int",
-          "default": "3",
-          "description": ""
-        },
-        {
-          "name": "NATS_RECONNECT_WAIT",
-          "type": "time.Duration",
-          "default": "2s",
-          "description": ""
-        },
-        {
-          "name": "NATS_MAX_RECONNECTS",
-          "type": "int",
-          "default": "-1",
-          "description": ""
-        },
-        {
-          "name": "NATS_HEALTH_CHECK_INTERVAL",
-          "type": "time.Duration",
-          "default": "10s",
-          "description": ""
-        },
-        {
-          "name": "NATS_FLUSH_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_POOL_SIZE",
-          "type": "int",
-          "default": "50",
-          "description": "Valkey broadcast tuning"
-        },
-        {
-          "name": "VALKEY_MIN_IDLE_CONNS",
-          "type": "int",
-          "default": "10",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_DIAL_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_READ_TIMEOUT",
-          "type": "time.Duration",
-          "default": "3s",
-          "description": ""
+          "description": "Timeout for draining the broadcast bus during graceful shutdown."
         },
         {
           "name": "VALKEY_WRITE_TIMEOUT",
           "type": "time.Duration",
           "default": "3s",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_MAX_RETRIES",
-          "type": "int",
-          "default": "3",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_MIN_RETRY_BACKOFF",
-          "type": "time.Duration",
-          "default": "100ms",
-          "description": ""
-        },
-        {
-          "name": "VALKEY_MAX_RETRY_BACKOFF",
-          "type": "time.Duration",
-          "default": "1s",
-          "description": ""
+          "description": "Timeout for Valkey write operations (SET, EXPIRE) from the broadcast bus."
         },
         {
           "name": "VALKEY_PUBLISH_TIMEOUT",
           "type": "time.Duration",
           "default": "100ms",
-          "description": ""
+          "description": "Timeout for each Valkey PUBLISH command in the broadcast hot path."
         },
         {
           "name": "VALKEY_STARTUP_PING_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Timeout for the Valkey connectivity check during ws-server startup."
         },
         {
           "name": "VALKEY_RECONNECT_INITIAL_BACKOFF",
           "type": "time.Duration",
           "default": "100ms",
-          "description": ""
+          "description": "Starting backoff delay for Valkey reconnection attempts after a connection failure."
         },
         {
           "name": "VALKEY_RECONNECT_MAX_BACKOFF",
           "type": "time.Duration",
           "default": "30s",
-          "description": ""
+          "description": "Maximum backoff delay between Valkey reconnection attempts."
         },
         {
           "name": "VALKEY_RECONNECT_MAX_ATTEMPTS",
           "type": "int",
           "default": "10",
-          "description": ""
+          "description": "Maximum number of Valkey reconnection attempts before the broadcast bus is marked unhealthy."
         },
         {
           "name": "VALKEY_HEALTH_CHECK_INTERVAL",
           "type": "time.Duration",
           "default": "10s",
-          "description": ""
+          "description": "Interval for periodic Valkey health checks."
         },
         {
           "name": "VALKEY_HEALTH_CHECK_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Timeout for each Valkey health check PING."
         },
         {
           "name": "VALKEY_PUBLISH_STALENESS_THRESHOLD",
@@ -644,259 +722,391 @@
           "name": "KAFKA_BATCH_SIZE",
           "type": "int",
           "default": "50",
-          "description": "Kafka consumer tuning"
+          "description": "Maximum number of Kafka messages processed per consumer batch."
         },
         {
           "name": "KAFKA_BATCH_TIMEOUT",
           "type": "time.Duration",
           "default": "10ms",
-          "description": ""
+          "description": "Maximum time to wait to fill a batch before processing it."
         },
         {
           "name": "KAFKA_FETCH_MAX_WAIT",
           "type": "time.Duration",
           "default": "500ms",
-          "description": "Kafka consumer transport tuning"
+          "description": "Maximum time the Kafka broker waits before returning a fetch response, even if KAFKA_FETCH_MIN_BYTES has not been met. Lower values reduce latency; higher values improve throughput."
         },
         {
           "name": "KAFKA_FETCH_MIN_BYTES",
           "type": "int32",
           "default": "1",
-          "description": ""
+          "description": "Minimum bytes a broker should accumulate before returning a fetch response."
         },
         {
           "name": "KAFKA_FETCH_MAX_BYTES",
           "type": "int32",
           "default": "10485760",
-          "description": ""
+          "description": "Maximum bytes returned per fetch request."
         },
         {
           "name": "KAFKA_SESSION_TIMEOUT",
           "type": "time.Duration",
           "default": "30s",
-          "description": ""
+          "description": "Kafka consumer group session timeout. If the consumer does not heartbeat within this window, it is declared dead and a rebalance is triggered. Must be within the broker's configured range."
         },
         {
           "name": "KAFKA_REBALANCE_TIMEOUT",
           "type": "time.Duration",
           "default": "60s",
-          "description": ""
+          "description": "Maximum time allowed for a consumer group rebalance to complete. Must be greater than KAFKA_COMMIT_ON_REVOKE_TIMEOUT."
         },
         {
           "name": "KAFKA_REPLAY_FETCH_MAX_BYTES",
           "type": "int32",
           "default": "5242880",
-          "description": ""
+          "description": "Maximum bytes per fetch during history replay. Kept separate from KAFKA_FETCH_MAX_BYTES to prevent replay reads from saturating the live consumer path."
         },
         {
           "name": "KAFKA_BACKPRESSURE_CHECK_INTERVAL",
           "type": "time.Duration",
           "default": "100ms",
-          "description": ""
+          "description": "Polling interval for the Kafka backpressure circuit breaker (CPU and goroutine pressure check)."
+        },
+        {
+          "name": "KAFKA_COMMIT_ON_REVOKE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "How long ws-server waits to commit processed Kafka offsets during a consumer group rebalance (triggered on rolling deploys, pod restarts, or scale events). If the commit completes within this window, duplicate delivery to clients by the new consumer is minimized. If the commit times out, offsets since the last background auto-commit (see KAFKA_AUTO_COMMIT_INTERVAL) may be re-delivered."
+        },
+        {
+          "name": "KAFKA_AUTO_COMMIT_INTERVAL",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Interval between background Kafka offset commits. Controls the crash-path duplicate window: if a pod crashes without a clean shutdown, messages processed in the final KAFKA_AUTO_COMMIT_INTERVAL before the crash may be re-delivered after failover. Lower values reduce the crash-path window at the cost of more frequent broker commits. Minimum: 100ms — values below this cause a startup validation error."
         },
         {
           "name": "KAFKA_PRODUCER_BATCH_MAX_BYTES",
           "type": "int",
           "default": "1048576",
-          "description": "Kafka producer tuning"
+          "description": "Maximum bytes per Kafka producer batch."
         },
         {
           "name": "KAFKA_PRODUCER_MAX_BUFFERED_RECORDS",
           "type": "int",
           "default": "10000",
-          "description": ""
+          "description": "Maximum number of records buffered in the Kafka producer before backpressure is applied to callers."
         },
         {
           "name": "KAFKA_PRODUCER_RECORD_RETRIES",
           "type": "int",
           "default": "8",
-          "description": ""
+          "description": "Number of retries for failed Kafka produce operations before the record is discarded."
         },
         {
           "name": "KAFKA_PRODUCER_CB_TIMEOUT",
           "type": "time.Duration",
           "default": "30s",
-          "description": ""
+          "description": "Circuit breaker observation window for Kafka producer failures."
         },
         {
           "name": "KAFKA_PRODUCER_CB_MAX_FAILURES",
           "type": "int",
           "default": "5",
-          "description": ""
+          "description": "Maximum producer failures within the circuit breaker window before the producer circuit opens (pauses)."
         },
         {
           "name": "KAFKA_PRODUCER_CB_HALF_OPEN_REQS",
           "type": "int",
           "default": "1",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_RECONNECT_WAIT",
-          "type": "time.Duration",
-          "default": "2s",
-          "description": "JetStream backend tuning"
-        },
-        {
-          "name": "JETSTREAM_MAX_DELIVER",
-          "type": "int",
-          "default": "3",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_ACK_WAIT",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_REFRESH_TIMEOUT",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_REFRESH_INTERVAL",
-          "type": "time.Duration",
-          "default": "60s",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_REPLAY_FETCH_WAIT",
-          "type": "time.Duration",
-          "default": "2s",
-          "description": ""
-        },
-        {
-          "name": "JETSTREAM_MAX_AGE",
-          "type": "time.Duration",
-          "default": "24h",
-          "description": ""
+          "description": "Number of test requests permitted when the Kafka producer circuit breaker is in half-open state."
         },
         {
           "name": "WS_ROUTING_FANOUT_WORKERS",
           "type": "int",
           "default": "4",
-          "description": "Routing fan-out worker pool"
+          "description": "Number of parallel workers for routing message fan-out to subscribed clients. Increase for high-subscription-count workloads."
         },
         {
           "name": "WS_ROUTING_FANOUT_QUEUE_SIZE",
           "type": "int",
           "default": "256",
-          "description": ""
+          "description": "Internal queue depth for the routing fan-out worker pool."
         },
         {
           "name": "WS_ROUTING_DLQ_MAX_RETRIES",
           "type": "int",
           "default": "3",
-          "description": "Dead-letter queue retry pool"
+          "description": "Maximum retry attempts for a failed message delivery before it is discarded."
         },
         {
           "name": "WS_ROUTING_DLQ_BASE_DELAY",
           "type": "time.Duration",
           "default": "100ms",
-          "description": ""
+          "description": "Initial retry delay for failed message deliveries (exponential backoff starting point)."
         },
         {
           "name": "WS_ROUTING_DLQ_MAX_DELAY",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Maximum retry delay cap for failed message deliveries."
         },
         {
           "name": "WS_ROUTING_DLQ_RETRY_WORKERS",
           "type": "int",
           "default": "4",
-          "description": ""
+          "description": "Number of parallel workers processing the dead-letter retry queue."
+        },
+        {
+          "name": "WS_MAX_CHANNELS_PER_CLIENT",
+          "type": "int",
+          "default": "100",
+          "description": "Maximum concurrent channel subscriptions per client connection. Subscription requests beyond this limit are rejected."
+        },
+        {
+          "name": "WS_HISTORY_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, message history is retained in a Valkey Streams ring buffer with Kafka as a fallback for deeper replay. Enables client history replay requests."
+        },
+        {
+          "name": "WS_HISTORY_BUFFER_DEPTH",
+          "type": "int",
+          "default": "1000",
+          "description": "Maximum number of messages retained per channel in the Valkey Streams ring buffer (XADD MAXLEN ~). Older messages are evicted when the limit is reached."
+        },
+        {
+          "name": "WS_HISTORY_TTL",
+          "type": "time.Duration",
+          "default": "24h",
+          "description": "Per-stream Valkey key expiry. Streams inactive longer than this duration are deleted to free memory."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_BUFFER",
+          "type": "int",
+          "default": "10000",
+          "description": "Internal message queue depth for the history writer. Messages are dropped when this buffer is full."
+        },
+        {
+          "name": "WS_HISTORY_MAX_LIMIT",
+          "type": "int",
+          "default": "100",
+          "description": "Maximum number of messages a client may request in a single history replay call."
+        },
+        {
+          "name": "WS_HISTORY_DELIVERY_TIMEOUT",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Deadline for completing a single history replay request, including Valkey XREVRANGE and optional Kafka fallback reads."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_PIPELINE_BATCH",
+          "type": "int",
+          "default": "50",
+          "description": "Maximum number of Valkey XADD commands per pipeline batch for history writes."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_LOCK_TTL",
+          "type": "time.Duration",
+          "default": "10s",
+          "description": "TTL for the distributed history writer lock in Valkey. The active writer pod renews this lock on each heartbeat interval."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_RESTART_INITIAL_BACKOFF",
+          "type": "time.Duration",
+          "default": "500ms",
+          "description": "Initial delay before restarting the history writer after a failure."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_RESTART_MAX_BACKOFF",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum delay between history writer restart attempts."
+        },
+        {
+          "name": "WS_HISTORY_VALKEY_CMD_TIMEOUT",
+          "type": "time.Duration",
+          "default": "2s",
+          "description": "Per-command timeout for history Valkey operations (XADD, XREVRANGE, EXPIRE)."
+        },
+        {
+          "name": "WS_HISTORY_MAX_CONSECUTIVE_LOCK_FAILURES",
+          "type": "int",
+          "default": "3",
+          "description": "Number of consecutive heartbeat lock renewal failures before the history writer steps down and triggers a restart."
+        },
+        {
+          "name": "WS_HISTORY_WRITER_HEARTBEAT_INTERVAL",
+          "type": "time.Duration",
+          "default": "3s",
+          "description": "Interval for history writer lock renewal and broadcast bus health checks."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, ws-server tracks active connections in Valkey and exposes them via the Connections Management API (Pro edition). Requires Valkey memory headroom proportional to active connections x subscriptions x average channel name length."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_TTL",
+          "type": "time.Duration",
+          "default": "120s",
+          "description": "Valkey EXPIRE duration for each connection entry in the registry. Heartbeats renew the TTL; connections that fail to heartbeat within this window are treated as expired."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_BUFFER",
+          "type": "int",
+          "default": "1024",
+          "description": "Internal channel buffer for registry events (connect, disconnect, subscribe). Events are dropped when this buffer is full."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_FLUSH_INTERVAL",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Interval for flushing buffered registry events to Valkey."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_HEARTBEAT_INTERVAL",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Interval for renewing active connection TTLs in the registry."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_RESTART_INITIAL_BACKOFF",
+          "type": "time.Duration",
+          "default": "100ms",
+          "description": "Initial delay before restarting the registry writer after a failure."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_RESTART_MAX_BACKOFF",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum delay between registry writer restart attempts."
+        },
+        {
+          "name": "WS_CONNECTIONS_REGISTRY_SHUTDOWN_DRAIN_TIMEOUT",
+          "type": "time.Duration",
+          "default": "100ms",
+          "description": "Time allowed to flush buffered registry events during graceful shutdown. Set to 0 to skip draining."
+        },
+        {
+          "name": "WS_ADMIN_CHANNEL_SUBSCRIBE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "10s",
+          "description": "Timeout for each shard's SUBSCRIBE call to the admin broadcast channel at startup."
+        },
+        {
+          "name": "WS_INTERNAL_SECRET_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, ws-server validates the X-Sukko-Internal-Secret header on all incoming connections, rejecting any that bypass the gateway."
+        },
+        {
+          "name": "WS_INTERNAL_SECRET",
+          "type": "string",
+          "default": "",
+          "description": "Shared secret validated as X-Sukko-Internal-Secret on incoming connections. Must match the value configured on the gateway. Required when WS_INTERNAL_SECRET_ENABLED is true."
         }
       ]
     },
     {
       "name": "provisioning",
-      "file": "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/provisioning_config.go",
+      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/provisioning_config.go",
       "vars": [
+        {
+          "name": "ANALYTICS_PARTMAN_INTERVAL",
+          "type": "time.Duration",
+          "default": "15m",
+          "description": "Interval for running pg_partman maintenance on analytics partition tables."
+        },
+        {
+          "name": "ANALYTICS_SSE_MAX_CONNS",
+          "type": "int",
+          "default": "10",
+          "description": "Maximum concurrent SSE connections for the analytics streaming endpoint."
+        },
         {
           "name": "PROVISIONING_KAFKA_BROKERS",
           "type": "string",
           "default": "localhost:19092",
-          "description": "Kafka brokers — used by migration tools (e.g., migrate-dlq) that need Kafka access.\nUses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS\n(defined in MessageBackendConfig). In-cluster default: \u003crelease\u003e-redpanda:9092."
+          "description": "Kafka broker addresses for provisioning-originated admin operations (topic creation, etc.). Comma-separated."
         },
         {
           "name": "PROVISIONING_ADDR",
           "type": "string",
           "default": ":8080",
-          "description": "Server"
+          "description": "HTTP listen address for the provisioning API."
         },
         {
           "name": "GRPC_PORT",
           "type": "int",
           "default": "9090",
-          "description": "gRPC — internal service-to-service communication port"
+          "description": "gRPC server port for internal service-to-service communication."
         },
         {
           "name": "ADMIN_BOOTSTRAP_KEY",
           "type": "string",
           "default": "",
-          "description": "Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key)"
+          "description": "Bootstrap admin API key for provisioning service. Required; used for initial tenant setup."
         },
         {
           "name": "DEFAULT_PARTITIONS",
           "type": "int",
           "default": "3",
-          "description": "Topic Defaults"
+          "description": "Default Kafka partition count assigned to new tenant topics."
         },
         {
           "name": "DEFAULT_RETENTION_MS",
           "type": "int64",
           "default": "604800000",
-          "description": "7 days"
+          "description": "Default Kafka topic retention in milliseconds. Default: 604,800,000ms (7 days)."
         },
         {
           "name": "MAX_TOPICS_PER_TENANT",
           "type": "int",
           "default": "50",
-          "description": "Quotas (defaults per tenant)"
+          "description": "Default maximum number of Kafka topics per tenant."
         },
         {
           "name": "MAX_PARTITIONS_PER_TENANT",
           "type": "int",
           "default": "200",
-          "description": ""
+          "description": "Default maximum total partitions across all topics per tenant."
         },
         {
           "name": "MAX_STORAGE_BYTES",
           "type": "int64",
           "default": "10737418240",
-          "description": "10GB"
+          "description": "Default maximum Kafka storage quota per tenant in bytes. Default: 10,737,418,240 (10GB)."
         },
         {
           "name": "PRODUCER_BYTE_RATE",
           "type": "int64",
           "default": "10485760",
-          "description": "10MB/s"
+          "description": "Default Kafka producer byte-rate quota per tenant in bytes/sec. Default: 10485760 (10MB/s)."
         },
         {
           "name": "CONSUMER_BYTE_RATE",
           "type": "int64",
           "default": "52428800",
-          "description": "50MB/s"
+          "description": "Default Kafka consumer byte-rate quota per tenant in bytes/sec. Default: 52428800 (50MB/s)."
         },
         {
           "name": "DEPROVISION_GRACE_DAYS",
           "type": "int",
           "default": "30",
-          "description": "Tenant Lifecycle"
+          "description": "Days to retain a deprovisioned tenant's Kafka topics and ACLs before permanent deletion."
         },
         {
           "name": "LIFECYCLE_CHECK_INTERVAL",
           "type": "time.Duration",
           "default": "1h",
-          "description": ""
+          "description": "How often the lifecycle manager scans for tenants due for deprovisioning or cleanup."
         },
         {
           "name": "LIFECYCLE_MANAGER_ENABLED",
           "type": "bool",
           "default": "true",
-          "description": ""
+          "description": "Enables the background tenant lifecycle manager (deprovisioning, retention enforcement)."
         },
         {
           "name": "MAX_ROUTING_RULES_PER_TENANT",
@@ -932,301 +1142,271 @@
           "name": "API_RATE_LIMIT_PER_MIN",
           "type": "int",
           "default": "60",
-          "description": "Rate Limiting"
+          "description": "Maximum provisioning API requests per minute per IP before HTTP 429 is returned."
         },
         {
           "name": "KEY_REGISTRY_REFRESH_INTERVAL",
           "type": "time.Duration",
           "default": "1m",
-          "description": "Key Registry (for JWT validation in API mode with auth enabled)"
+          "description": "How often the key registry polls for updated tenant JWT signing keys."
         },
         {
           "name": "KEY_REGISTRY_QUERY_TIMEOUT",
           "type": "time.Duration",
           "default": "5s",
-          "description": ""
+          "description": "Timeout for each key registry lookup query."
         },
         {
           "name": "SHUTDOWN_TIMEOUT",
           "type": "time.Duration",
           "default": "30s",
-          "description": "Graceful shutdown timeout"
+          "description": "Maximum time to wait for in-flight requests during graceful shutdown."
         },
         {
           "name": "CORS_ALLOWED_ORIGINS",
           "type": "[]string",
           "default": "http://localhost:3000",
-          "description": "CORS settings"
+          "description": "Allowed origins for CORS preflight responses. Comma-separated; no wildcard in production."
         },
         {
           "name": "CORS_MAX_AGE",
           "type": "int",
           "default": "3600",
-          "description": ""
-        },
-        {
-          "name": "CREDENTIALS_ENCRYPTION_KEY",
-          "type": "string",
-          "default": "",
-          "description": "Credentials Encryption — AES-256-GCM key for encrypting push credentials and license keys at rest.\nRequired. Fail fast at startup if not set. Auto-generated by sukko init (docker-compose) and Helm."
+          "description": "Maximum seconds a CORS preflight response may be cached by the browser."
         },
         {
           "name": "PROVISIONING_MAX_TENANTS_FETCH_LIMIT",
           "type": "int",
           "default": "10000",
-          "description": "Provisioning-specific externalized constants"
+          "description": "Maximum number of tenants returned by internal bulk-fetch operations."
         },
         {
           "name": "PROVISIONING_DELETION_TIMEOUT",
           "type": "time.Duration",
           "default": "5m",
-          "description": ""
+          "description": "Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup)."
+        },
+        {
+          "name": "SLUG_RENAME_TOPIC_HOLD_PERIOD",
+          "type": "time.Duration",
+          "default": "168h",
+          "description": "Retention window for old Kafka topics and ACLs after a tenant slug rename. Minimum 24h."
+        },
+        {
+          "name": "PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME",
+          "type": "time.Duration",
+          "default": "1h",
+          "description": "Maximum duration to retain a revoked token record before the prune loop removes it."
+        },
+        {
+          "name": "PROVISIONING_BULK_DISCONNECT_CONCURRENCY",
+          "type": "int",
+          "default": "10",
+          "description": "Maximum concurrent Valkey publishes during a bulk connection disconnect request."
+        },
+        {
+          "name": "MAX_WEBHOOKS_PER_TENANT",
+          "type": "int",
+          "default": "10",
+          "description": "Maximum number of webhook endpoint registrations per tenant."
+        },
+        {
+          "name": "WEBHOOK_DOWNGRADE_POLL_INTERVAL",
+          "type": "time.Duration",
+          "default": "5m",
+          "description": "Polling interval for checking whether a tenant's webhook delivery should pause due to edition downgrade."
+        },
+        {
+          "name": "WEBHOOK_WORKER_GRPC_PORT",
+          "type": "int",
+          "default": "9091",
+          "description": "gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT."
+        },
+        {
+          "name": "WEBHOOK_WORKER_GRPC_ADDR",
+          "type": "string",
+          "default": "",
+          "description": "gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions."
         }
       ]
     },
     {
       "name": "base",
-      "file": "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/config.go",
+      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/config.go",
       "vars": [
         {
           "name": "LOG_LEVEL",
           "type": "string",
           "default": "info",
-          "description": ""
+          "description": "Logging level (debug, info, warn, error). info is recommended for production."
         },
         {
           "name": "LOG_FORMAT",
           "type": "string",
           "default": "json",
-          "description": ""
+          "description": "Log output format: json for machine parsing (production), text for human-readable (development)."
         },
         {
           "name": "ENVIRONMENT",
           "type": "string",
           "default": "local",
-          "description": "Environment — deployment identity label, used for Kafka topic namespace, consumer\ngroup naming, and safety guards. Free-form: any string works as deployment identity.\nSukko uses: local | dev | stg | prod by convention."
+          "description": "Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution."
         },
         {
           "name": "SUKKO_LICENSE_KEY",
           "type": "string",
           "default": "",
-          "description": "LicenseKey is the signed Ed25519 license token that determines the edition\n(Community/Pro/Enterprise). Empty = Community. Parsed by license.Manager at startup.\nThe editionManager field lives on each service config (ServerConfig, GatewayConfig,\nProvisioningConfig) — not here — to avoid BaseConfig depending on the license package."
+          "description": "Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community."
         },
         {
           "name": "OTEL_TRACING_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Tracing (OpenTelemetry) — cold-path only, disabled by default."
+          "description": "Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled."
         },
         {
           "name": "OTEL_EXPORTER_TYPE",
           "type": "string",
           "default": "otlp-grpc",
-          "description": ""
+          "description": "OpenTelemetry trace exporter type (otlp, stdout, or empty to disable tracing)."
         },
         {
           "name": "OTEL_EXPORTER_ENDPOINT",
           "type": "string",
           "default": "localhost:4317",
-          "description": ""
+          "description": "OpenTelemetry collector gRPC endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE=otlp."
         },
         {
           "name": "PPROF_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Profiling — pprof endpoints and Pyroscope continuous profiling, disabled by default."
+          "description": "Enable Go pprof profiling endpoints (/debug/pprof/). Disabled by default; enable only in controlled environments."
         },
         {
           "name": "PYROSCOPE_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": ""
+          "description": "Enable continuous profiling via Pyroscope. Disabled by default."
         },
         {
           "name": "PYROSCOPE_ADDR",
           "type": "string",
           "default": "http://localhost:4040",
-          "description": ""
+          "description": "Pyroscope server address (e.g. http://pyroscope:4040). Required when PYROSCOPE_ENABLED=true."
         },
         {
           "name": "AUTH_MODE",
           "type": "string",
           "default": "required",
-          "description": "AuthMode is the authentication model. Only \"required\" is supported.\nKept temporarily for backward compatibility with deployments that set AUTH_MODE=required.\nExtensible to \"public-read\" in the future (anonymous subscribe for public channels)."
+          "description": "Authentication enforcement mode. Only \"required\" is supported; tokens without valid signatures are rejected."
         },
         {
           "name": "PROVISIONING_GRPC_ADDR",
           "type": "string",
           "default": "localhost:9090",
-          "description": ""
-        },
-        {
-          "name": "PROVISIONING_GRPC_RECONNECT_DELAY",
-          "type": "time.Duration",
-          "default": "1s",
-          "description": ""
-        },
-        {
-          "name": "PROVISIONING_GRPC_RECONNECT_MAX_DELAY",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": ""
+          "description": "gRPC address of the provisioning service for internal communication (e.g. channel rule streaming)."
         },
         {
           "name": "HTTP_READ_TIMEOUT",
           "type": "time.Duration",
           "default": "15s",
-          "description": ""
+          "description": "Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks."
         },
         {
           "name": "HTTP_WRITE_TIMEOUT",
           "type": "time.Duration",
           "default": "15s",
-          "description": ""
+          "description": "Maximum duration for writing the HTTP response."
         },
         {
           "name": "HTTP_IDLE_TIMEOUT",
           "type": "time.Duration",
           "default": "60s",
-          "description": ""
+          "description": "Maximum idle time on a keep-alive connection before it is closed."
         },
         {
           "name": "KAFKA_TOPIC_NAMESPACE_OVERRIDE",
           "type": "string",
           "default": "",
-          "description": "KafkaTopicNamespaceOverride overrides ENVIRONMENT for Kafka topic naming only.\nIf empty, defaults to normalized ENVIRONMENT value via kafka.ResolveNamespace().\nNOT allowed in production — startup validation blocks this."
+          "description": "Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Forbidden in production — causes startup failure when ENVIRONMENT=prod."
         },
         {
           "name": "VALID_NAMESPACES",
           "type": "string",
           "default": "local,dev,stag,prod",
-          "description": "ValidNamespaces is a comma-separated list of allowed topic namespace prefixes."
+          "description": "Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE."
         },
         {
           "name": "MESSAGE_BACKEND",
           "type": "string",
           "default": "direct",
-          "description": "Message Backend Selection"
+          "description": "Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay)."
         },
         {
           "name": "KAFKA_BROKERS",
           "type": "string",
           "default": "localhost:19092",
-          "description": "Kafka Configuration (only used when MESSAGE_BACKEND=kafka)"
+          "description": "Comma-separated Kafka/Redpanda broker addresses. Required when MESSAGE_BACKEND=kafka."
         },
         {
           "name": "KAFKA_SASL_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Kafka Security - SASL Authentication\n\nFor connecting to managed Kafka/Redpanda services that require authentication.\nWhen KafkaSASLEnabled=false (default), connects without authentication (local dev).\n\nSupported mechanisms:\n- scram-sha-256: SCRAM-SHA-256 (recommended, widely supported)\n- scram-sha-512: SCRAM-SHA-512 (stronger, less common)"
+          "description": "Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services."
         },
         {
           "name": "KAFKA_SASL_MECHANISM",
           "type": "string",
           "default": "",
-          "description": "scram-sha-256 or scram-sha-512"
+          "description": "SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true."
         },
         {
           "name": "KAFKA_SASL_USERNAME",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
         },
         {
           "name": "KAFKA_SASL_PASSWORD",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
         },
         {
           "name": "KAFKA_TLS_ENABLED",
           "type": "bool",
           "default": "false",
-          "description": "Kafka Security - TLS Encryption\n\nFor encrypted connections to Kafka. Required for most managed services.\nWhen KafkaTLSEnabled=false (default), connects without TLS (local dev).\n\nKafkaTLSInsecure: Skip server certificate verification (NOT for production)\nKafkaTLSCAPath: Path to CA certificate for server verification"
+          "description": "Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services."
         },
         {
           "name": "KAFKA_TLS_INSECURE",
           "type": "bool",
           "default": "false",
-          "description": ""
+          "description": "Skip TLS certificate verification. For development only — never use in production."
         },
         {
           "name": "KAFKA_TLS_CA_PATH",
           "type": "string",
           "default": "",
-          "description": ""
-        },
-        {
-          "name": "NATS_JETSTREAM_URLS",
-          "type": "string",
-          "default": "",
-          "description": "Comma-separated NATS URLs"
-        },
-        {
-          "name": "NATS_JETSTREAM_TOKEN",
-          "type": "string",
-          "default": "",
-          "description": "Auth token"
-        },
-        {
-          "name": "NATS_JETSTREAM_USER",
-          "type": "string",
-          "default": "",
-          "description": "Username"
-        },
-        {
-          "name": "NATS_JETSTREAM_PASSWORD",
-          "type": "string",
-          "default": "",
-          "description": "Password"
-        },
-        {
-          "name": "NATS_JETSTREAM_REPLICAS",
-          "type": "int",
-          "default": "1",
-          "description": "Stream replicas"
-        },
-        {
-          "name": "NATS_JETSTREAM_MAX_AGE",
-          "type": "time.Duration",
-          "default": "24h",
-          "description": "Message retention"
-        },
-        {
-          "name": "NATS_JETSTREAM_TLS_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "TLS for managed NATS (Synadia Cloud, etc.)"
-        },
-        {
-          "name": "NATS_JETSTREAM_TLS_INSECURE",
-          "type": "bool",
-          "default": "false",
-          "description": "Skip TLS verification (not for production)"
-        },
-        {
-          "name": "NATS_JETSTREAM_TLS_CA_PATH",
-          "type": "string",
-          "default": "",
-          "description": "Custom CA certificate path"
+          "description": "Path to CA certificate file for verifying the Kafka broker's TLS certificate."
         },
         {
           "name": "DATABASE_URL",
           "type": "string",
           "default": "",
-          "description": ""
+          "description": "PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push)."
         }
       ]
     },
     {
       "name": "tester",
-      "file": "/Volumes/Dev/Personal/sukko/ws/cmd/tester/config.go",
+      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/cmd/tester/config.go",
       "vars": [
         {
           "name": "TESTER_PORT",
           "type": "int",
           "default": "8090",
-          "description": ""
+          "description": "HTTP port the tester service listens on for test run management and SSE metric streaming."
         },
         {
           "name": "TESTER_AUTH_TOKEN",
@@ -1238,253 +1418,85 @@
           "name": "GATEWAY_URL",
           "type": "string",
           "default": "ws://localhost:3000",
-          "description": ""
+          "description": "WebSocket URL of the gateway that test connections will target."
         },
         {
           "name": "PROVISIONING_URL",
           "type": "string",
           "default": "http://localhost:8080",
-          "description": ""
-        },
-        {
-          "name": "KAFKA_BROKERS",
-          "type": "string",
-          "default": "",
-          "description": ""
-        },
-        {
-          "name": "NATS_JETSTREAM_URLS",
-          "type": "string",
-          "default": "",
-          "description": ""
-        },
-        {
-          "name": "MESSAGE_BACKEND",
-          "type": "string",
-          "default": "direct",
-          "description": ""
+          "description": "HTTP base URL of the provisioning service used to create test tenants and API keys."
         },
         {
           "name": "TESTER_SIGNING_KEY_FILE",
           "type": "string",
           "default": "",
-          "description": "License reload suite — Ed25519 private key for signing test license keys"
+          "description": "Path to Ed25519 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests."
+        },
+        {
+          "name": "TESTER_ADMIN_KEY_FILE",
+          "type": "string",
+          "default": "",
+          "description": "Path to Ed25519 private key file for admin JWT signing. When unset, an ephemeral keypair is generated per test run (local dev only)."
+        },
+        {
+          "name": "TESTER_ADMIN_KEY_ID",
+          "type": "string",
+          "default": "bootstrap-0",
+          "description": "Key ID embedded in admin JWTs; must match the kid registered with the provisioning service."
         },
         {
           "name": "TESTER_JWT_LIFETIME",
           "type": "time.Duration",
           "default": "15m",
-          "description": "JWT auth configuration"
+          "description": "Lifetime of JWTs issued by the tester. Must be positive and greater than TESTER_JWT_REFRESH_BEFORE."
         },
         {
           "name": "TESTER_JWT_REFRESH_BEFORE",
           "type": "time.Duration",
           "default": "2m",
-          "description": ""
+          "description": "How early before JWT expiry the tester proactively refreshes tokens to avoid auth gaps during long-running tests."
         },
         {
           "name": "TESTER_KEY_EXPIRY",
           "type": "time.Duration",
           "default": "24h",
-          "description": ""
-        }
-      ]
-    },
-    {
-      "name": "gateway",
-      "file": "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/gateway_config.go",
-      "vars": [
-        {
-          "name": "GATEWAY_PORT",
-          "type": "int",
-          "default": "3000",
-          "description": "Server settings"
+          "description": "Lifetime of API keys created by the tester for test runs. Must be \u003e= TESTER_JWT_LIFETIME."
         },
         {
-          "name": "GATEWAY_READ_TIMEOUT",
-          "type": "time.Duration",
-          "default": "15s",
-          "description": ""
+          "name": "TESTER_AUTH_MODE",
+          "type": "runner.AuthMode",
+          "default": "jwt",
+          "description": "Credential mode for WebSocket connections: jwt, api-key, upgrade (JWT → API key), or mixed (ratio-split)."
         },
         {
-          "name": "GATEWAY_WRITE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "15s",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_IDLE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "60s",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_BACKEND_URL",
+          "name": "TESTER_API_KEY",
           "type": "string",
-          "default": "ws://localhost:3005/ws",
-          "description": "Backend ws-server connection"
+          "default": "",
+          "description": "Pre-provisioned static API key for api-key, upgrade, and mixed auth modes. Required when TESTER_AUTH_MODE is api-key or upgrade."
         },
         {
-          "name": "GATEWAY_DIAL_TIMEOUT",
+          "name": "TESTER_AUTH_MIX_RATIO",
+          "type": "float64",
+          "default": "0.5",
+          "description": "Fraction of connections using JWT in mixed mode (0.0 = all API key, 1.0 = all JWT)."
+        },
+        {
+          "name": "TESTER_AUTH_UPGRADE_TIMEOUT",
           "type": "time.Duration",
           "default": "10s",
-          "description": ""
+          "description": "Timeout for the JWT-to-API-key upgrade handshake in upgrade mode."
         },
         {
-          "name": "GATEWAY_MESSAGE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "60s",
-          "description": ""
+          "name": "TESTER_GATEWAY_METRICS_URL",
+          "type": "string",
+          "default": "",
+          "description": "Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks in revocation suites are skipped (recorded as skipped_checks, not failures)."
         },
         {
-          "name": "GATEWAY_MAX_FRAME_SIZE",
-          "type": "int",
-          "default": "1048576",
-          "description": "1MB = protocol.DefaultMaxFrameSize"
-        },
-        {
-          "name": "GATEWAY_PER_TENANT_CHANNEL_RULES",
-          "type": "bool",
-          "default": "false",
-          "description": "Per-tenant channel rules (Feature Flag)\nWhen enabled, channel permissions come from per-tenant rules via gRPC streaming"
-        },
-        {
-          "name": "GATEWAY_FALLBACK_PUBLIC_CHANNELS",
-          "type": "[]string",
-          "default": "*.metadata",
-          "description": "Fallback channel rules (when tenant has none configured)"
-        },
-        {
-          "name": "REQUIRE_TENANT_ID",
-          "type": "bool",
-          "default": "true",
-          "description": "Multi-tenant settings"
-        },
-        {
-          "name": "DEFAULT_TENANT_CONNECTION_LIMIT",
-          "type": "int",
-          "default": "1000",
-          "description": ""
-        },
-        {
-          "name": "TENANT_CONNECTION_LIMIT_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_PUBLIC_PATTERNS",
-          "type": "[]string",
-          "default": "*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social",
-          "description": "Permissions - channel patterns\nPatterns support wildcards: *.trade matches BTC.trade, *.trade.* matches BTC.trade.user123\nAggregate channels (all.trade, all.liquidity, etc.) allow subscribing to ALL events of a type"
-        },
-        {
-          "name": "GATEWAY_USER_SCOPED_PATTERNS",
-          "type": "[]string",
-          "default": "*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_GROUP_SCOPED_PATTERNS",
-          "type": "[]string",
-          "default": "*.community.{group_id},community.{group_id},social.{group_id}",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_ENABLED",
-          "type": "bool",
-          "default": "true",
-          "description": "Rate limiting per principal"
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_BURST",
-          "type": "int",
-          "default": "100",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_RATE",
-          "type": "float64",
-          "default": "10.0",
-          "description": ""
-        },
-        {
-          "name": "GATEWAY_PUBLISH_RATE_LIMIT",
-          "type": "float64",
-          "default": "10.0",
-          "description": "Messages per second"
-        },
-        {
-          "name": "GATEWAY_PUBLISH_BURST",
-          "type": "int",
-          "default": "100",
-          "description": "Burst capacity"
-        },
-        {
-          "name": "GATEWAY_MAX_PUBLISH_SIZE",
-          "type": "int",
-          "default": "65536",
-          "description": "Max message size (64KB = protocol.DefaultMaxPublishSize)"
-        },
-        {
-          "name": "GATEWAY_AUTH_REFRESH_RATE_INTERVAL",
+          "name": "TESTER_GATEWAY_METRICS_INTERVAL",
           "type": "time.Duration",
           "default": "30s",
-          "description": "Auth refresh settings"
-        },
-        {
-          "name": "GATEWAY_AUTH_VALIDATION_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": "Auth validation timeout for intercepting auth refresh operations"
-        },
-        {
-          "name": "REVOCATION_MAX_LIFETIME",
-          "type": "time.Duration",
-          "default": "24h",
-          "description": "Max time a revocation entry lives when exp is not provided"
-        },
-        {
-          "name": "GATEWAY_SHUTDOWN_TIMEOUT",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": "Graceful shutdown timeout"
-        },
-        {
-          "name": "SERVER_GRPC_ADDR",
-          "type": "string",
-          "default": "localhost:3006",
-          "description": "ws-server gRPC address for RealtimeService"
-        },
-        {
-          "name": "PUSH_GRPC_ADDR",
-          "type": "string",
-          "default": "localhost:3008",
-          "description": "Push service gRPC address for PushService (RegisterDevice, UnregisterDevice, GetVAPIDKey)"
-        },
-        {
-          "name": "SSE_KEEPALIVE_INTERVAL",
-          "type": "time.Duration",
-          "default": "45s",
-          "description": "SSE keepalive comment interval (prevents proxy timeouts)"
-        },
-        {
-          "name": "GATEWAY_CORS_ORIGINS",
-          "type": "[]string",
-          "default": "*",
-          "description": "CORS allowed origins (* = all, production: restrict)"
-        },
-        {
-          "name": "GATEWAY_CHANNEL_RULES_CACHE_TTL",
-          "type": "time.Duration",
-          "default": "1m",
-          "description": "Channel rules provider cache TTLs"
-        },
-        {
-          "name": "GATEWAY_REGISTRY_QUERY_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": ""
+          "description": "Interval for polling gateway Prometheus metrics during revocation load tests."
         }
       ]
     }

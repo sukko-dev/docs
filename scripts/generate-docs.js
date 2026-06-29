@@ -63,8 +63,10 @@ All configurable environment variables across Sukko services. Values are set via
     md += '| Variable | Type | Default | Description |\n';
     md += '|----------|------|---------|-------------|\n';
     for (const v of svc.vars) {
+      if (v.name === '-') continue;
       const def = v.default ? `\`${v.default}\`` : '—';
-      const desc = mdxSafe((v.description || '').replace(/\n/g, ' ').replace(/\|/g, '\\|'));
+      const rawDesc = v.description ?? '';
+      const desc = mdxSafe(rawDesc.replace(/\n/g, ' ').replace(/\|/g, '\\|'));
       md += `| \`${v.name}\` | ${v.type} | ${def} | ${desc} |\n`;
     }
     md += '\n';

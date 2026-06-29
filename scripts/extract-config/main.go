@@ -49,11 +49,12 @@ func main() {
 	}
 
 	output := Output{}
+	var extractErrors []error
 
 	for name, path := range configFiles {
 		vars, err := extractFromFile(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", name, err)
+			extractErrors = append(extractErrors, fmt.Errorf("%s: %w", name, err))
 			continue
 		}
 		if len(vars) > 0 {
@@ -63,6 +64,14 @@ func main() {
 				Vars: vars,
 			})
 		}
+	}
+
+	if len(extractErrors) > 0 {
+		for _, e := range extractErrors {
+			fmt.Fprintf(os.Stderr, "extract-config error: %v\n", e)
+		}
+		fmt.Fprintf(os.Stderr, "extract-config: fix the missing inline comments listed above, then re-run the docs build\n")
+		os.Exit(1)
 	}
 
 	enc := json.NewEncoder(os.Stdout)
@@ -81,6 +90,7 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 	}
 
 	var vars []ConfigVar
+	var missing []string
 
 	ast.Inspect(f, func(n ast.Node) bool {
 		ts, ok := n.(*ast.TypeSpec)
@@ -99,7 +109,7 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 
 			tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
 			envName := tag.Get("env")
-			if envName == "" {
+			if envName == "" || envName == "-" {
 				continue
 			}
 
@@ -110,22 +120,35 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 				fieldType = typeString(field.Type)
 			}
 
-			description := ""
-			if field.Comment != nil {
-				description = strings.TrimSpace(field.Comment.Text())
-			} else if field.Doc != nil {
-				description = strings.TrimSpace(field.Doc.Text())
+			if field.Comment == nil {
+				pos := fset.Position(field.Pos())
+				fieldLabel := "<embedded>"
+				if len(field.Names) > 0 {
+					fieldLabel = field.Names[0].Name
+				}
+				missing = append(missing, fmt.Sprintf(
+					"%s:%d: %s (env:%q) missing inline comment",
+					filepath.Base(pos.Filename), pos.Line, fieldLabel, envName,
+				))
+				continue
 			}
 
 			vars = append(vars, ConfigVar{
 				Name:        envName,
 				Type:        fieldType,
 				Default:     envDefault,
-				Description: description,
+				Description: strings.TrimSpace(field.Comment.Text()),
 			})
 		}
 		return true
 	})
+
+	if len(missing) > 0 {
+		for _, m := range missing {
+			fmt.Fprintln(os.Stderr, "extract-config: "+m+" — add an inline comment to fix the docs build")
+		}
+		return nil, fmt.Errorf("%d field(s) in %s missing inline comments", len(missing), filepath.Base(path))
+	}
 
 	return vars, nil
 }

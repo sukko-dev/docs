@@ -11,272 +11,269 @@ All configurable environment variables across Sukko services. Values are set via
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `LOG_LEVEL` | string | `info` |  |
-| `LOG_FORMAT` | string | `json` |  |
-| `ENVIRONMENT` | string | `local` | Environment — deployment identity label, used for Kafka topic namespace, consumer group naming, and safety guards. Free-form: any string works as deployment identity. Sukko uses: local \| dev \| stg \| prod by convention. |
-| `SUKKO_LICENSE_KEY` | string | — | LicenseKey is the signed Ed25519 license token that determines the edition (Community/Pro/Enterprise). Empty = Community. Parsed by license.Manager at startup. The editionManager field lives on each service config (ServerConfig, GatewayConfig, ProvisioningConfig) — not here — to avoid BaseConfig depending on the license package. |
-| `OTEL_TRACING_ENABLED` | bool | `false` | Tracing (OpenTelemetry) — cold-path only, disabled by default. |
-| `OTEL_EXPORTER_TYPE` | string | `otlp-grpc` |  |
-| `OTEL_EXPORTER_ENDPOINT` | string | `localhost:4317` |  |
-| `PPROF_ENABLED` | bool | `false` | Profiling — pprof endpoints and Pyroscope continuous profiling, disabled by default. |
-| `PYROSCOPE_ENABLED` | bool | `false` |  |
-| `PYROSCOPE_ADDR` | string | `http://localhost:4040` |  |
-| `AUTH_MODE` | string | `required` | AuthMode is the authentication model. Only "required" is supported. Kept temporarily for backward compatibility with deployments that set AUTH_MODE=required. Extensible to "public-read" in the future (anonymous subscribe for public channels). |
-| `PROVISIONING_GRPC_ADDR` | string | `localhost:9090` |  |
-| `HTTP_READ_TIMEOUT` | time.Duration | `15s` |  |
-| `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` |  |
-| `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` |  |
-| `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | KafkaTopicNamespaceOverride overrides ENVIRONMENT for Kafka topic naming only. If empty, defaults to normalized ENVIRONMENT value via kafka.ResolveNamespace(). NOT allowed in production — startup validation blocks this. |
-| `VALID_NAMESPACES` | string | `local,dev,stag,prod` | ValidNamespaces is a comma-separated list of allowed topic namespace prefixes. |
-| `MESSAGE_BACKEND` | string | `direct` | valid: direct, kafka — applies to ws-server and tester only (not gateway or provisioning) |
-| `KAFKA_BROKERS` | string | `localhost:19092` | Kafka Configuration (only used when MESSAGE_BACKEND=kafka) |
-| `KAFKA_SASL_ENABLED` | bool | `false` | Kafka Security - SASL Authentication  For connecting to managed Kafka/Redpanda services that require authentication. When KafkaSASLEnabled=false (default), connects without authentication (local dev).  Supported mechanisms: - scram-sha-256: SCRAM-SHA-256 (recommended, widely supported) - scram-sha-512: SCRAM-SHA-512 (stronger, less common) |
-| `KAFKA_SASL_MECHANISM` | string | — | scram-sha-256 or scram-sha-512 |
-| `KAFKA_SASL_USERNAME` | string | — |  |
-| `KAFKA_SASL_PASSWORD` | string | — |  |
-| `KAFKA_TLS_ENABLED` | bool | `false` | Kafka Security - TLS Encryption  For encrypted connections to Kafka. Required for most managed services. When KafkaTLSEnabled=false (default), connects without TLS (local dev).  KafkaTLSInsecure: Skip server certificate verification (NOT for production) KafkaTLSCAPath: Path to CA certificate for server verification |
-| `KAFKA_TLS_INSECURE` | bool | `false` |  |
-| `KAFKA_TLS_CA_PATH` | string | — |  |
-| `DATABASE_URL` | string | — |  |
+| `LOG_LEVEL` | string | `info` | Logging level (debug, info, warn, error). info is recommended for production. |
+| `LOG_FORMAT` | string | `json` | Log output format: json for machine parsing (production), text for human-readable (development). |
+| `ENVIRONMENT` | string | `local` | Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution. |
+| `SUKKO_LICENSE_KEY` | string | — | Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community. |
+| `OTEL_TRACING_ENABLED` | bool | `false` | Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled. |
+| `OTEL_EXPORTER_TYPE` | string | `otlp-grpc` | OpenTelemetry trace exporter type (otlp, stdout, or empty to disable tracing). |
+| `OTEL_EXPORTER_ENDPOINT` | string | `localhost:4317` | OpenTelemetry collector gRPC endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE=otlp. |
+| `PPROF_ENABLED` | bool | `false` | Enable Go pprof profiling endpoints (/debug/pprof/). Disabled by default; enable only in controlled environments. |
+| `PYROSCOPE_ENABLED` | bool | `false` | Enable continuous profiling via Pyroscope. Disabled by default. |
+| `PYROSCOPE_ADDR` | string | `http://localhost:4040` | Pyroscope server address (e.g. http://pyroscope:4040). Required when PYROSCOPE_ENABLED=true. |
+| `AUTH_MODE` | string | `required` | Authentication enforcement mode. Only "required" is supported; tokens without valid signatures are rejected. |
+| `PROVISIONING_GRPC_ADDR` | string | `localhost:9090` | gRPC address of the provisioning service for internal communication (e.g. channel rule streaming). |
+| `HTTP_READ_TIMEOUT` | time.Duration | `15s` | Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks. |
+| `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` | Maximum duration for writing the HTTP response. |
+| `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` | Maximum idle time on a keep-alive connection before it is closed. |
+| `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Forbidden in production — causes startup failure when ENVIRONMENT=prod. |
+| `VALID_NAMESPACES` | string | `local,dev,stag,prod` | Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE. |
+| `MESSAGE_BACKEND` | string | `direct` | Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay). |
+| `KAFKA_BROKERS` | string | `localhost:19092` | Comma-separated Kafka/Redpanda broker addresses. Required when MESSAGE_BACKEND=kafka. |
+| `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services. |
+| `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_SASL_PASSWORD` | string | — | SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_TLS_ENABLED` | bool | `false` | Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services. |
+| `KAFKA_TLS_INSECURE` | bool | `false` | Skip TLS certificate verification. For development only — never use in production. |
+| `KAFKA_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Kafka broker's TLS certificate. |
+| `DATABASE_URL` | string | — | PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push). |
 
 ## Gateway
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `GATEWAY_PORT` | int | `3000` | Server settings |
-| `GATEWAY_READ_TIMEOUT` | time.Duration | `15s` |  |
-| `GATEWAY_WRITE_TIMEOUT` | time.Duration | `15s` |  |
-| `GATEWAY_IDLE_TIMEOUT` | time.Duration | `60s` |  |
-| `GATEWAY_BACKEND_URL` | string | `ws://localhost:3005/ws` | Backend ws-server connection |
-| `GATEWAY_DIAL_TIMEOUT` | time.Duration | `10s` |  |
-| `GATEWAY_MESSAGE_TIMEOUT` | time.Duration | `60s` |  |
-| `GATEWAY_MAX_FRAME_SIZE` | int | `1048576` | 1MB = protocol.DefaultMaxFrameSize |
-| `GATEWAY_PER_TENANT_CHANNEL_RULES` | bool | `false` | Per-tenant channel rules (Feature Flag) When enabled, channel permissions come from per-tenant rules via gRPC streaming |
-| `GATEWAY_FALLBACK_PUBLIC_CHANNELS` | []string | `*.metadata` | Fallback channel rules (when tenant has none configured) |
-| `REQUIRE_TENANT_ID` | bool | `true` | Multi-tenant settings |
-| `DEFAULT_TENANT_CONNECTION_LIMIT` | int | `1000` |  |
-| `TENANT_CONNECTION_LIMIT_ENABLED` | bool | `false` |  |
-| `GATEWAY_PUBLIC_PATTERNS` | []string | `*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social` | Permissions - channel patterns Patterns support wildcards: *.trade matches BTC.trade, *.trade.* matches BTC.trade.user123 Aggregate channels (all.trade, all.liquidity, etc.) allow subscribing to ALL events of a type |
-| `GATEWAY_USER_SCOPED_PATTERNS` | []string | `*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}` |  |
-| `GATEWAY_GROUP_SCOPED_PATTERNS` | []string | `*.community.{group_id},community.{group_id},social.{group_id}` |  |
-| `GATEWAY_RATE_LIMIT_ENABLED` | bool | `true` | Rate limiting per principal |
-| `GATEWAY_RATE_LIMIT_BURST` | int | `100` |  |
-| `GATEWAY_RATE_LIMIT_RATE` | float64 | `10.0` |  |
-| `GATEWAY_PUBLISH_RATE_LIMIT` | float64 | `10.0` | Messages per second |
-| `GATEWAY_PUBLISH_BURST` | int | `100` | Burst capacity |
-| `GATEWAY_MAX_PUBLISH_SIZE` | int | `65536` | Max message size (64KB = protocol.DefaultMaxPublishSize) |
-| `GATEWAY_AUTH_REFRESH_RATE_INTERVAL` | time.Duration | `30s` | Auth refresh settings |
-| `GATEWAY_AUTH_VALIDATION_TIMEOUT` | time.Duration | `5s` | Auth validation timeout for intercepting auth refresh operations |
+| `GATEWAY_PORT` | int | `3000` | HTTP listen port for the WebSocket gateway. |
+| `GATEWAY_READ_TIMEOUT` | time.Duration | `15s` | HTTP server read timeout. Applies to the WebSocket upgrade handshake and HTTP request reads. |
+| `GATEWAY_WRITE_TIMEOUT` | time.Duration | `15s` | HTTP server write timeout. |
+| `GATEWAY_IDLE_TIMEOUT` | time.Duration | `60s` | HTTP keep-alive idle timeout. Connections idle longer than this are closed. |
+| `GATEWAY_BACKEND_URL` | string | `ws://localhost:3005/ws` | WebSocket URL of the ws-server backend the gateway proxies connections to. Must include the /ws path. |
+| `GATEWAY_DIAL_TIMEOUT` | time.Duration | `10s` | Timeout for dialing the ws-server backend when establishing a new proxied connection. |
+| `GATEWAY_MESSAGE_TIMEOUT` | time.Duration | `60s` | Timeout for forwarding a single message between a client and the ws-server backend. |
+| `GATEWAY_MAX_FRAME_SIZE` | int | `1048576` | Maximum WebSocket frame size in bytes. Frames larger than this are rejected before allocation. Default: 1MB. |
+| `GATEWAY_PER_TENANT_CHANNEL_RULES` | bool | `false` | When true, channel permissions are resolved per-tenant via gRPC streaming rules (Pro edition). |
+| `GATEWAY_FALLBACK_PUBLIC_CHANNELS` | []string | `*.metadata` | Channel patterns treated as public when a tenant has no per-tenant channel rules configured. |
+| `REQUIRE_TENANT_ID` | bool | `true` | When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit. |
+| `DEFAULT_TENANT_CONNECTION_LIMIT` | int | `1000` | Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true. |
+| `TENANT_CONNECTION_LIMIT_ENABLED` | bool | `false` | When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap. |
+| `GATEWAY_PUBLIC_PATTERNS` | []string | `*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social` | Channel patterns accessible without authentication. Supports wildcards. Comma-separated. |
+| `GATEWAY_USER_SCOPED_PATTERNS` | []string | `*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}` | Channel patterns restricted to the authenticated principal. \{principal\} is substituted with the JWT subject at connection time. Comma-separated. |
+| `GATEWAY_GROUP_SCOPED_PATTERNS` | []string | `*.community.{group_id},community.{group_id},social.{group_id}` | Channel patterns restricted to a specific group. \{group_id\} is substituted with the JWT group claim at connection time. Comma-separated. |
+| `GATEWAY_RATE_LIMIT_ENABLED` | bool | `true` | When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST. |
+| `GATEWAY_RATE_LIMIT_BURST` | int | `100` | Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate. |
+| `GATEWAY_RATE_LIMIT_RATE` | float64 | `10.0` | Sustained message rate limit per authenticated principal, in messages per second. |
+| `GATEWAY_PUBLISH_RATE_LIMIT` | float64 | `10.0` | Sustained rate limit for REST publish requests per authenticated principal, in messages per second. |
+| `GATEWAY_PUBLISH_BURST` | int | `100` | Burst allowance for the REST publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in. |
+| `GATEWAY_MAX_PUBLISH_SIZE` | int | `65536` | Maximum REST publish payload size in bytes. Payloads exceeding this are rejected. Default: 64KB. |
+| `GATEWAY_AUTH_REFRESH_RATE_INTERVAL` | time.Duration | `30s` | Minimum interval between JWT refresh operations per connection. Prevents refresh storms under load. |
+| `GATEWAY_AUTH_VALIDATION_TIMEOUT` | time.Duration | `5s` | Timeout for validating auth refresh operations per connection. |
 | `REVOCATION_MAX_LIFETIME` | time.Duration | `24h` | Max time a revocation entry lives when exp is not provided |
-| `GATEWAY_SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
-| `WS_INTERNAL_SECRET` | string | — | InternalSecret is forwarded verbatim as X-Sukko-Internal-Secret to ws-server. No envDefault — empty string is valid when ws-server WS_INTERNAL_SECRET_ENABLED=false. redact:"true" prevents the /config endpoint from exposing this value. |
+| `GATEWAY_SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Maximum time the gateway waits for active connections to drain before forcing shutdown. |
+| `WS_INTERNAL_SECRET` | string | — | Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce. |
 | `SERVER_GRPC_ADDR` | string | `localhost:3006` | ws-server gRPC address for RealtimeService |
-| `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for PushService (RegisterDevice, UnregisterDevice, GetVAPIDKey) |
+| `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for device registration and VAPID key endpoints. |
 | `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | SSE keepalive comment interval (prevents proxy timeouts) |
 | `GATEWAY_CORS_ORIGINS` | []string | `*` | CORS allowed origins (* = all, production: restrict) |
-| `GATEWAY_CHANNEL_RULES_CACHE_TTL` | time.Duration | `1m` | Channel rules provider cache TTLs |
-| `GATEWAY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` |  |
+| `GATEWAY_CHANNEL_RULES_CACHE_TTL` | time.Duration | `1m` | How long per-tenant channel rules are cached locally before re-fetching from the provisioning service. |
+| `GATEWAY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` | Timeout for querying the connections registry when enforcing per-tenant connection limits. |
 
 ## Core
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `WS_ADDR` | string | `:3002` | Server basics |
-| `WS_NUM_SHARDS` | int | `1` | Number of server shards |
+| `WS_ADDR` | string | `:3002` | HTTP listen address for the WebSocket load balancer. |
+| `WS_NUM_SHARDS` | int | `1` | Number of independent connection-routing shards. Higher values reduce lock contention; increase WS_BASE_PORT range accordingly. |
 | `WS_BASE_PORT` | int | `3002` | Base port for shard binding (3002, 3003, ...) |
 | `WS_LB_ADDR` | string | `:3005` | Load balancer listen address |
 | `SERVER_GRPC_PORT` | int | `3006` | gRPC server port for RealtimeService (SSE Subscribe + REST Publish) |
-| `KAFKA_CONSUMER_ENABLED` | bool | `true` | KafkaConsumerEnabled controls whether the Kafka consumer pool is started. When false, the consumer pool is not created — no consumer group join, no message consumption. WebSocket connections still work (connection-only mode for loadtesting). Default: true |
-| `KAFKA_DEFAULT_PARTITIONS` | int | `1` | Kafka Topic Defaults (for on-demand topic creation by KafkaBackend) |
-| `KAFKA_DEFAULT_REPLICATION_FACTOR` | int | `1` |  |
-| `WS_MEMORY_LIMIT` | int64 | `536870912` | 512MB |
-| `WS_MAX_CONNECTIONS` | int | `500` | Capacity |
-| `WS_MAX_KAFKA_RATE` | int | `1000` | Kafka message consumption rate |
-| `WS_MAX_BROADCAST_RATE` | int | `25` |  |
-| `WS_MAX_GOROUTINES` | int | `100000` |  |
+| `KAFKA_CONSUMER_ENABLED` | bool | `true` | When false, the Kafka consumer pool is disabled and no messages are consumed from Kafka topics. Useful for debug deployments or when using an alternative message backend. |
+| `KAFKA_DEFAULT_PARTITIONS` | int | `1` | Default partition count for Kafka topics created on demand by ws-server. |
+| `KAFKA_DEFAULT_REPLICATION_FACTOR` | int | `1` | Default replication factor for Kafka topics created on demand by ws-server. |
+| `WS_MEMORY_LIMIT` | int64 | `536870912` | Memory limit in bytes. New connections are rejected (HTTP 503) when exceeded. Default: 512MB. |
+| `WS_MAX_CONNECTIONS` | int | `500` | Maximum simultaneous WebSocket client connections per pod. New connections are rejected with HTTP 503 when this limit is reached. |
+| `WS_MAX_KAFKA_RATE` | int | `1000` | Maximum Kafka messages per second the server will consume across all topics. |
+| `WS_MAX_BROADCAST_RATE` | int | `25` | Maximum Valkey broadcast fan-out rate in messages per second. Messages above this rate are dropped and counted in ws_broadcast_bus_dropped_total. |
+| `WS_MAX_GOROUTINES` | int | `100000` | Maximum number of goroutines allowed per pod. New connections are rejected when this limit is reached. |
 | `WS_RATE_LIMIT_BURST_MULTIPLIER` | int | `2` | Burst capacity as a multiple of the steady-state rate |
-| `WS_CLIENT_MSG_BURST_LIMIT` | int | `100` | Per-client burst capacity |
+| `WS_CLIENT_MSG_BURST_LIMIT` | int | `100` | Per-client inbound message burst capacity (token bucket). Clients exceeding this are disconnected. |
 | `WS_CLIENT_MSG_RATE_PER_SEC` | float64 | `10` | Per-client sustained rate/sec |
-| `CONN_RATE_LIMIT_ENABLED` | bool | `true` | Connection rate limiting (DoS protection) |
-| `CONN_RATE_LIMIT_IP_BURST` | int | `100` |  |
-| `CONN_RATE_LIMIT_IP_RATE` | float64 | `100.0` |  |
-| `CONN_RATE_LIMIT_GLOBAL_BURST` | int | `300` |  |
-| `CONN_RATE_LIMIT_GLOBAL_RATE` | float64 | `50.0` |  |
-| `WS_CPU_REJECT_THRESHOLD` | float64 | `60.0` | Upper: start rejecting above this % |
+| `CONN_RATE_LIMIT_ENABLED` | bool | `true` | When true, connection rate limiting is enforced per source IP and globally to protect against connection flood attacks. Controlled by CONN_RATE_LIMIT_IP_RATE, CONN_RATE_LIMIT_IP_BURST, CONN_RATE_LIMIT_GLOBAL_RATE, and CONN_RATE_LIMIT_GLOBAL_BURST. |
+| `CONN_RATE_LIMIT_IP_BURST` | int | `100` | Burst allowance for per-source-IP connection rate limiting. |
+| `CONN_RATE_LIMIT_IP_RATE` | float64 | `100.0` | Sustained new-connection rate limit per source IP address, in connections per second. |
+| `CONN_RATE_LIMIT_GLOBAL_BURST` | int | `300` | Burst allowance for the global (all-IP combined) new-connection rate limit. |
+| `CONN_RATE_LIMIT_GLOBAL_RATE` | float64 | `50.0` | Sustained new-connection rate limit across all source IPs combined, in connections per second. |
+| `WS_CPU_REJECT_THRESHOLD` | float64 | `60.0` | CPU percentage above which new connections are rejected with HTTP 503. Hysteresis: stop rejecting below WS_CPU_REJECT_THRESHOLD_LOWER. |
 | `WS_CPU_REJECT_THRESHOLD_LOWER` | float64 | `0` | Lower: stop rejecting below this % (0 = auto: upper - 10) |
-| `WS_CPU_PAUSE_THRESHOLD` | float64 | `70.0` | Upper: pause Kafka above this % |
+| `WS_CPU_PAUSE_THRESHOLD` | float64 | `70.0` | CPU percentage above which Kafka consumption is paused. Hysteresis: resume below WS_CPU_PAUSE_THRESHOLD_LOWER. |
 | `WS_CPU_PAUSE_THRESHOLD_LOWER` | float64 | `0` | Lower: resume Kafka below this % (0 = auto: upper - 10) |
 | `WS_CPU_EWMA_BETA` | float64 | `0.8` | EWMA decay factor for CPU smoothing (0-1, higher = smoother) |
 | `TCP_LISTEN_BACKLOG` | int | `2048` | TCP accept queue size (0 = Go default ~128) |
-| `METRICS_INTERVAL` | time.Duration | `15s` | Monitoring |
-| `CPU_POLL_INTERVAL` | time.Duration | `1s` | CPU Polling Interval (for protection decisions) Separate from MetricsInterval to allow faster CPU spike detection while keeping full metrics reporting (memory, goroutines) at a reasonable interval.  CPU polling is used by: - ShouldPauseKafka() - backpressure when CPU &gt; 80% - ShouldAcceptConnection() - reject connections when CPU &gt; 75%  Trade-off: 1s polling = 0.1% CPU overhead, but 15x faster spike detection |
-| `ALERT_ENABLED` | bool | `false` | Alerting |
-| `ALERT_MIN_LEVEL` | string | `WARNING` |  |
-| `ALERT_SLACK_WEBHOOK_URL` | string | — |  |
-| `ALERT_SLACK_CHANNEL` | string | — |  |
-| `ALERT_SLACK_USERNAME` | string | `AlertBot` |  |
-| `ALERT_SLACK_TIMEOUT` | time.Duration | `5s` |  |
-| `ALERT_RATE_LIMIT_WINDOW` | time.Duration | `5m` |  |
-| `ALERT_RATE_LIMIT_MAX` | int | `3` |  |
-| `ALERT_CONSOLE_ENABLED` | bool | `false` |  |
-| `VALKEY_ADDRS` | []string | `localhost:6379` | Valkey Configuration (for BroadcastBus when BROADCAST_TYPE=valkey) Supports both self-hosted Sentinel (3 addresses) and single instance (1 address) |
-| `VALKEY_MASTER_NAME` | string | `mymaster` |  |
-| `VALKEY_PASSWORD` | string | — |  |
-| `VALKEY_DB` | int | `0` |  |
-| `VALKEY_CHANNEL` | string | `ws.broadcast` | Valkey pub/sub channel prefix. The full per-tenant channel is `{VALKEY_CHANNEL}:{tenantID}` (where `tenantID` is the tenant slug, e.g. `ws.broadcast:acme-corp`). All ws-server pods must use the same prefix. If Valkey ACLs restrict pub/sub by channel pattern, update patterns from `ws.broadcast` to `ws.broadcast:*`. |
-| `WS_SLOW_CLIENT_MAX_ATTEMPTS` | int | `3` | Slow Client Detection  When a client's send buffer is full, the server tracks consecutive failed send attempts. After SlowClientMaxAttempts consecutive failures, the client is disconnected.  Industry comparison:   - Coinbase: 2 attempts (aggressive)   - Binance: No automatic disconnect (relies on ping timeout)   - FIX protocol: 5 second timeout (lenient)  Default: 3 (balanced - tolerates brief hiccups, disconnects persistent slow clients) Range: 1-10 (1 = aggressive, 10 = very lenient) |
-| `WS_CLIENT_SEND_BUFFER_SIZE` | int | `512` | Client Send Buffer Size Controls the per-client send channel buffer (memory vs slow-client tolerance trade-off)  Buffer sizing at 125 msg/sec broadcast rate (25 msg/sec × 5 channel subscriptions): - 512 slots: ~256KB/client, 4.1s buffer, ~3.5GB heap at 13.5K clients - 1024 slots: ~512KB/client, 8.2s buffer, ~6.9GB heap at 13.5K clients  Trade-off: - Smaller buffer = less memory = less GC pressure = lower CPU spikes - Larger buffer = more tolerance for slow clients and network hiccups  Default: 512 (reduced from 1024 to cut heap size by 50%, reduce GC pressure) Production guidance: Start with 512, increase to 768 or 1024 if cascade disconnects occur |
-| `WS_GAP_NOTIFY_BUFFER_SIZE` | int | `8` | GapNotifyBufferSize is the per-client buffer for low-priority gap notifications. Must be 1-MaxGapNotifyBufferSize (64); 0 would make the channel unbuffered (blocks Broadcast hot path). Keep small relative to ClientSendBufferSize — gaps are low-frequency out-of-band events. Drops beyond capacity are counted via ws_gap_notifications_dropped_total\{reason="buffer_full"\}. |
-| `WS_REPLAY_RATE_LIMIT_INTERVAL` | time.Duration | `10s` | ReplayRateLimitInterval is the minimum time between live replay requests per (client, channel) pair. Prevents unbounded Kafka reads per client. |
-| `BROADCAST_TYPE` | string | `valkey` | Broadcast Bus Configuration  BroadcastType: Backend for inter-instance messaging ("valkey") - valkey: Redis-compatible Pub/Sub (default, ~1-2ms latency, required for message history) |
-| `VALKEY_TLS_ENABLED` | bool | `false` | Valkey Broadcast Bus TLS (for managed Valkey/Redis: ElastiCache, Memorystore, Upstash, etc.) |
-| `VALKEY_TLS_INSECURE` | bool | `false` |  |
-| `VALKEY_TLS_CA_PATH` | string | — |  |
-| `TOPIC_REFRESH_INTERVAL` | time.Duration | `60s` | TopicRefreshInterval is how often to re-sync tenant topics from the registry. Safety net — primary updates come from the gRPC stream. |
-| `WS_PONG_WAIT` | time.Duration | `60s` | WebSocket Ping/Pong Configuration  These settings control the keep-alive mechanism between the shard and clients. In a proxied architecture (gateway → ws-server → shard), pings travel through multiple hops, requiring a larger buffer than direct connections.  Buffer = PongWait - PingPeriod The buffer must accommodate the round-trip time through all proxies. With 8 network hops (local Kind + port-forward), 15+ seconds is recommended.  Example with defaults (60s/45s):   - Shard sends ping at t=0   - Ping travels: Shard → ShardProxy → ws-server → Gateway → Client   - Client sends pong   - Pong travels: Client → Gateway → ws-server → ShardProxy → Shard   - If pong arrives by t=60s, connection is healthy   - 15 second buffer for network latency, GC pauses, etc.  Common issues:   - Buffer too small (&lt;5s): Connections drop during GC pauses or network hiccups   - PingPeriod &gt;= PongWait: Invalid, ping would always timeout |
-| `WS_PING_PERIOD` | time.Duration | `45s` |  |
-| `WS_WRITE_WAIT` | time.Duration | `5s` | WriteWait is the timeout for WebSocket write operations. 5s is sufficient for local writes; network latency is handled by TCP. |
-| `WS_REPLAY_TIMEOUT` | time.Duration | `5s` | Handler timeouts |
-| `WS_PUBLISH_TIMEOUT` | time.Duration | `5s` |  |
-| `WS_MAX_REPLAY_MESSAGES` | int | `100` |  |
-| `WS_TOPIC_CREATION_TIMEOUT` | time.Duration | `30s` | Topic/backend timeouts |
-| `WS_SHARD_DIAL_TIMEOUT` | time.Duration | `10s` | Orchestration |
-| `WS_SHARD_MESSAGE_TIMEOUT` | time.Duration | `60s` |  |
-| `WS_METRICS_AGGREGATION_INTERVAL` | time.Duration | `5s` |  |
-| `WS_SHUTDOWN_GRACE_PERIOD` | time.Duration | `30s` | Shutdown |
-| `WS_SHUTDOWN_CHECK_INTERVAL` | time.Duration | `1s` |  |
-| `WS_METRICS_COLLECT_INTERVAL` | time.Duration | `2s` | Internal monitoring |
-| `WS_MEMORY_MONITOR_INTERVAL` | time.Duration | `30s` |  |
-| `WS_MEMORY_WARNING_PERCENT` | int | `80` |  |
-| `WS_MEMORY_CRITICAL_PERCENT` | int | `90` |  |
-| `WS_BUFFER_SAMPLE_INTERVAL` | time.Duration | `10s` |  |
-| `WS_BUFFER_MAX_SAMPLES` | int | `100` |  |
-| `WS_BUFFER_HIGH_SATURATION_PERCENT` | int | `90` |  |
-| `WS_BUFFER_POPULATION_WARN_PERCENT` | int | `25` |  |
-| `CONN_RATE_LIMIT_IP_TTL` | time.Duration | `5m` | Connection rate limiter internals |
-| `CONN_RATE_LIMIT_CLEANUP_INTERVAL` | time.Duration | `1m` |  |
-| `BROADCAST_BUFFER_SIZE` | int | `256` | Per-tenant per-shard broadcast message buffer. When this buffer is full, messages for that tenant are dropped (counted in `ws_broadcast_bus_dropped_total`). Maximum: 65,536 (`BROADCAST_BUFFER_SIZE_MAX`); values above this cause a startup failure. **High-throughput workloads**: at 100K msg/s per tenant, the default 256 provides approximately 2.5ms of burst buffer — set `BROADCAST_BUFFER_SIZE=1024` or higher for such workloads. **Memory**: total broadcast buffer slots = `BROADCAST_BUFFER_SIZE × MaxTenants (license) × WS_NUM_SHARDS`; at the default 256 with 100 tenants and 8 shards this is 204,800 message slots. |
-| `BROADCAST_SHUTDOWN_TIMEOUT` | time.Duration | `5s` |  |
-| `VALKEY_WRITE_TIMEOUT` | time.Duration | `3s` | Valkey broadcast tuning |
-| `VALKEY_PUBLISH_TIMEOUT` | time.Duration | `100ms` |  |
-| `VALKEY_STARTUP_PING_TIMEOUT` | time.Duration | `5s` |  |
-| `VALKEY_RECONNECT_INITIAL_BACKOFF` | time.Duration | `100ms` |  |
-| `VALKEY_RECONNECT_MAX_BACKOFF` | time.Duration | `30s` |  |
-| `VALKEY_RECONNECT_MAX_ATTEMPTS` | int | `10` |  |
-| `VALKEY_HEALTH_CHECK_INTERVAL` | time.Duration | `10s` |  |
-| `VALKEY_HEALTH_CHECK_TIMEOUT` | time.Duration | `5s` |  |
+| `METRICS_INTERVAL` | time.Duration | `15s` | Prometheus metrics collection interval for system-level metrics (CPU usage, memory, connection counts). |
+| `CPU_POLL_INTERVAL` | time.Duration | `1s` | Interval for CPU usage sampling used by backpressure and connection rejection decisions. Lower values detect spikes faster at marginally higher overhead. |
+| `ALERT_ENABLED` | bool | `false` | When true, ws-server sends operational alerts to the configured destinations (ALERT_SLACK_WEBHOOK_URL, ALERT_CONSOLE_ENABLED). |
+| `ALERT_MIN_LEVEL` | string | `WARNING` | Minimum alert severity to send. One of: DEBUG, INFO, WARNING, ERROR, CRITICAL. |
+| `ALERT_SLACK_WEBHOOK_URL` | string | — | Slack incoming webhook URL for alert delivery. |
+| `ALERT_SLACK_CHANNEL` | string | — | Slack channel to post alerts to (e.g. #ops-alerts). |
+| `ALERT_SLACK_USERNAME` | string | `AlertBot` | Display name for the Slack alert bot. |
+| `ALERT_SLACK_TIMEOUT` | time.Duration | `5s` | HTTP request timeout for each Slack webhook delivery attempt. |
+| `ALERT_RATE_LIMIT_WINDOW` | time.Duration | `5m` | Window duration for alert rate limiting. At most ALERT_RATE_LIMIT_MAX alerts are sent per window. |
+| `ALERT_RATE_LIMIT_MAX` | int | `3` | Maximum alerts sent per ALERT_RATE_LIMIT_WINDOW. Excess alerts are suppressed to prevent notification floods. |
+| `ALERT_CONSOLE_ENABLED` | bool | `false` | When true, alerts are written to the structured log output in addition to any remote destinations. |
+| `VALKEY_ADDRS` | []string | `localhost:6379` | Valkey server addresses, comma-separated. For Sentinel high-availability, provide all Sentinel addresses (e.g. sentinel1:26379,sentinel2:26379,sentinel3:26379). For single-instance, provide one address. |
+| `VALKEY_MASTER_NAME` | string | `mymaster` | Valkey Sentinel master name. Only used when VALKEY_ADDRS contains Sentinel addresses. |
+| `VALKEY_PASSWORD` | string | — | Valkey authentication password. |
+| `VALKEY_DB` | int | `0` | Valkey database index. Use 0 (the default) unless your deployment requires database isolation. |
+| `VALKEY_CHANNEL` | string | `ws.broadcast` | Valkey pub/sub channel prefix. The full per-tenant channel is \{VALKEY_CHANNEL\}:\{tenantID\} (e.g. ws.broadcast:acme-corp). All ws-server pods must use the same prefix. If Valkey ACLs restrict pub/sub by channel pattern, update patterns from ws.broadcast to ws.broadcast:*. |
+| `WS_SLOW_CLIENT_MAX_ATTEMPTS` | int | `3` | Number of consecutive failed send attempts before a slow client is disconnected. A send attempt fails when the client's outbound buffer is full. |
+| `WS_CLIENT_SEND_BUFFER_SIZE` | int | `512` | Per-client outbound message buffer size in messages. Larger buffers tolerate temporary client slowness at the cost of higher memory usage per connection. |
+| `WS_GAP_NOTIFY_BUFFER_SIZE` | int | `8` | Per-client buffer for gap notification messages. Gap notifications are low-priority; this buffer absorbs bursts without blocking the main message pipeline. |
+| `WS_REPLAY_RATE_LIMIT_INTERVAL` | time.Duration | `10s` | Minimum interval between history replay requests per client per channel. Prevents replay storms from a single connection. |
+| `BROADCAST_TYPE` | string | `valkey` | Backend for inter-instance message broadcasting. Only valkey is supported — Valkey pub/sub is required for all ws-server deployments. |
+| `VALKEY_TLS_ENABLED` | bool | `false` | When true, Valkey connections use TLS encryption. Required for managed Valkey/Redis services (ElastiCache, Memorystore, Upstash). |
+| `VALKEY_TLS_INSECURE` | bool | `false` | When true, TLS certificate verification is skipped for Valkey connections. Do not use in production. |
+| `VALKEY_TLS_CA_PATH` | string | — | Path to a custom CA certificate file for Valkey TLS connections. Required when Valkey uses a private certificate authority. |
+| `TOPIC_REFRESH_INTERVAL` | time.Duration | `60s` | How often ws-server re-syncs the tenant topic list from the provisioning registry. This is a safety net; the primary update path is event-driven. |
+| `WS_PONG_WAIT` | time.Duration | `60s` | Timeout for receiving a pong response after sending a ping. Clients that do not respond within this window are disconnected. Must be greater than WS_PING_PERIOD. |
+| `WS_PING_PERIOD` | time.Duration | `45s` | Interval between WebSocket ping frames sent to connected clients. Must be less than WS_PONG_WAIT. |
+| `WS_WRITE_WAIT` | time.Duration | `5s` | Timeout for a single WebSocket write operation. Increase for high-latency networks. |
+| `WS_REPLAY_TIMEOUT` | time.Duration | `5s` | Timeout for a single history replay handler to complete. |
+| `WS_PUBLISH_TIMEOUT` | time.Duration | `5s` | Timeout for a client publish operation (client to gateway to ws-server to Kafka). |
+| `WS_MAX_REPLAY_MESSAGES` | int | `100` | Maximum number of messages returned per history replay request. |
+| `WS_TOPIC_CREATION_TIMEOUT` | time.Duration | `30s` | Timeout for on-demand Kafka topic creation. |
+| `WS_SHARD_DIAL_TIMEOUT` | time.Duration | `10s` | Timeout for the load balancer to dial a shard when proxying a new connection. |
+| `WS_SHARD_MESSAGE_TIMEOUT` | time.Duration | `60s` | Timeout for forwarding a single message between the load balancer and a shard. |
+| `WS_METRICS_AGGREGATION_INTERVAL` | time.Duration | `5s` | Interval for aggregating per-shard metrics into cluster-level summaries. |
+| `WS_SHUTDOWN_GRACE_PERIOD` | time.Duration | `30s` | Maximum time ws-server waits for in-flight connections and consumers to drain during graceful shutdown. |
+| `WS_SHUTDOWN_CHECK_INTERVAL` | time.Duration | `1s` | Polling interval for checking whether all connections have closed during graceful shutdown. |
+| `WS_METRICS_COLLECT_INTERVAL` | time.Duration | `2s` | Interval for collecting internal runtime metrics (goroutine counts, buffer saturation). |
+| `WS_MEMORY_MONITOR_INTERVAL` | time.Duration | `30s` | Interval for polling memory usage against WS_MEMORY_LIMIT. |
+| `WS_MEMORY_WARNING_PERCENT` | int | `80` | Memory usage percentage of WS_MEMORY_LIMIT at which a warning log is emitted. |
+| `WS_MEMORY_CRITICAL_PERCENT` | int | `90` | Memory usage percentage of WS_MEMORY_LIMIT at which new connections are rejected. |
+| `WS_BUFFER_SAMPLE_INTERVAL` | time.Duration | `10s` | Interval for sampling client send buffer saturation metrics. |
+| `WS_BUFFER_MAX_SAMPLES` | int | `100` | Rolling window size in samples for buffer saturation statistics. |
+| `WS_BUFFER_HIGH_SATURATION_PERCENT` | int | `90` | Per-client send buffer fill percentage above which the client is considered saturated. |
+| `WS_BUFFER_POPULATION_WARN_PERCENT` | int | `25` | Percentage of clients considered saturated above which a warning alert is triggered. |
+| `CONN_RATE_LIMIT_IP_TTL` | time.Duration | `5m` | How long per-IP connection rate limit state is retained after the last connection attempt from that IP. |
+| `CONN_RATE_LIMIT_CLEANUP_INTERVAL` | time.Duration | `1m` | Interval for purging expired per-IP rate limit state. |
+| `BROADCAST_BUFFER_SIZE` | int | `256` | Per-tenant per-shard broadcast message buffer size. When this buffer is full, messages for that tenant are dropped and counted in ws_broadcast_bus_dropped_total. Maximum: 65,536 (BROADCAST_BUFFER_SIZE_MAX); values above this cause a startup failure. Operators running high-throughput single-tenant workloads should increase this value. |
+| `BROADCAST_SHUTDOWN_TIMEOUT` | time.Duration | `5s` | Timeout for draining the broadcast bus during graceful shutdown. |
+| `VALKEY_WRITE_TIMEOUT` | time.Duration | `3s` | Timeout for Valkey write operations (SET, EXPIRE) from the broadcast bus. |
+| `VALKEY_PUBLISH_TIMEOUT` | time.Duration | `100ms` | Timeout for each Valkey PUBLISH command in the broadcast hot path. |
+| `VALKEY_STARTUP_PING_TIMEOUT` | time.Duration | `5s` | Timeout for the Valkey connectivity check during ws-server startup. |
+| `VALKEY_RECONNECT_INITIAL_BACKOFF` | time.Duration | `100ms` | Starting backoff delay for Valkey reconnection attempts after a connection failure. |
+| `VALKEY_RECONNECT_MAX_BACKOFF` | time.Duration | `30s` | Maximum backoff delay between Valkey reconnection attempts. |
+| `VALKEY_RECONNECT_MAX_ATTEMPTS` | int | `10` | Maximum number of Valkey reconnection attempts before the broadcast bus is marked unhealthy. |
+| `VALKEY_HEALTH_CHECK_INTERVAL` | time.Duration | `10s` | Interval for periodic Valkey health checks. |
+| `VALKEY_HEALTH_CHECK_TIMEOUT` | time.Duration | `5s` | Timeout for each Valkey health check PING. |
 | `VALKEY_PUBLISH_STALENESS_THRESHOLD` | time.Duration | `60s` | Log warning if no publish within this window |
-| `KAFKA_BATCH_SIZE` | int | `50` | Kafka consumer tuning |
-| `KAFKA_BATCH_TIMEOUT` | time.Duration | `10ms` |  |
-| `KAFKA_FETCH_MAX_WAIT` | time.Duration | `500ms` | Kafka consumer transport tuning |
-| `KAFKA_FETCH_MIN_BYTES` | int32 | `1` |  |
-| `KAFKA_FETCH_MAX_BYTES` | int32 | `10485760` |  |
-| `KAFKA_SESSION_TIMEOUT` | time.Duration | `30s` |  |
-| `KAFKA_REBALANCE_TIMEOUT` | time.Duration | `60s` |  |
-| `KAFKA_REPLAY_FETCH_MAX_BYTES` | int32 | `5242880` |  |
-| `KAFKA_BACKPRESSURE_CHECK_INTERVAL` | time.Duration | `100ms` |  |
-| `KAFKA_COMMIT_ON_REVOKE_TIMEOUT` | time.Duration | `5s` | KafkaCommitOnRevokeTimeout controls how long OnPartitionsRevoked waits for CommitMarkedOffsets to complete before returning. Must be &gt; 0 and &lt; KafkaRebalanceTimeout. |
-| `KAFKA_AUTO_COMMIT_INTERVAL` | time.Duration | `5s` | KafkaAutoCommitInterval controls the background auto-commit interval. Must be &gt;= MinAutoCommitInterval (100ms). Franz-go enforces this floor; pre-validation here produces a clear error per Constitution §I. |
-| `KAFKA_PRODUCER_BATCH_MAX_BYTES` | int | `1048576` | Kafka producer tuning |
-| `KAFKA_PRODUCER_MAX_BUFFERED_RECORDS` | int | `10000` |  |
-| `KAFKA_PRODUCER_RECORD_RETRIES` | int | `8` |  |
-| `KAFKA_PRODUCER_CB_TIMEOUT` | time.Duration | `30s` |  |
-| `KAFKA_PRODUCER_CB_MAX_FAILURES` | int | `5` |  |
-| `KAFKA_PRODUCER_CB_HALF_OPEN_REQS` | int | `1` |  |
-| `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Routing fan-out worker pool |
-| `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` |  |
-| `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Dead-letter queue retry pool |
-| `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` |  |
-| `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` |  |
-| `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` |  |
-| `-` | string | — | PodID is the resolved pod identity, populated by Normalize() from PodIdentityConfig.PodID(). Not an env var — configure via PodIdentityConfig (SUKKO_POD_ID / WS_POD_ID). Kept as a plain string so hot-path code (history writer, registry) avoids repeated method calls. |
-| `WS_MAX_CHANNELS_PER_CLIENT` | int | `100` | MaxChannelsPerClient limits the number of concurrent channel subscriptions per client. Prevents channel-fan-out attacks. Validated against MaxChannelsPerClientLimit (1000). |
-| `WS_HISTORY_ENABLED` | bool | `false` | Message History (two-tier: Valkey Streams ring buffer + Kafka fallback) |
-| `WS_HISTORY_BUFFER_DEPTH` | int | `1000` | HistoryBufferDepth is the Valkey Streams MAXLEN ~ per-channel (XADD MAXLEN ~). |
-| `WS_HISTORY_TTL` | time.Duration | `24h` | HistoryTTL is the per-stream key expiry (EXPIRE) applied on every write. |
-| `WS_HISTORY_WRITER_BUFFER` | int | `10000` | HistoryWriterBuffer is the historyWriter workChan capacity (messages in-flight before drops). |
-| `WS_HISTORY_MAX_LIMIT` | int | `100` | HistoryMaxLimit is the maximum number of entries a client may request per history call. |
-| `WS_HISTORY_DELIVERY_TIMEOUT` | time.Duration | `30s` | HistoryDeliveryTimeout is the per-request deadline for XREVRANGE + Kafka fallback. |
-| `WS_HISTORY_WRITER_PIPELINE_BATCH` | int | `50` | HistoryWriterPipelineBatch is the max number of XADD commands per DoMulti pipeline. |
-| `WS_HISTORY_WRITER_LOCK_TTL` | time.Duration | `10s` | HistoryWriterLockTTL is the distributed lock TTL for the active historyWriter pod. |
-| `-` | int64 | — | HistoryWriterLockTTLMs is pre-computed from HistoryWriterLockTTL in Normalize(). Used by Valkey SET PX (milliseconds). Not an env var. |
-| `WS_HISTORY_WRITER_RESTART_INITIAL_BACKOFF` | time.Duration | `500ms` | HistoryWriterRestartInitialBackoff is the starting delay before re-entering runOnce after a failure. |
-| `WS_HISTORY_WRITER_RESTART_MAX_BACKOFF` | time.Duration | `30s` | HistoryWriterRestartMaxBackoff caps the exponential backoff for historyWriter restarts. |
-| `WS_HISTORY_VALKEY_CMD_TIMEOUT` | time.Duration | `2s` | HistoryValkeyCmdTimeout is the per-command timeout for history Valkey operations (XADD, XREVRANGE, EXPIRE). |
-| `WS_HISTORY_MAX_CONSECUTIVE_LOCK_FAILURES` | int | `3` | HistoryMaxConsecutiveLockFailures is the number of consecutive heartbeat lock failures before the historyWriter exits runOnce and re-enters the supervised restart loop. |
-| `WS_HISTORY_WRITER_HEARTBEAT_INTERVAL` | time.Duration | `3s` | HistoryWriterHeartbeatInterval is the ticker interval for lock renewal and bus health checks. |
-| `WS_CONNECTIONS_REGISTRY_ENABLED` | bool | `false` | Connections Registry (Connections Management API — Pro edition) When false, registryWriter and adminListeners are skipped entirely. X-Sukko-Tenant-ID is still read unconditionally (tenantHooks and channel subscription require it regardless). |
-| `WS_CONNECTIONS_REGISTRY_TTL` | time.Duration | `120s` | ConnectionsRegistryTTL is the Valkey EXPIRE duration for each connection hash. Heartbeats renew the TTL; if a pod dies without heartbeat, entries expire after this. |
-| `WS_CONNECTIONS_REGISTRY_BUFFER` | int | `1024` | ConnectionsRegistryBuffer is the internal channel buffer for registry events (connect, disconnect, subscribe, unsubscribe, heartbeat). |
-| `WS_CONNECTIONS_REGISTRY_FLUSH_INTERVAL` | time.Duration | `5s` | ConnectionsRegistryFlushInterval is the tick interval for flushing buffered events to Valkey. |
-| `WS_CONNECTIONS_REGISTRY_HEARTBEAT_INTERVAL` | time.Duration | `30s` | ConnectionsRegistryHeartbeatInterval is how often the registry writer renews TTLs and writes health keys. |
-| `WS_CONNECTIONS_REGISTRY_RESTART_INITIAL_BACKOFF` | time.Duration | `100ms` | ConnectionsRegistryRestartInitialBackoff is the initial restart delay after a registryWriter failure. |
-| `WS_CONNECTIONS_REGISTRY_RESTART_MAX_BACKOFF` | time.Duration | `30s` | ConnectionsRegistryRestartMaxBackoff is the maximum restart delay after repeated failures. |
-| `WS_CONNECTIONS_REGISTRY_SHUTDOWN_DRAIN_TIMEOUT` | time.Duration | `100ms` | ConnectionsRegistryShutdownDrainTimeout is how long to wait draining buffered events on shutdown. 0 = skip drain entirely (useful for tests). |
-| `WS_ADMIN_CHANNEL_SUBSCRIBE_TIMEOUT` | time.Duration | `10s` | AdminChannelSubscribeTimeout is the timeout for each shard's synchronous SUBSCRIBE call at startup. |
-| `WS_INTERNAL_SECRET_ENABLED` | bool | `false` | InternalSecretEnabled controls whether ws-server validates X-Sukko-Internal-Secret. When true, WS_INTERNAL_SECRET must be non-empty or startup fails. |
-| `WS_INTERNAL_SECRET` | string | — | InternalSecret is the shared secret forwarded by the gateway as X-Sukko-Internal-Secret. redact:"true" prevents the /config endpoint from exposing this value. |
+| `KAFKA_BATCH_SIZE` | int | `50` | Maximum number of Kafka messages processed per consumer batch. |
+| `KAFKA_BATCH_TIMEOUT` | time.Duration | `10ms` | Maximum time to wait to fill a batch before processing it. |
+| `KAFKA_FETCH_MAX_WAIT` | time.Duration | `500ms` | Maximum time the Kafka broker waits before returning a fetch response, even if KAFKA_FETCH_MIN_BYTES has not been met. Lower values reduce latency; higher values improve throughput. |
+| `KAFKA_FETCH_MIN_BYTES` | int32 | `1` | Minimum bytes a broker should accumulate before returning a fetch response. |
+| `KAFKA_FETCH_MAX_BYTES` | int32 | `10485760` | Maximum bytes returned per fetch request. |
+| `KAFKA_SESSION_TIMEOUT` | time.Duration | `30s` | Kafka consumer group session timeout. If the consumer does not heartbeat within this window, it is declared dead and a rebalance is triggered. Must be within the broker's configured range. |
+| `KAFKA_REBALANCE_TIMEOUT` | time.Duration | `60s` | Maximum time allowed for a consumer group rebalance to complete. Must be greater than KAFKA_COMMIT_ON_REVOKE_TIMEOUT. |
+| `KAFKA_REPLAY_FETCH_MAX_BYTES` | int32 | `5242880` | Maximum bytes per fetch during history replay. Kept separate from KAFKA_FETCH_MAX_BYTES to prevent replay reads from saturating the live consumer path. |
+| `KAFKA_BACKPRESSURE_CHECK_INTERVAL` | time.Duration | `100ms` | Polling interval for the Kafka backpressure circuit breaker (CPU and goroutine pressure check). |
+| `KAFKA_COMMIT_ON_REVOKE_TIMEOUT` | time.Duration | `5s` | How long ws-server waits to commit processed Kafka offsets during a consumer group rebalance (triggered on rolling deploys, pod restarts, or scale events). If the commit completes within this window, duplicate delivery to clients by the new consumer is minimized. If the commit times out, offsets since the last background auto-commit (see KAFKA_AUTO_COMMIT_INTERVAL) may be re-delivered. |
+| `KAFKA_AUTO_COMMIT_INTERVAL` | time.Duration | `5s` | Interval between background Kafka offset commits. Controls the crash-path duplicate window: if a pod crashes without a clean shutdown, messages processed in the final KAFKA_AUTO_COMMIT_INTERVAL before the crash may be re-delivered after failover. Lower values reduce the crash-path window at the cost of more frequent broker commits. Minimum: 100ms — values below this cause a startup validation error. |
+| `KAFKA_PRODUCER_BATCH_MAX_BYTES` | int | `1048576` | Maximum bytes per Kafka producer batch. |
+| `KAFKA_PRODUCER_MAX_BUFFERED_RECORDS` | int | `10000` | Maximum number of records buffered in the Kafka producer before backpressure is applied to callers. |
+| `KAFKA_PRODUCER_RECORD_RETRIES` | int | `8` | Number of retries for failed Kafka produce operations before the record is discarded. |
+| `KAFKA_PRODUCER_CB_TIMEOUT` | time.Duration | `30s` | Circuit breaker observation window for Kafka producer failures. |
+| `KAFKA_PRODUCER_CB_MAX_FAILURES` | int | `5` | Maximum producer failures within the circuit breaker window before the producer circuit opens (pauses). |
+| `KAFKA_PRODUCER_CB_HALF_OPEN_REQS` | int | `1` | Number of test requests permitted when the Kafka producer circuit breaker is in half-open state. |
+| `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Number of parallel workers for routing message fan-out to subscribed clients. Increase for high-subscription-count workloads. |
+| `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` | Internal queue depth for the routing fan-out worker pool. |
+| `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Maximum retry attempts for a failed message delivery before it is discarded. |
+| `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` | Initial retry delay for failed message deliveries (exponential backoff starting point). |
+| `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` | Maximum retry delay cap for failed message deliveries. |
+| `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` | Number of parallel workers processing the dead-letter retry queue. |
+| `WS_MAX_CHANNELS_PER_CLIENT` | int | `100` | Maximum concurrent channel subscriptions per client connection. Subscription requests beyond this limit are rejected. |
+| `WS_HISTORY_ENABLED` | bool | `false` | When true, message history is retained in a Valkey Streams ring buffer with Kafka as a fallback for deeper replay. Enables client history replay requests. |
+| `WS_HISTORY_BUFFER_DEPTH` | int | `1000` | Maximum number of messages retained per channel in the Valkey Streams ring buffer (XADD MAXLEN ~). Older messages are evicted when the limit is reached. |
+| `WS_HISTORY_TTL` | time.Duration | `24h` | Per-stream Valkey key expiry. Streams inactive longer than this duration are deleted to free memory. |
+| `WS_HISTORY_WRITER_BUFFER` | int | `10000` | Internal message queue depth for the history writer. Messages are dropped when this buffer is full. |
+| `WS_HISTORY_MAX_LIMIT` | int | `100` | Maximum number of messages a client may request in a single history replay call. |
+| `WS_HISTORY_DELIVERY_TIMEOUT` | time.Duration | `30s` | Deadline for completing a single history replay request, including Valkey XREVRANGE and optional Kafka fallback reads. |
+| `WS_HISTORY_WRITER_PIPELINE_BATCH` | int | `50` | Maximum number of Valkey XADD commands per pipeline batch for history writes. |
+| `WS_HISTORY_WRITER_LOCK_TTL` | time.Duration | `10s` | TTL for the distributed history writer lock in Valkey. The active writer pod renews this lock on each heartbeat interval. |
+| `WS_HISTORY_WRITER_RESTART_INITIAL_BACKOFF` | time.Duration | `500ms` | Initial delay before restarting the history writer after a failure. |
+| `WS_HISTORY_WRITER_RESTART_MAX_BACKOFF` | time.Duration | `30s` | Maximum delay between history writer restart attempts. |
+| `WS_HISTORY_VALKEY_CMD_TIMEOUT` | time.Duration | `2s` | Per-command timeout for history Valkey operations (XADD, XREVRANGE, EXPIRE). |
+| `WS_HISTORY_MAX_CONSECUTIVE_LOCK_FAILURES` | int | `3` | Number of consecutive heartbeat lock renewal failures before the history writer steps down and triggers a restart. |
+| `WS_HISTORY_WRITER_HEARTBEAT_INTERVAL` | time.Duration | `3s` | Interval for history writer lock renewal and broadcast bus health checks. |
+| `WS_CONNECTIONS_REGISTRY_ENABLED` | bool | `false` | When true, ws-server tracks active connections in Valkey and exposes them via the Connections Management API (Pro edition). Requires Valkey memory headroom proportional to active connections x subscriptions x average channel name length. |
+| `WS_CONNECTIONS_REGISTRY_TTL` | time.Duration | `120s` | Valkey EXPIRE duration for each connection entry in the registry. Heartbeats renew the TTL; connections that fail to heartbeat within this window are treated as expired. |
+| `WS_CONNECTIONS_REGISTRY_BUFFER` | int | `1024` | Internal channel buffer for registry events (connect, disconnect, subscribe). Events are dropped when this buffer is full. |
+| `WS_CONNECTIONS_REGISTRY_FLUSH_INTERVAL` | time.Duration | `5s` | Interval for flushing buffered registry events to Valkey. |
+| `WS_CONNECTIONS_REGISTRY_HEARTBEAT_INTERVAL` | time.Duration | `30s` | Interval for renewing active connection TTLs in the registry. |
+| `WS_CONNECTIONS_REGISTRY_RESTART_INITIAL_BACKOFF` | time.Duration | `100ms` | Initial delay before restarting the registry writer after a failure. |
+| `WS_CONNECTIONS_REGISTRY_RESTART_MAX_BACKOFF` | time.Duration | `30s` | Maximum delay between registry writer restart attempts. |
+| `WS_CONNECTIONS_REGISTRY_SHUTDOWN_DRAIN_TIMEOUT` | time.Duration | `100ms` | Time allowed to flush buffered registry events during graceful shutdown. Set to 0 to skip draining. |
+| `WS_ADMIN_CHANNEL_SUBSCRIBE_TIMEOUT` | time.Duration | `10s` | Timeout for each shard's SUBSCRIBE call to the admin broadcast channel at startup. |
+| `WS_INTERNAL_SECRET_ENABLED` | bool | `false` | When true, ws-server validates the X-Sukko-Internal-Secret header on all incoming connections, rejecting any that bypass the gateway. |
+| `WS_INTERNAL_SECRET` | string | — | Shared secret validated as X-Sukko-Internal-Secret on incoming connections. Must match the value configured on the gateway. Required when WS_INTERNAL_SECRET_ENABLED is true. |
 
 ## Provisioning
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `ANALYTICS_PARTMAN_INTERVAL` | time.Duration | `15m` | Analytics — provisioning-only fields |
-| `ANALYTICS_SSE_MAX_CONNS` | int | `10` |  |
-| `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka brokers — used by the provisioning service for topic management (create/delete). Uses a provisioning-specific env var to avoid collision with the ws-server's KAFKA_BROKERS (defined in MessageBackendConfig). In-cluster default: &lt;release&gt;-redpanda:9092. |
-| `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey node addresses for the connections registry (token revocation, bulk disconnect pub/sub). No envDefault — must always be set explicitly. Format: `host:port`. Comma-separated for cluster mode (e.g. `valkey:6379`). |
-| `PROVISIONING_ADDR` | string | `:8080` | Server |
-| `GRPC_PORT` | int | `9090` | gRPC — internal service-to-service communication port |
-| `ADMIN_BOOTSTRAP_KEY` | string | — | Admin Authentication — bootstrap key for first admin registration (base64-encoded Ed25519 public key) |
-| `DEFAULT_PARTITIONS` | int | `3` | Topic Defaults |
-| `DEFAULT_RETENTION_MS` | int64 | `604800000` | 7 days |
-| `MAX_TOPICS_PER_TENANT` | int | `50` | Quotas (defaults per tenant) |
-| `MAX_PARTITIONS_PER_TENANT` | int | `200` |  |
-| `MAX_STORAGE_BYTES` | int64 | `10737418240` | 10GB |
-| `PRODUCER_BYTE_RATE` | int64 | `10485760` | 10MB/s |
-| `CONSUMER_BYTE_RATE` | int64 | `52428800` | 50MB/s |
-| `DEPROVISION_GRACE_DAYS` | int | `30` | Tenant Lifecycle |
-| `LIFECYCLE_CHECK_INTERVAL` | time.Duration | `1h` |  |
-| `LIFECYCLE_MANAGER_ENABLED` | bool | `true` |  |
+| `ANALYTICS_PARTMAN_INTERVAL` | time.Duration | `15m` | Interval for running pg_partman maintenance on analytics partition tables. |
+| `ANALYTICS_SSE_MAX_CONNS` | int | `10` | Maximum concurrent SSE connections for the analytics streaming endpoint. |
+| `PROVISIONING_KAFKA_BROKERS` | string | `localhost:19092` | Kafka broker addresses for provisioning-originated admin operations (topic creation, etc.). Comma-separated. |
+| `PROVISIONING_ADDR` | string | `:8080` | HTTP listen address for the provisioning API. |
+| `GRPC_PORT` | int | `9090` | gRPC server port for internal service-to-service communication. |
+| `ADMIN_BOOTSTRAP_KEY` | string | — | Bootstrap admin API key for provisioning service. Required; used for initial tenant setup. |
+| `DEFAULT_PARTITIONS` | int | `3` | Default Kafka partition count assigned to new tenant topics. |
+| `DEFAULT_RETENTION_MS` | int64 | `604800000` | Default Kafka topic retention in milliseconds. Default: 604,800,000ms (7 days). |
+| `MAX_TOPICS_PER_TENANT` | int | `50` | Default maximum number of Kafka topics per tenant. |
+| `MAX_PARTITIONS_PER_TENANT` | int | `200` | Default maximum total partitions across all topics per tenant. |
+| `MAX_STORAGE_BYTES` | int64 | `10737418240` | Default maximum Kafka storage quota per tenant in bytes. Default: 10,737,418,240 (10GB). |
+| `PRODUCER_BYTE_RATE` | int64 | `10485760` | Default Kafka producer byte-rate quota per tenant in bytes/sec. Default: 10485760 (10MB/s). |
+| `CONSUMER_BYTE_RATE` | int64 | `52428800` | Default Kafka consumer byte-rate quota per tenant in bytes/sec. Default: 52428800 (50MB/s). |
+| `DEPROVISION_GRACE_DAYS` | int | `30` | Days to retain a deprovisioned tenant's Kafka topics and ACLs before permanent deletion. |
+| `LIFECYCLE_CHECK_INTERVAL` | time.Duration | `1h` | How often the lifecycle manager scans for tenants due for deprovisioning or cleanup. |
+| `LIFECYCLE_MANAGER_ENABLED` | bool | `true` | Enables the background tenant lifecycle manager (deprovisioning, retention enforcement). |
 | `MAX_ROUTING_RULES_PER_TENANT` | int | `100` | Max routing rules per tenant |
 | `MAX_TOPICS_PER_RULE` | int | `10` | Max topics per routing rule |
 | `ROUTING_DLQ_TOPIC_PARTITIONS` | int | `1` | Partitions for dead-letter topics |
 | `ROUTING_DLQ_TOPIC_RETENTION_MS` | int64 | `604800000` | Retention for dead-letter topics (7 days) |
 | `INFRA_TOPIC_REPLICATION_FACTOR` | int | `1` | Replication factor for all infrastructure topics (DLQ + default); use int — caarlos0/env v11 does not handle int16; cast to int16 at CreateTopic call sites |
-| `API_RATE_LIMIT_PER_MIN` | int | `60` | Rate Limiting |
-| `KEY_REGISTRY_REFRESH_INTERVAL` | time.Duration | `1m` | Key Registry (for JWT validation in API mode with auth enabled) |
-| `KEY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` |  |
-| `SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Graceful shutdown timeout |
-| `CORS_ALLOWED_ORIGINS` | []string | `http://localhost:3000` | CORS settings |
-| `CORS_MAX_AGE` | int | `3600` |  |
-| `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Provisioning-specific externalized constants |
-| `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` |  |
-| `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | SlugRenameTopicHoldPeriod is how long old Kafka topics and ACLs are retained after a slug rename. During this window the old slug is still accepted by the JWT grace-period check. Must be &gt;= MinSlugRenameHoldPeriod (24h). Default: 168h (7 days). |
-| `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | TokenRevocationMaxLifetime is the maximum duration a revoked token entry is retained before the background prune loop removes it. Must be &gt; 0. Default: 1h. |
-| `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | BulkDisconnectConcurrency controls the maximum number of concurrent pub/sub publishes during a bulk DELETE /connections request. |
-| `MAX_WEBHOOKS_PER_TENANT` | int | `10` |  |
-| `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` |  |
-| `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | WebhookWorkerGRPCPort is the dedicated port for the webhook-worker gRPC service. Separate from GRPC_PORT (ProvisioningInternalService) so auth is enforced at the listener level rather than via FullMethod filtering inside a shared interceptor. Direction: webhook-worker → provisioning (WebhookWorkerService). |
-| `WEBHOOK_WORKER_GRPC_ADDR` | string | — | WebhookWorkerGRPCAddr is the address provisioning dials to call the worker's WebhookWorkerInternalService.TestDeliver RPC (reverse direction: provisioning → worker). No envDefault — required only when EditionHasFeature(Webhooks); validated conditionally. |
+| `API_RATE_LIMIT_PER_MIN` | int | `60` | Maximum provisioning API requests per minute per IP before HTTP 429 is returned. |
+| `KEY_REGISTRY_REFRESH_INTERVAL` | time.Duration | `1m` | How often the key registry polls for updated tenant JWT signing keys. |
+| `KEY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` | Timeout for each key registry lookup query. |
+| `SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Maximum time to wait for in-flight requests during graceful shutdown. |
+| `CORS_ALLOWED_ORIGINS` | []string | `http://localhost:3000` | Allowed origins for CORS preflight responses. Comma-separated; no wildcard in production. |
+| `CORS_MAX_AGE` | int | `3600` | Maximum seconds a CORS preflight response may be cached by the browser. |
+| `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Maximum number of tenants returned by internal bulk-fetch operations. |
+| `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` | Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup). |
+| `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | Retention window for old Kafka topics and ACLs after a tenant slug rename. Minimum 24h. |
+| `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum duration to retain a revoked token record before the prune loop removes it. |
+| `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | Maximum concurrent Valkey publishes during a bulk connection disconnect request. |
+| `MAX_WEBHOOKS_PER_TENANT` | int | `10` | Maximum number of webhook endpoint registrations per tenant. |
+| `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` | Polling interval for checking whether a tenant's webhook delivery should pause due to edition downgrade. |
+| `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT. |
+| `WEBHOOK_WORKER_GRPC_ADDR` | string | — | gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions. |
 
 ## Tester
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `TESTER_PORT` | int | `8090` |  |
+| `TESTER_PORT` | int | `8090` | HTTP port the tester service listens on for test run management and SSE metric streaming. |
 | `TESTER_AUTH_TOKEN` | string | — | no default — must be explicitly set for production |
-| `GATEWAY_URL` | string | `ws://localhost:3000` |  |
-| `PROVISIONING_URL` | string | `http://localhost:8080` |  |
-| `TESTER_SIGNING_KEY_FILE` | string | — | License reload suite — Ed25519 private key for signing test license keys |
-| `TESTER_ADMIN_KEY_FILE` | string | — | Admin keypair for remote mode (required when targeting a deployed provisioning service). When unset, the tester generates an ephemeral keypair per test run (local dev mode only). |
-| `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | AdminKeyID is the kid embedded in admin JWTs; must match BootstrapAdminKeyID unless a custom key was registered with provisioning under a different ID. envDefault must stay in sync with provauth.BootstrapAdminKeyID; enforced by TestTesterConfig_DefaultAdminKeyID_EqualsBootstrapConstant. |
-| `TESTER_JWT_LIFETIME` | time.Duration | `15m` | JWT auth configuration |
-| `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` |  |
-| `TESTER_KEY_EXPIRY` | time.Duration | `24h` |  |
-| `TESTER_AUTH_MODE` | runner.AuthMode | `jwt` | Auth mode configuration (FR-001, FR-002, SC-001) AuthMode controls the credential mode for connections: jwt, api-key, upgrade, or mixed. |
-| `TESTER_API_KEY` | string | — | APIKey is a static pre-provisioned API key for api-key, upgrade, and mixed modes. Tagged redact:"true" so the /config endpoint never echoes it (§IX). |
-| `TESTER_AUTH_MIX_RATIO` | float64 | `0.5` |  |
-| `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` |  |
-| `TESTER_GATEWAY_METRICS_URL` | string | — | Gateway metrics scraping for revocation load suites. GatewayMetricsURL is the Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks are skipped (not an error — recorded as skipped_checks). |
-| `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` |  |
+| `GATEWAY_URL` | string | `ws://localhost:3000` | WebSocket URL of the gateway that test connections will target. |
+| `PROVISIONING_URL` | string | `http://localhost:8080` | HTTP base URL of the provisioning service used to create test tenants and API keys. |
+| `TESTER_SIGNING_KEY_FILE` | string | — | Path to Ed25519 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests. |
+| `TESTER_ADMIN_KEY_FILE` | string | — | Path to Ed25519 private key file for admin JWT signing. When unset, an ephemeral keypair is generated per test run (local dev only). |
+| `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | Key ID embedded in admin JWTs; must match the kid registered with the provisioning service. |
+| `TESTER_JWT_LIFETIME` | time.Duration | `15m` | Lifetime of JWTs issued by the tester. Must be positive and greater than TESTER_JWT_REFRESH_BEFORE. |
+| `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` | How early before JWT expiry the tester proactively refreshes tokens to avoid auth gaps during long-running tests. |
+| `TESTER_KEY_EXPIRY` | time.Duration | `24h` | Lifetime of API keys created by the tester for test runs. Must be &gt;= TESTER_JWT_LIFETIME. |
+| `TESTER_AUTH_MODE` | runner.AuthMode | `jwt` | Credential mode for WebSocket connections: jwt, api-key, upgrade (JWT → API key), or mixed (ratio-split). |
+| `TESTER_API_KEY` | string | — | Pre-provisioned static API key for api-key, upgrade, and mixed auth modes. Required when TESTER_AUTH_MODE is api-key or upgrade. |
+| `TESTER_AUTH_MIX_RATIO` | float64 | `0.5` | Fraction of connections using JWT in mixed mode (0.0 = all API key, 1.0 = all JWT). |
+| `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` | Timeout for the JWT-to-API-key upgrade handshake in upgrade mode. |
+| `TESTER_GATEWAY_METRICS_URL` | string | — | Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks in revocation suites are skipped (recorded as skipped_checks, not failures). |
+| `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` | Interval for polling gateway Prometheus metrics during revocation load tests. |
 
