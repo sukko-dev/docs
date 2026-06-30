@@ -258,6 +258,8 @@ All configurable environment variables across Sukko services. Values are set via
 
 ## Webhook Worker
 
+Configuration for the `webhook-worker` service (`cmd/webhook-worker`), which handles webhook delivery, retries, and degraded-state tracking for Pro/Enterprise tenants.
+
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP port for the webhook worker's management API. |
@@ -269,7 +271,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from the provisioning service. |
 | `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private/RFC-1918 IP addresses (disables SSRF protection). Safe default: false; enable only in trusted environments such as CI where the tester pod is on a private network. |
 | `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. |
-| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Required; minimum 32 characters. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Required; minimum 32 characters. Sensitive — redacted from `/config` output. |
 | `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. Required. |
 | `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated deployments. |
 | `WEBHOOK_WORKER_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
