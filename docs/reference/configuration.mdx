@@ -256,6 +256,29 @@ All configurable environment variables across Sukko services. Values are set via
 | `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT. |
 | `WEBHOOK_WORKER_GRPC_ADDR` | string | — | gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions. |
 
+## Webhook Worker
+
+Configuration for the `webhook-worker` service (`cmd/webhook-worker`), which handles webhook delivery, retries, and degraded-state tracking for Pro/Enterprise tenants.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP port for the webhook worker's management API. |
+| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | gRPC port for internal communication between the provisioning service and webhook worker. Must differ from WEBHOOK_HTTP_PORT. |
+| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | gRPC address of the provisioning service for webhook configuration queries. Required. |
+| `WEBHOOK_WORKER_CONCURRENCY` | int | `50` | Maximum number of concurrent webhook delivery goroutines. |
+| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | In-memory retry queue capacity. Webhooks failing initial delivery are queued here for scheduled retries. |
+| `WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `10s` | HTTP timeout for a single webhook delivery attempt. |
+| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from the provisioning service. |
+| `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private/RFC-1918 IP addresses (disables SSRF protection). Safe default: false; enable only in trusted environments such as CI where the tester pod is on a private network. |
+| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Required; minimum 32 characters. Sensitive — redacted from `/config` output. |
+| `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. Required. |
+| `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated deployments. |
+| `WEBHOOK_WORKER_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
+| `WEBHOOK_WORKER_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
+| `WEBHOOK_WORKER_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
+| `WEBHOOK_WORKER_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
+
 ## Tester
 
 | Variable | Type | Default | Description |
@@ -276,4 +299,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` | Timeout for the JWT-to-API-key upgrade handshake in upgrade mode. |
 | `TESTER_GATEWAY_METRICS_URL` | string | — | Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks in revocation suites are skipped (recorded as skipped_checks, not failures). |
 | `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` | Interval for polling gateway Prometheus metrics during revocation load tests. |
+| `TESTER_WEBHOOK_BASE_URL` | string | — | Externally-reachable base URL of this tester pod, used by the webhook-worker to deliver test webhooks (e.g. `http://tester.sukko-ci.svc.cluster.local:8085`). When empty, the `webhooks` validation suite is skipped. Must use `http://` or `https://` scheme. |
+| `TESTER_WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `15s` | Maximum time to wait for the initial webhook delivery in the happy-path scenario. Must be positive and ≤ 5m. |
+| `TESTER_WEBHOOK_RETRY_TIMEOUT` | time.Duration | `30s` | Maximum time to wait for the final retry delivery or `degraded` status transition in retry/degraded scenarios. Must be positive and ≤ 30m. |
 
