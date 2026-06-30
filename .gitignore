@@ -10,6 +10,12 @@
 
 # Generated reference data (built at CI time from source repos)
 /generated
+scripts/generated/
+
+# Compiled extraction binaries
+scripts/extract-config/extract-config
+scripts/extract-editions/extract-editions
+scripts/extract-sdk/extract-sdk
 
 # Cloned source repos (CI only)
 /.sources
