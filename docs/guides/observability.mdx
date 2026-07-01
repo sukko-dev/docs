@@ -3,6 +3,8 @@ title: Observability
 description: Integrate Sukko with your existing monitoring, logging, and tracing infrastructure
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # Observability
 
 Sukko ships with an optional bundled monitoring stack (Prometheus, Grafana, Loki), but every observability signal is designed to integrate with your existing infrastructure.
@@ -103,7 +105,7 @@ helm install sukko klurvio/sukko \
 | Add tracing | `OTEL_TRACING_ENABLED=true` + `OTEL_EXPORTER_ENDPOINT=...` |
 | Add profiling | `PYROSCOPE_ENABLED=true` + `PYROSCOPE_ADDR=...` |
 
-## Tracing Details
+## Tracing Details <EditionBadge edition="pro" />
 
 Tracing is instrumented on **cold paths only** — operations that happen infrequently (connection setup, auth validation, Kafka rebalance). Hot paths (per-message delivery, broadcast fan-out) are not traced to protect latency; they're covered by Prometheus histograms instead.
 
@@ -116,7 +118,7 @@ Tracing is instrumented on **cold paths only** — operations that happen infreq
 
 If the tracing backend is unreachable, spans are dropped silently — tracing never blocks the message pipeline.
 
-## Alerting
+## Alerting <EditionBadge edition="pro" />
 
 The bundled Helm chart includes PrometheusRule definitions with default alerts:
 

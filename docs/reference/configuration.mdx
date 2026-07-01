@@ -16,8 +16,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `ENVIRONMENT` | string | `local` | Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution. |
 | `SUKKO_LICENSE_KEY` | string | — | Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community. |
 | `OTEL_TRACING_ENABLED` | bool | `false` | Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled. |
-| `OTEL_EXPORTER_TYPE` | string | `otlp-grpc` | OpenTelemetry trace exporter type (otlp, stdout, or empty to disable tracing). |
-| `OTEL_EXPORTER_ENDPOINT` | string | `localhost:4317` | OpenTelemetry collector gRPC endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE=otlp. |
+| `OTEL_EXPORTER_TYPE` | string | `otlp-grpc` | OpenTelemetry trace exporter type: otlp-grpc, otlp-http, or stdout. Required when OTEL_TRACING_ENABLED=true. |
+| `OTEL_EXPORTER_ENDPOINT` | string | `localhost:4317` | OpenTelemetry collector endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE is otlp-grpc or otlp-http. |
 | `PPROF_ENABLED` | bool | `false` | Enable Go pprof profiling endpoints (/debug/pprof/). Disabled by default; enable only in controlled environments. |
 | `PYROSCOPE_ENABLED` | bool | `false` | Enable continuous profiling via Pyroscope. Disabled by default. |
 | `PYROSCOPE_ADDR` | string | `http://localhost:4040` | Pyroscope server address (e.g. http://pyroscope:4040). Required when PYROSCOPE_ENABLED=true. |
@@ -26,10 +26,10 @@ All configurable environment variables across Sukko services. Values are set via
 | `HTTP_READ_TIMEOUT` | time.Duration | `15s` | Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks. |
 | `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` | Maximum duration for writing the HTTP response. |
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` | Maximum idle time on a keep-alive connection before it is closed. |
-| `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Forbidden in production — causes startup failure when ENVIRONMENT=prod. |
+| `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Use with care in production deployments. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE. |
 | `MESSAGE_BACKEND` | string | `direct` | Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay). |
-| `KAFKA_BROKERS` | string | `localhost:19092` | Comma-separated Kafka/Redpanda broker addresses. Required when MESSAGE_BACKEND=kafka. |
+| `KAFKA_BROKERS` | string | `localhost:19092` | Comma-separated Kafka/Redpanda broker addresses for ws-server and tester only (provisioning uses PROVISIONING_KAFKA_BROKERS instead); required when MESSAGE_BACKEND=kafka. |
 | `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services. |
 | `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. |
 | `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
@@ -72,7 +72,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `WS_INTERNAL_SECRET` | string | — | Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce. |
 | `SERVER_GRPC_ADDR` | string | `localhost:3006` | ws-server gRPC address for RealtimeService |
 | `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for device registration and VAPID key endpoints. |
-| `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | SSE keepalive comment interval (prevents proxy timeouts) |
+| `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | Interval for SSE keepalive messages sent to prevent proxy timeouts on long-lived connections. |
 | `GATEWAY_CORS_ORIGINS` | []string | `*` | CORS allowed origins (* = all, production: restrict) |
 | `GATEWAY_CHANNEL_RULES_CACHE_TTL` | time.Duration | `1m` | How long per-tenant channel rules are cached locally before re-fetching from the provisioning service. |
 | `GATEWAY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` | Timeout for querying the connections registry when enforcing per-tenant connection limits. |
@@ -103,9 +103,9 @@ All configurable environment variables across Sukko services. Values are set via
 | `CONN_RATE_LIMIT_GLOBAL_BURST` | int | `300` | Burst allowance for the global (all-IP combined) new-connection rate limit. |
 | `CONN_RATE_LIMIT_GLOBAL_RATE` | float64 | `50.0` | Sustained new-connection rate limit across all source IPs combined, in connections per second. |
 | `WS_CPU_REJECT_THRESHOLD` | float64 | `60.0` | CPU percentage above which new connections are rejected with HTTP 503. Hysteresis: stop rejecting below WS_CPU_REJECT_THRESHOLD_LOWER. |
-| `WS_CPU_REJECT_THRESHOLD_LOWER` | float64 | `0` | Lower: stop rejecting below this % (0 = auto: upper - 10) |
+| `WS_CPU_REJECT_THRESHOLD_LOWER` | float64 | `0` | CPU percentage below which connection rejection stops (hysteresis lower bound). 0 = auto: WS_CPU_REJECT_THRESHOLD minus 10. |
 | `WS_CPU_PAUSE_THRESHOLD` | float64 | `70.0` | CPU percentage above which Kafka consumption is paused. Hysteresis: resume below WS_CPU_PAUSE_THRESHOLD_LOWER. |
-| `WS_CPU_PAUSE_THRESHOLD_LOWER` | float64 | `0` | Lower: resume Kafka below this % (0 = auto: upper - 10) |
+| `WS_CPU_PAUSE_THRESHOLD_LOWER` | float64 | `0` | CPU percentage below which the Kafka consumer pauses end (hysteresis lower bound). 0 = auto: WS_CPU_PAUSE_THRESHOLD minus 10. |
 | `WS_CPU_EWMA_BETA` | float64 | `0.8` | EWMA decay factor for CPU smoothing (0-1, higher = smoother) |
 | `TCP_LISTEN_BACKLOG` | int | `2048` | TCP accept queue size (0 = Go default ~128) |
 | `METRICS_INTERVAL` | time.Duration | `15s` | Prometheus metrics collection interval for system-level metrics (CPU usage, memory, connection counts). |
@@ -165,7 +165,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALKEY_RECONNECT_MAX_ATTEMPTS` | int | `10` | Maximum number of Valkey reconnection attempts before the broadcast bus is marked unhealthy. |
 | `VALKEY_HEALTH_CHECK_INTERVAL` | time.Duration | `10s` | Interval for periodic Valkey health checks. |
 | `VALKEY_HEALTH_CHECK_TIMEOUT` | time.Duration | `5s` | Timeout for each Valkey health check PING. |
-| `VALKEY_PUBLISH_STALENESS_THRESHOLD` | time.Duration | `60s` | Log warning if no publish within this window |
+| `VALKEY_PUBLISH_STALENESS_THRESHOLD` | time.Duration | `60s` | Staleness window for the Valkey broadcast publisher — a warning is logged if no message is published within this interval (indicates silent consumer failures). |
 | `KAFKA_BATCH_SIZE` | int | `50` | Maximum number of Kafka messages processed per consumer batch. |
 | `KAFKA_BATCH_TIMEOUT` | time.Duration | `10ms` | Maximum time to wait to fill a batch before processing it. |
 | `KAFKA_FETCH_MAX_WAIT` | time.Duration | `500ms` | Maximum time the Kafka broker waits before returning a fetch response, even if KAFKA_FETCH_MIN_BYTES has not been met. Lower values reduce latency; higher values improve throughput. |
@@ -250,41 +250,57 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` | Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup). |
 | `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | Retention window for old Kafka topics and ACLs after a tenant slug rename. Minimum 24h. |
 | `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum duration to retain a revoked token record before the prune loop removes it. |
+| `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
+| `PROVISIONING_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
+| `PROVISIONING_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
+| `PROVISIONING_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
+| `PROVISIONING_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
+| `PROVISIONING_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
 | `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | Maximum concurrent Valkey publishes during a bulk connection disconnect request. |
 | `MAX_WEBHOOKS_PER_TENANT` | int | `10` | Maximum number of webhook endpoint registrations per tenant. |
 | `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` | Polling interval for checking whether a tenant's webhook delivery should pause due to edition downgrade. |
 | `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT. |
 | `WEBHOOK_WORKER_GRPC_ADDR` | string | — | gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions. |
 
-## Webhook Worker
+## Shared Webhook Configuration
 
-Configuration for the `webhook-worker` service (`cmd/webhook-worker`), which handles webhook delivery, retries, and degraded-state tracking for Pro/Enterprise tenants.
+:::note
+These variables must be set **identically** across both the provisioning service and the webhook-worker. Setting them differently causes authentication failures or silent credential decryption mismatches.
+:::
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
+| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. Must be set consistently across provisioning and webhook-worker. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Must be set consistently across provisioning and webhook-worker; startup fails if absent. |
+| `CREDENTIALS_ENCRYPTION_KEY` | string | — | AES encryption key (hex-encoded, 32 bytes) for encrypting push provider credentials at rest. Must be set consistently across provisioning and webhook-worker; startup fails if absent. |
+
+## Webhook Worker
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private-IP endpoints (disables SSRF protection). Safe default: false; enable only in trusted environments via explicit opt-in. |
 | `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP port for the webhook worker's management API. |
-| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | gRPC port for internal communication between the provisioning service and webhook worker. Must differ from WEBHOOK_HTTP_PORT. |
-| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | gRPC address of the provisioning service for webhook configuration queries. Required. |
+| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | gRPC port for internal communication between provisioning service and webhook worker. |
+| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | gRPC address of the provisioning service for webhook configuration queries. |
 | `WEBHOOK_WORKER_CONCURRENCY` | int | `50` | Maximum number of concurrent webhook delivery goroutines. |
-| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | In-memory retry queue capacity. Webhooks failing initial delivery are queued here for scheduled retries. |
+| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | In-memory retry queue capacity. Webhooks failing initial delivery are queued here. |
 | `WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `10s` | HTTP timeout for a single webhook delivery attempt. |
-| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from the provisioning service. |
-| `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private/RFC-1918 IP addresses (disables SSRF protection). Safe default: false; enable only in trusted environments such as CI where the tester pod is on a private network. |
-| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. |
-| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Required; minimum 32 characters. Sensitive — redacted from `/config` output. |
-| `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. Required. |
-| `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated deployments. |
+| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from provisioning. |
+| `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
+| `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
 | `WEBHOOK_WORKER_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
 | `WEBHOOK_WORKER_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
 | `WEBHOOK_WORKER_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
 | `WEBHOOK_WORKER_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
+| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Initial backoff delay between provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
+| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Maximum backoff delay cap for provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
 
 ## Tester
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `TESTER_PORT` | int | `8090` | HTTP port the tester service listens on for test run management and SSE metric streaming. |
-| `TESTER_AUTH_TOKEN` | string | — | no default — must be explicitly set for production |
+| `TESTER_AUTH_TOKEN` | string | — | Bearer token required for all tester management API endpoints. Must be set explicitly — the tester rejects requests when unset. |
 | `GATEWAY_URL` | string | `ws://localhost:3000` | WebSocket URL of the gateway that test connections will target. |
 | `PROVISIONING_URL` | string | `http://localhost:8080` | HTTP base URL of the provisioning service used to create test tenants and API keys. |
 | `TESTER_SIGNING_KEY_FILE` | string | — | Path to Ed25519 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests. |
@@ -299,7 +315,7 @@ Configuration for the `webhook-worker` service (`cmd/webhook-worker`), which han
 | `TESTER_AUTH_UPGRADE_TIMEOUT` | time.Duration | `10s` | Timeout for the JWT-to-API-key upgrade handshake in upgrade mode. |
 | `TESTER_GATEWAY_METRICS_URL` | string | — | Prometheus metrics endpoint of the gateway pod. When empty, metric-drift checks in revocation suites are skipped (recorded as skipped_checks, not failures). |
 | `TESTER_GATEWAY_METRICS_INTERVAL` | time.Duration | `30s` | Interval for polling gateway Prometheus metrics during revocation load tests. |
-| `TESTER_WEBHOOK_BASE_URL` | string | — | Externally-reachable base URL of this tester pod, used by the webhook-worker to deliver test webhooks (e.g. `http://tester.sukko-ci.svc.cluster.local:8085`). When empty, the `webhooks` validation suite is skipped. Must use `http://` or `https://` scheme. |
-| `TESTER_WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `15s` | Maximum time to wait for the initial webhook delivery in the happy-path scenario. Must be positive and ≤ 5m. |
-| `TESTER_WEBHOOK_RETRY_TIMEOUT` | time.Duration | `30s` | Maximum time to wait for the final retry delivery or `degraded` status transition in retry/degraded scenarios. Must be positive and ≤ 30m. |
+| `TESTER_WEBHOOK_BASE_URL` | string | — | Base URL the webhook-worker uses to deliver webhooks to this tester pod (e.g. http://tester.sukko-ci.svc.cluster.local:8085). When empty, the webhooks suite is skipped. |
+| `TESTER_WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `15s` | Maximum time to wait for the initial webhook delivery after triggering a test delivery. |
+| `TESTER_WEBHOOK_RETRY_TIMEOUT` | time.Duration | `30s` | Maximum time to wait for the final retry to arrive after triggering a retry test. |
 

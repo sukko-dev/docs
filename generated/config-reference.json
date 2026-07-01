@@ -1,212 +1,10 @@
 {
   "services": [
     {
-      "name": "gateway",
-      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/gateway_config.go",
-      "vars": [
-        {
-          "name": "GATEWAY_PORT",
-          "type": "int",
-          "default": "3000",
-          "description": "HTTP listen port for the WebSocket gateway."
-        },
-        {
-          "name": "GATEWAY_READ_TIMEOUT",
-          "type": "time.Duration",
-          "default": "15s",
-          "description": "HTTP server read timeout. Applies to the WebSocket upgrade handshake and HTTP request reads."
-        },
-        {
-          "name": "GATEWAY_WRITE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "15s",
-          "description": "HTTP server write timeout."
-        },
-        {
-          "name": "GATEWAY_IDLE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "60s",
-          "description": "HTTP keep-alive idle timeout. Connections idle longer than this are closed."
-        },
-        {
-          "name": "GATEWAY_BACKEND_URL",
-          "type": "string",
-          "default": "ws://localhost:3005/ws",
-          "description": "WebSocket URL of the ws-server backend the gateway proxies connections to. Must include the /ws path."
-        },
-        {
-          "name": "GATEWAY_DIAL_TIMEOUT",
-          "type": "time.Duration",
-          "default": "10s",
-          "description": "Timeout for dialing the ws-server backend when establishing a new proxied connection."
-        },
-        {
-          "name": "GATEWAY_MESSAGE_TIMEOUT",
-          "type": "time.Duration",
-          "default": "60s",
-          "description": "Timeout for forwarding a single message between a client and the ws-server backend."
-        },
-        {
-          "name": "GATEWAY_MAX_FRAME_SIZE",
-          "type": "int",
-          "default": "1048576",
-          "description": "Maximum WebSocket frame size in bytes. Frames larger than this are rejected before allocation. Default: 1MB."
-        },
-        {
-          "name": "GATEWAY_PER_TENANT_CHANNEL_RULES",
-          "type": "bool",
-          "default": "false",
-          "description": "When true, channel permissions are resolved per-tenant via gRPC streaming rules (Pro edition)."
-        },
-        {
-          "name": "GATEWAY_FALLBACK_PUBLIC_CHANNELS",
-          "type": "[]string",
-          "default": "*.metadata",
-          "description": "Channel patterns treated as public when a tenant has no per-tenant channel rules configured."
-        },
-        {
-          "name": "REQUIRE_TENANT_ID",
-          "type": "bool",
-          "default": "true",
-          "description": "When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit."
-        },
-        {
-          "name": "DEFAULT_TENANT_CONNECTION_LIMIT",
-          "type": "int",
-          "default": "1000",
-          "description": "Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true."
-        },
-        {
-          "name": "TENANT_CONNECTION_LIMIT_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap."
-        },
-        {
-          "name": "GATEWAY_PUBLIC_PATTERNS",
-          "type": "[]string",
-          "default": "*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social",
-          "description": "Channel patterns accessible without authentication. Supports wildcards. Comma-separated."
-        },
-        {
-          "name": "GATEWAY_USER_SCOPED_PATTERNS",
-          "type": "[]string",
-          "default": "*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}",
-          "description": "Channel patterns restricted to the authenticated principal. {principal} is substituted with the JWT subject at connection time. Comma-separated."
-        },
-        {
-          "name": "GATEWAY_GROUP_SCOPED_PATTERNS",
-          "type": "[]string",
-          "default": "*.community.{group_id},community.{group_id},social.{group_id}",
-          "description": "Channel patterns restricted to a specific group. {group_id} is substituted with the JWT group claim at connection time. Comma-separated."
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_ENABLED",
-          "type": "bool",
-          "default": "true",
-          "description": "When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST."
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_BURST",
-          "type": "int",
-          "default": "100",
-          "description": "Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate."
-        },
-        {
-          "name": "GATEWAY_RATE_LIMIT_RATE",
-          "type": "float64",
-          "default": "10.0",
-          "description": "Sustained message rate limit per authenticated principal, in messages per second."
-        },
-        {
-          "name": "GATEWAY_PUBLISH_RATE_LIMIT",
-          "type": "float64",
-          "default": "10.0",
-          "description": "Sustained rate limit for REST publish requests per authenticated principal, in messages per second."
-        },
-        {
-          "name": "GATEWAY_PUBLISH_BURST",
-          "type": "int",
-          "default": "100",
-          "description": "Burst allowance for the REST publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in."
-        },
-        {
-          "name": "GATEWAY_MAX_PUBLISH_SIZE",
-          "type": "int",
-          "default": "65536",
-          "description": "Maximum REST publish payload size in bytes. Payloads exceeding this are rejected. Default: 64KB."
-        },
-        {
-          "name": "GATEWAY_AUTH_REFRESH_RATE_INTERVAL",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": "Minimum interval between JWT refresh operations per connection. Prevents refresh storms under load."
-        },
-        {
-          "name": "GATEWAY_AUTH_VALIDATION_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": "Timeout for validating auth refresh operations per connection."
-        },
-        {
-          "name": "REVOCATION_MAX_LIFETIME",
-          "type": "time.Duration",
-          "default": "24h",
-          "description": "Max time a revocation entry lives when exp is not provided"
-        },
-        {
-          "name": "GATEWAY_SHUTDOWN_TIMEOUT",
-          "type": "time.Duration",
-          "default": "30s",
-          "description": "Maximum time the gateway waits for active connections to drain before forcing shutdown."
-        },
-        {
-          "name": "WS_INTERNAL_SECRET",
-          "type": "string",
-          "default": "",
-          "description": "Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce."
-        },
-        {
-          "name": "SERVER_GRPC_ADDR",
-          "type": "string",
-          "default": "localhost:3006",
-          "description": "ws-server gRPC address for RealtimeService"
-        },
-        {
-          "name": "PUSH_GRPC_ADDR",
-          "type": "string",
-          "default": "localhost:3008",
-          "description": "Push service gRPC address for device registration and VAPID key endpoints."
-        },
-        {
-          "name": "SSE_KEEPALIVE_INTERVAL",
-          "type": "time.Duration",
-          "default": "45s",
-          "description": "SSE keepalive comment interval (prevents proxy timeouts)"
-        },
-        {
-          "name": "GATEWAY_CORS_ORIGINS",
-          "type": "[]string",
-          "default": "*",
-          "description": "CORS allowed origins (* = all, production: restrict)"
-        },
-        {
-          "name": "GATEWAY_CHANNEL_RULES_CACHE_TTL",
-          "type": "time.Duration",
-          "default": "1m",
-          "description": "How long per-tenant channel rules are cached locally before re-fetching from the provisioning service."
-        },
-        {
-          "name": "GATEWAY_REGISTRY_QUERY_TIMEOUT",
-          "type": "time.Duration",
-          "default": "5s",
-          "description": "Timeout for querying the connections registry when enforcing per-tenant connection limits."
-        }
-      ]
-    },
-    {
       "name": "server",
-      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/server_config.go",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/server_config.go"
+      ],
       "vars": [
         {
           "name": "WS_ADDR",
@@ -344,7 +142,7 @@
           "name": "WS_CPU_REJECT_THRESHOLD_LOWER",
           "type": "float64",
           "default": "0",
-          "description": "Lower: stop rejecting below this % (0 = auto: upper - 10)"
+          "description": "CPU percentage below which connection rejection stops (hysteresis lower bound). 0 = auto: WS_CPU_REJECT_THRESHOLD minus 10."
         },
         {
           "name": "WS_CPU_PAUSE_THRESHOLD",
@@ -356,7 +154,7 @@
           "name": "WS_CPU_PAUSE_THRESHOLD_LOWER",
           "type": "float64",
           "default": "0",
-          "description": "Lower: resume Kafka below this % (0 = auto: upper - 10)"
+          "description": "CPU percentage below which the Kafka consumer pauses end (hysteresis lower bound). 0 = auto: WS_CPU_PAUSE_THRESHOLD minus 10."
         },
         {
           "name": "WS_CPU_EWMA_BETA",
@@ -716,7 +514,7 @@
           "name": "VALKEY_PUBLISH_STALENESS_THRESHOLD",
           "type": "time.Duration",
           "default": "60s",
-          "description": "Log warning if no publish within this window"
+          "description": "Staleness window for the Valkey broadcast publisher — a warning is logged if no message is published within this interval (indicates silent consumer failures)."
         },
         {
           "name": "KAFKA_BATCH_SIZE",
@@ -1010,7 +808,9 @@
     },
     {
       "name": "provisioning",
-      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/provisioning_config.go",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/provisioning_config.go"
+      ],
       "vars": [
         {
           "name": "ANALYTICS_PARTMAN_INTERVAL",
@@ -1199,6 +999,42 @@
           "description": "Maximum duration to retain a revoked token record before the prune loop removes it."
         },
         {
+          "name": "PROVISIONING_VALKEY_ADDRS",
+          "type": "[]string",
+          "default": "",
+          "description": "Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels."
+        },
+        {
+          "name": "PROVISIONING_VALKEY_PASSWORD",
+          "type": "string",
+          "default": "",
+          "description": "Valkey authentication password. Leave empty for unauthenticated local deployments."
+        },
+        {
+          "name": "PROVISIONING_VALKEY_MASTER_NAME",
+          "type": "string",
+          "default": "",
+          "description": "Sentinel master name. Required when using Valkey Sentinel for high availability."
+        },
+        {
+          "name": "PROVISIONING_VALKEY_TLS_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable TLS for Valkey connections. Required for managed Valkey services."
+        },
+        {
+          "name": "PROVISIONING_VALKEY_TLS_INSECURE",
+          "type": "bool",
+          "default": "false",
+          "description": "Skip Valkey TLS certificate verification. For development only."
+        },
+        {
+          "name": "PROVISIONING_VALKEY_TLS_CA_PATH",
+          "type": "string",
+          "default": "",
+          "description": "Path to CA certificate file for verifying the Valkey server's TLS certificate."
+        },
+        {
           "name": "PROVISIONING_BULK_DISCONNECT_CONCURRENCY",
           "type": "int",
           "default": "10",
@@ -1231,176 +1067,143 @@
       ]
     },
     {
-      "name": "base",
-      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/internal/shared/platform/config.go",
+      "name": "webhook-shared",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/webhook_http_config.go",
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/webhook_internal_token_config.go",
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/credentials_config.go"
+      ],
       "vars": [
         {
-          "name": "LOG_LEVEL",
-          "type": "string",
-          "default": "info",
-          "description": "Logging level (debug, info, warn, error). info is recommended for production."
+          "name": "WEBHOOK_ALLOW_HTTP",
+          "type": "bool",
+          "default": "false",
+          "description": "Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. Must be set consistently across provisioning and webhook-worker."
         },
         {
-          "name": "LOG_FORMAT",
-          "type": "string",
-          "default": "json",
-          "description": "Log output format: json for machine parsing (production), text for human-readable (development)."
-        },
-        {
-          "name": "ENVIRONMENT",
-          "type": "string",
-          "default": "local",
-          "description": "Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution."
-        },
-        {
-          "name": "SUKKO_LICENSE_KEY",
+          "name": "WEBHOOK_INTERNAL_TOKEN",
           "type": "string",
           "default": "",
-          "description": "Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community."
+          "description": "Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Must be set consistently across provisioning and webhook-worker; startup fails if absent."
         },
         {
-          "name": "OTEL_TRACING_ENABLED",
+          "name": "CREDENTIALS_ENCRYPTION_KEY",
+          "type": "string",
+          "default": "",
+          "description": "AES encryption key (hex-encoded, 32 bytes) for encrypting push provider credentials at rest. Must be set consistently across provisioning and webhook-worker; startup fails if absent."
+        }
+      ]
+    },
+    {
+      "name": "webhook-worker",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/webhook_worker_config.go",
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/grpc_reconnect_config.go"
+      ],
+      "vars": [
+        {
+          "name": "WEBHOOK_ALLOW_PRIVATE_IPS",
           "type": "bool",
           "default": "false",
-          "description": "Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled."
+          "description": "Allow webhook delivery to private-IP endpoints (disables SSRF protection). Safe default: false; enable only in trusted environments via explicit opt-in."
         },
         {
-          "name": "OTEL_EXPORTER_TYPE",
+          "name": "WEBHOOK_HTTP_PORT",
+          "type": "int",
+          "default": "8083",
+          "description": "HTTP port for the webhook worker's management API."
+        },
+        {
+          "name": "WEBHOOK_WORKER_INTERNAL_GRPC_PORT",
+          "type": "int",
+          "default": "9095",
+          "description": "gRPC port for internal communication between provisioning service and webhook worker."
+        },
+        {
+          "name": "WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR",
           "type": "string",
-          "default": "otlp-grpc",
-          "description": "OpenTelemetry trace exporter type (otlp, stdout, or empty to disable tracing)."
+          "default": "",
+          "description": "gRPC address of the provisioning service for webhook configuration queries."
         },
         {
-          "name": "OTEL_EXPORTER_ENDPOINT",
-          "type": "string",
-          "default": "localhost:4317",
-          "description": "OpenTelemetry collector gRPC endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE=otlp."
+          "name": "WEBHOOK_WORKER_CONCURRENCY",
+          "type": "int",
+          "default": "50",
+          "description": "Maximum number of concurrent webhook delivery goroutines."
         },
         {
-          "name": "PPROF_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "Enable Go pprof profiling endpoints (/debug/pprof/). Disabled by default; enable only in controlled environments."
+          "name": "WEBHOOK_WORKER_RETRY_QUEUE_SIZE",
+          "type": "int",
+          "default": "10000",
+          "description": "In-memory retry queue capacity. Webhooks failing initial delivery are queued here."
         },
         {
-          "name": "PYROSCOPE_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "Enable continuous profiling via Pyroscope. Disabled by default."
-        },
-        {
-          "name": "PYROSCOPE_ADDR",
-          "type": "string",
-          "default": "http://localhost:4040",
-          "description": "Pyroscope server address (e.g. http://pyroscope:4040). Required when PYROSCOPE_ENABLED=true."
-        },
-        {
-          "name": "AUTH_MODE",
-          "type": "string",
-          "default": "required",
-          "description": "Authentication enforcement mode. Only \"required\" is supported; tokens without valid signatures are rejected."
-        },
-        {
-          "name": "PROVISIONING_GRPC_ADDR",
-          "type": "string",
-          "default": "localhost:9090",
-          "description": "gRPC address of the provisioning service for internal communication (e.g. channel rule streaming)."
-        },
-        {
-          "name": "HTTP_READ_TIMEOUT",
+          "name": "WEBHOOK_DELIVERY_TIMEOUT",
           "type": "time.Duration",
-          "default": "15s",
-          "description": "Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks."
+          "default": "10s",
+          "description": "HTTP timeout for a single webhook delivery attempt."
         },
         {
-          "name": "HTTP_WRITE_TIMEOUT",
+          "name": "WEBHOOK_CACHE_TTL",
           "type": "time.Duration",
-          "default": "15s",
-          "description": "Maximum duration for writing the HTTP response."
+          "default": "30s",
+          "description": "TTL for cached webhook endpoint configurations fetched from provisioning."
         },
         {
-          "name": "HTTP_IDLE_TIMEOUT",
+          "name": "WEBHOOK_WORKER_VALKEY_ADDRS",
+          "type": "[]string",
+          "default": "",
+          "description": "Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels."
+        },
+        {
+          "name": "WEBHOOK_WORKER_VALKEY_PASSWORD",
+          "type": "string",
+          "default": "",
+          "description": "Valkey authentication password. Leave empty for unauthenticated local deployments."
+        },
+        {
+          "name": "WEBHOOK_WORKER_VALKEY_MASTER_NAME",
+          "type": "string",
+          "default": "",
+          "description": "Sentinel master name. Required when using Valkey Sentinel for high availability."
+        },
+        {
+          "name": "WEBHOOK_WORKER_VALKEY_TLS_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable TLS for Valkey connections. Required for managed Valkey services."
+        },
+        {
+          "name": "WEBHOOK_WORKER_VALKEY_TLS_INSECURE",
+          "type": "bool",
+          "default": "false",
+          "description": "Skip Valkey TLS certificate verification. For development only."
+        },
+        {
+          "name": "WEBHOOK_WORKER_VALKEY_TLS_CA_PATH",
+          "type": "string",
+          "default": "",
+          "description": "Path to CA certificate file for verifying the Valkey server's TLS certificate."
+        },
+        {
+          "name": "PROVISIONING_GRPC_RECONNECT_DELAY",
           "type": "time.Duration",
-          "default": "60s",
-          "description": "Maximum idle time on a keep-alive connection before it is closed."
+          "default": "1s",
+          "description": "Initial backoff delay between provisioning gRPC stream reconnect attempts."
         },
         {
-          "name": "KAFKA_TOPIC_NAMESPACE_OVERRIDE",
-          "type": "string",
-          "default": "",
-          "description": "Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Forbidden in production — causes startup failure when ENVIRONMENT=prod."
-        },
-        {
-          "name": "VALID_NAMESPACES",
-          "type": "string",
-          "default": "local,dev,stag,prod",
-          "description": "Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE."
-        },
-        {
-          "name": "MESSAGE_BACKEND",
-          "type": "string",
-          "default": "direct",
-          "description": "Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay)."
-        },
-        {
-          "name": "KAFKA_BROKERS",
-          "type": "string",
-          "default": "localhost:19092",
-          "description": "Comma-separated Kafka/Redpanda broker addresses. Required when MESSAGE_BACKEND=kafka."
-        },
-        {
-          "name": "KAFKA_SASL_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services."
-        },
-        {
-          "name": "KAFKA_SASL_MECHANISM",
-          "type": "string",
-          "default": "",
-          "description": "SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true."
-        },
-        {
-          "name": "KAFKA_SASL_USERNAME",
-          "type": "string",
-          "default": "",
-          "description": "SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
-        },
-        {
-          "name": "KAFKA_SASL_PASSWORD",
-          "type": "string",
-          "default": "",
-          "description": "SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
-        },
-        {
-          "name": "KAFKA_TLS_ENABLED",
-          "type": "bool",
-          "default": "false",
-          "description": "Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services."
-        },
-        {
-          "name": "KAFKA_TLS_INSECURE",
-          "type": "bool",
-          "default": "false",
-          "description": "Skip TLS certificate verification. For development only — never use in production."
-        },
-        {
-          "name": "KAFKA_TLS_CA_PATH",
-          "type": "string",
-          "default": "",
-          "description": "Path to CA certificate file for verifying the Kafka broker's TLS certificate."
-        },
-        {
-          "name": "DATABASE_URL",
-          "type": "string",
-          "default": "",
-          "description": "PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push)."
+          "name": "PROVISIONING_GRPC_RECONNECT_MAX_DELAY",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum backoff delay cap for provisioning gRPC stream reconnect attempts."
         }
       ]
     },
     {
       "name": "tester",
-      "file": "/Volumes/Dev/Personal/sukko/.claude/worktrees/refactor-config-op-docs/ws/cmd/tester/config.go",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/cmd/tester/config.go"
+      ],
       "vars": [
         {
           "name": "TESTER_PORT",
@@ -1412,7 +1215,7 @@
           "name": "TESTER_AUTH_TOKEN",
           "type": "string",
           "default": "",
-          "description": "no default — must be explicitly set for production"
+          "description": "Bearer token required for all tester management API endpoints. Must be set explicitly — the tester rejects requests when unset."
         },
         {
           "name": "GATEWAY_URL",
@@ -1497,6 +1300,400 @@
           "type": "time.Duration",
           "default": "30s",
           "description": "Interval for polling gateway Prometheus metrics during revocation load tests."
+        },
+        {
+          "name": "TESTER_WEBHOOK_BASE_URL",
+          "type": "string",
+          "default": "",
+          "description": "Base URL the webhook-worker uses to deliver webhooks to this tester pod (e.g. http://tester.sukko-ci.svc.cluster.local:8085). When empty, the webhooks suite is skipped."
+        },
+        {
+          "name": "TESTER_WEBHOOK_DELIVERY_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "Maximum time to wait for the initial webhook delivery after triggering a test delivery."
+        },
+        {
+          "name": "TESTER_WEBHOOK_RETRY_TIMEOUT",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum time to wait for the final retry to arrive after triggering a retry test."
+        }
+      ]
+    },
+    {
+      "name": "base",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/config.go"
+      ],
+      "vars": [
+        {
+          "name": "LOG_LEVEL",
+          "type": "string",
+          "default": "info",
+          "description": "Logging level (debug, info, warn, error). info is recommended for production."
+        },
+        {
+          "name": "LOG_FORMAT",
+          "type": "string",
+          "default": "json",
+          "description": "Log output format: json for machine parsing (production), text for human-readable (development)."
+        },
+        {
+          "name": "ENVIRONMENT",
+          "type": "string",
+          "default": "local",
+          "description": "Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution."
+        },
+        {
+          "name": "SUKKO_LICENSE_KEY",
+          "type": "string",
+          "default": "",
+          "description": "Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community."
+        },
+        {
+          "name": "OTEL_TRACING_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled."
+        },
+        {
+          "name": "OTEL_EXPORTER_TYPE",
+          "type": "string",
+          "default": "otlp-grpc",
+          "description": "OpenTelemetry trace exporter type: otlp-grpc, otlp-http, or stdout. Required when OTEL_TRACING_ENABLED=true."
+        },
+        {
+          "name": "OTEL_EXPORTER_ENDPOINT",
+          "type": "string",
+          "default": "localhost:4317",
+          "description": "OpenTelemetry collector endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE is otlp-grpc or otlp-http."
+        },
+        {
+          "name": "PPROF_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable Go pprof profiling endpoints (/debug/pprof/). Disabled by default; enable only in controlled environments."
+        },
+        {
+          "name": "PYROSCOPE_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable continuous profiling via Pyroscope. Disabled by default."
+        },
+        {
+          "name": "PYROSCOPE_ADDR",
+          "type": "string",
+          "default": "http://localhost:4040",
+          "description": "Pyroscope server address (e.g. http://pyroscope:4040). Required when PYROSCOPE_ENABLED=true."
+        },
+        {
+          "name": "AUTH_MODE",
+          "type": "string",
+          "default": "required",
+          "description": "Authentication enforcement mode. Only \"required\" is supported; tokens without valid signatures are rejected."
+        },
+        {
+          "name": "PROVISIONING_GRPC_ADDR",
+          "type": "string",
+          "default": "localhost:9090",
+          "description": "gRPC address of the provisioning service for internal communication (e.g. channel rule streaming)."
+        },
+        {
+          "name": "HTTP_READ_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks."
+        },
+        {
+          "name": "HTTP_WRITE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "Maximum duration for writing the HTTP response."
+        },
+        {
+          "name": "HTTP_IDLE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "60s",
+          "description": "Maximum idle time on a keep-alive connection before it is closed."
+        },
+        {
+          "name": "KAFKA_TOPIC_NAMESPACE_OVERRIDE",
+          "type": "string",
+          "default": "",
+          "description": "Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Use with care in production deployments."
+        },
+        {
+          "name": "VALID_NAMESPACES",
+          "type": "string",
+          "default": "local,dev,stag,prod",
+          "description": "Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE."
+        },
+        {
+          "name": "MESSAGE_BACKEND",
+          "type": "string",
+          "default": "direct",
+          "description": "Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay)."
+        },
+        {
+          "name": "KAFKA_BROKERS",
+          "type": "string",
+          "default": "localhost:19092",
+          "description": "Comma-separated Kafka/Redpanda broker addresses for ws-server and tester only (provisioning uses PROVISIONING_KAFKA_BROKERS instead); required when MESSAGE_BACKEND=kafka."
+        },
+        {
+          "name": "KAFKA_SASL_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services."
+        },
+        {
+          "name": "KAFKA_SASL_MECHANISM",
+          "type": "string",
+          "default": "",
+          "description": "SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true."
+        },
+        {
+          "name": "KAFKA_SASL_USERNAME",
+          "type": "string",
+          "default": "",
+          "description": "SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
+        },
+        {
+          "name": "KAFKA_SASL_PASSWORD",
+          "type": "string",
+          "default": "",
+          "description": "SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true."
+        },
+        {
+          "name": "KAFKA_TLS_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services."
+        },
+        {
+          "name": "KAFKA_TLS_INSECURE",
+          "type": "bool",
+          "default": "false",
+          "description": "Skip TLS certificate verification. For development only — never use in production."
+        },
+        {
+          "name": "KAFKA_TLS_CA_PATH",
+          "type": "string",
+          "default": "",
+          "description": "Path to CA certificate file for verifying the Kafka broker's TLS certificate."
+        },
+        {
+          "name": "DATABASE_URL",
+          "type": "string",
+          "default": "",
+          "description": "PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push)."
+        }
+      ]
+    },
+    {
+      "name": "gateway",
+      "files": [
+        "/Volumes/Dev/Personal/sukko/ws/internal/shared/platform/gateway_config.go"
+      ],
+      "vars": [
+        {
+          "name": "GATEWAY_PORT",
+          "type": "int",
+          "default": "3000",
+          "description": "HTTP listen port for the WebSocket gateway."
+        },
+        {
+          "name": "GATEWAY_READ_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "HTTP server read timeout. Applies to the WebSocket upgrade handshake and HTTP request reads."
+        },
+        {
+          "name": "GATEWAY_WRITE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "15s",
+          "description": "HTTP server write timeout."
+        },
+        {
+          "name": "GATEWAY_IDLE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "60s",
+          "description": "HTTP keep-alive idle timeout. Connections idle longer than this are closed."
+        },
+        {
+          "name": "GATEWAY_BACKEND_URL",
+          "type": "string",
+          "default": "ws://localhost:3005/ws",
+          "description": "WebSocket URL of the ws-server backend the gateway proxies connections to. Must include the /ws path."
+        },
+        {
+          "name": "GATEWAY_DIAL_TIMEOUT",
+          "type": "time.Duration",
+          "default": "10s",
+          "description": "Timeout for dialing the ws-server backend when establishing a new proxied connection."
+        },
+        {
+          "name": "GATEWAY_MESSAGE_TIMEOUT",
+          "type": "time.Duration",
+          "default": "60s",
+          "description": "Timeout for forwarding a single message between a client and the ws-server backend."
+        },
+        {
+          "name": "GATEWAY_MAX_FRAME_SIZE",
+          "type": "int",
+          "default": "1048576",
+          "description": "Maximum WebSocket frame size in bytes. Frames larger than this are rejected before allocation. Default: 1MB."
+        },
+        {
+          "name": "GATEWAY_PER_TENANT_CHANNEL_RULES",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, channel permissions are resolved per-tenant via gRPC streaming rules (Pro edition)."
+        },
+        {
+          "name": "GATEWAY_FALLBACK_PUBLIC_CHANNELS",
+          "type": "[]string",
+          "default": "*.metadata",
+          "description": "Channel patterns treated as public when a tenant has no per-tenant channel rules configured."
+        },
+        {
+          "name": "REQUIRE_TENANT_ID",
+          "type": "bool",
+          "default": "true",
+          "description": "When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit."
+        },
+        {
+          "name": "DEFAULT_TENANT_CONNECTION_LIMIT",
+          "type": "int",
+          "default": "1000",
+          "description": "Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true."
+        },
+        {
+          "name": "TENANT_CONNECTION_LIMIT_ENABLED",
+          "type": "bool",
+          "default": "false",
+          "description": "When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap."
+        },
+        {
+          "name": "GATEWAY_PUBLIC_PATTERNS",
+          "type": "[]string",
+          "default": "*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social",
+          "description": "Channel patterns accessible without authentication. Supports wildcards. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_USER_SCOPED_PATTERNS",
+          "type": "[]string",
+          "default": "*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}",
+          "description": "Channel patterns restricted to the authenticated principal. {principal} is substituted with the JWT subject at connection time. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_GROUP_SCOPED_PATTERNS",
+          "type": "[]string",
+          "default": "*.community.{group_id},community.{group_id},social.{group_id}",
+          "description": "Channel patterns restricted to a specific group. {group_id} is substituted with the JWT group claim at connection time. Comma-separated."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_ENABLED",
+          "type": "bool",
+          "default": "true",
+          "description": "When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_BURST",
+          "type": "int",
+          "default": "100",
+          "description": "Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate."
+        },
+        {
+          "name": "GATEWAY_RATE_LIMIT_RATE",
+          "type": "float64",
+          "default": "10.0",
+          "description": "Sustained message rate limit per authenticated principal, in messages per second."
+        },
+        {
+          "name": "GATEWAY_PUBLISH_RATE_LIMIT",
+          "type": "float64",
+          "default": "10.0",
+          "description": "Sustained rate limit for REST publish requests per authenticated principal, in messages per second."
+        },
+        {
+          "name": "GATEWAY_PUBLISH_BURST",
+          "type": "int",
+          "default": "100",
+          "description": "Burst allowance for the REST publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in."
+        },
+        {
+          "name": "GATEWAY_MAX_PUBLISH_SIZE",
+          "type": "int",
+          "default": "65536",
+          "description": "Maximum REST publish payload size in bytes. Payloads exceeding this are rejected. Default: 64KB."
+        },
+        {
+          "name": "GATEWAY_AUTH_REFRESH_RATE_INTERVAL",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Minimum interval between JWT refresh operations per connection. Prevents refresh storms under load."
+        },
+        {
+          "name": "GATEWAY_AUTH_VALIDATION_TIMEOUT",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Timeout for validating auth refresh operations per connection."
+        },
+        {
+          "name": "REVOCATION_MAX_LIFETIME",
+          "type": "time.Duration",
+          "default": "24h",
+          "description": "Max time a revocation entry lives when exp is not provided"
+        },
+        {
+          "name": "GATEWAY_SHUTDOWN_TIMEOUT",
+          "type": "time.Duration",
+          "default": "30s",
+          "description": "Maximum time the gateway waits for active connections to drain before forcing shutdown."
+        },
+        {
+          "name": "WS_INTERNAL_SECRET",
+          "type": "string",
+          "default": "",
+          "description": "Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce."
+        },
+        {
+          "name": "SERVER_GRPC_ADDR",
+          "type": "string",
+          "default": "localhost:3006",
+          "description": "ws-server gRPC address for RealtimeService"
+        },
+        {
+          "name": "PUSH_GRPC_ADDR",
+          "type": "string",
+          "default": "localhost:3008",
+          "description": "Push service gRPC address for device registration and VAPID key endpoints."
+        },
+        {
+          "name": "SSE_KEEPALIVE_INTERVAL",
+          "type": "time.Duration",
+          "default": "45s",
+          "description": "Interval for SSE keepalive messages sent to prevent proxy timeouts on long-lived connections."
+        },
+        {
+          "name": "GATEWAY_CORS_ORIGINS",
+          "type": "[]string",
+          "default": "*",
+          "description": "CORS allowed origins (* = all, production: restrict)"
+        },
+        {
+          "name": "GATEWAY_CHANNEL_RULES_CACHE_TTL",
+          "type": "time.Duration",
+          "default": "1m",
+          "description": "How long per-tenant channel rules are cached locally before re-fetching from the provisioning service."
+        },
+        {
+          "name": "GATEWAY_REGISTRY_QUERY_TIMEOUT",
+          "type": "time.Duration",
+          "default": "5s",
+          "description": "Timeout for querying the connections registry when enforcing per-tenant connection limits."
         }
       ]
     }

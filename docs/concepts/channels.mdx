@@ -126,7 +126,7 @@ Publishing is controlled by the `publish_public`, `publish_default`, and `publis
 
 Published messages are routed to backend topics via **topic routing rules** configured per-tenant. If no routing rule matches the channel, the publish is rejected.
 
-## Topic Routing Rules
+## Topic Routing Rules <EditionBadge edition="pro" />
 
 Every tenant must configure routing rules that map channel patterns to backend Kafka topic suffixes. Without routing rules, all client publishes are rejected (secure by default).
 
