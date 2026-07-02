@@ -25,6 +25,17 @@ sukko test validate --suite auth
 
 The tester runs as part of the Sukko stack — started automatically by `sukko up` or via Helm. You never need to call it directly; the CLI wraps everything.
 
+### Output signal vocabulary
+
+Every suite produces a two-level result:
+
+| Level | Field | Values | Meaning |
+|-------|-------|--------|---------|
+| Suite | `Report.Status` | `pass` / `fail` / `error` | Overall outcome. `error` means the suite couldn't run (e.g., admin key missing). `pass` with `[skip]` checks is still a pass. |
+| Check | `CheckResult.Status` | `pass` / `fail` / `skip` | Per-check result. `skip` means the check was bypassed — typically because the current edition doesn't include the feature. |
+
+A suite returns `pass` even when edition-gated checks are skipped. Use `fail` or `error` to gate CI; `skip` is expected behavior on lower editions.
+
 ## Test Types
 
 | Type | Purpose | Default Duration |
@@ -149,6 +160,31 @@ Run any suite with:
 sukko test validate --suite <name> --follow
 ```
 
+### Suite run order
+
+Run all 18 suites in this order. Each suite is independent and can be run individually.
+
+| # | Suite | Min Edition | Admin Key | Description |
+|---|-------|-------------|-----------|-------------|
+| 1 | `smoke` | Community | no | Basic connectivity gate |
+| 2 | `auth` | Community | no | JWT auth validation |
+| 3 | `channels` | Community | no | Channel subscribe/unsubscribe lifecycle |
+| 4 | `pubsub` | Community | no | Pub-sub delivery with channel scoping |
+| 5 | `ordering` | Community | no | FIFO message ordering |
+| 6 | `reconnect` | Community | no | Disconnect/reconnect recovery |
+| 7 | `ratelimit` | Community | no | Rate limit enforcement |
+| 8 | `sse` | Community | no | SSE transport validation |
+| 9 | `rest-publish` | Community | no | REST publish delivery |
+| 10 | `provisioning` | Community | **yes** | Provisioning API CRUD lifecycle |
+| 11 | `tenant-isolation` | Community | **yes** | Cross-tenant message isolation |
+| 12 | `token-revocation` | **Pro** | **yes** | Token revocation force-disconnect |
+| 13 | `edition-limits` | Community | no | Edition boundary limits |
+| 14 | `push` | **Enterprise** | no | Push notification pipeline |
+| 15 | `license-reload` | Community | no | License hot-reload propagation |
+| 16 | `api-key` | Community | no | Static API key auth in isolation |
+| 17 | `upgrade` | Community | no | Auth upgrade flow: API key → JWT |
+| 18 | `webhooks` | **Pro** | no | Webhook delivery: happy-path, retry, degraded |
+
 ### Operator-Relevant Suites
 
 These suites validate features you configure and operate. Run them as part of your deployment checklist.
@@ -237,6 +273,52 @@ sukko test validate --suite license-reload --follow
 Validates hot license reload: loads a new license key via the webhook endpoint, verifies the edition changes, then restores the original license. Requires `TESTER_SIGNING_KEY_FILE` — a separate Ed25519 private key for signing test license tokens.
 
 **Minimum edition**: Community (tests the reload mechanism, not a specific edition)
+
+#### `api-key`
+
+```bash
+sukko test validate --suite api-key --follow
+```
+
+Validates static API key authentication in isolation — no JWT provisioning. Confirms that a client connecting with a valid API key is accepted, and that an invalid or missing key is rejected.
+
+**Prerequisites**: Set `TESTER_AUTH_MODE=api-key` and supply a pre-provisioned key via `TESTER_API_KEY` before running this suite. The key must belong to the tenant the tester is configured for.
+
+**Minimum edition**: Community
+
+#### `upgrade`
+
+```bash
+sukko test validate --suite upgrade --follow
+```
+
+Validates the auth upgrade flow: the client connects with a static API key, sends an `auth` message containing a JWT, and asserts that the server responds with `auth_ack` and grants access to private channels that require a JWT. This suite is the canonical test for the dual-credential connection pattern.
+
+**Prerequisites**: Set `TESTER_AUTH_MODE=upgrade` and supply `TESTER_API_KEY`. The upgrade timeout is controlled by `TESTER_AUTH_UPGRADE_TIMEOUT` (default 10s, max 60s).
+
+**Minimum edition**: Community
+
+#### `webhooks`
+
+```bash
+sukko test validate --suite webhooks --follow
+```
+
+Validates the full webhook delivery pipeline across three scenarios:
+
+| Scenario | Behaviour | Expected |
+|----------|-----------|----------|
+| Happy-path | Endpoint always returns 200 | 1 delivery, HMAC valid |
+| Retry-success | First 2 attempts → 500, third → 200 | 3 deliveries total |
+| Degraded | Endpoint always returns 500 (2 max retries) | Webhook status transitions to `degraded` |
+
+Each scenario provisions a throw-away routing rule and webhook, publishes a message via REST, and polls the tester's built-in `/webhook-receive/{runID}` endpoint to assert delivery count, HMAC signature, and response status codes.
+
+**Prerequisites**: Set `TESTER_WEBHOOK_BASE_URL` to the externally-reachable URL of this tester pod (e.g., `http://tester.sukko-ci.svc.cluster.local:8085`). The webhook-worker must be able to reach this URL to deliver payloads.
+
+**Minimum edition**: Pro. Requires Kafka backend (`MESSAGE_BACKEND=kafka`).
+
+**Skip behavior**: When `TESTER_WEBHOOK_BASE_URL` is not set, or the current edition is Community, all checks return `[skip]` and the suite still reports `pass`.
 
 ### Developer-Internal Suites
 
@@ -399,6 +481,27 @@ sukko test validate --suite token-revocation --follow
 sukko test validate --suite push --follow
 ```
 
+### Step 8 — Auth mode suites (optional)
+
+If your deployment uses API key auth or the auth upgrade flow, run:
+
+```bash
+# Requires TESTER_AUTH_MODE=api-key and TESTER_API_KEY
+sukko test validate --suite api-key --follow
+
+# Requires TESTER_AUTH_MODE=upgrade and TESTER_API_KEY
+sukko test validate --suite upgrade --follow
+```
+
+### Step 9 — Webhooks suite (Pro+)
+
+```bash
+# Requires TESTER_WEBHOOK_BASE_URL and MESSAGE_BACKEND=kafka
+sukko test validate --suite webhooks --follow
+```
+
+All checks are automatically skipped (suite still passes) when the base URL is not set or the edition is Community.
+
 **Excluded from standard checklist** (developer-internal, automated CI only): `auth`, `channels`, `ordering`, `reconnect`, `ratelimit`, `license-reload`.
 
 ---
@@ -491,6 +594,30 @@ Switch if needed: `sukko context use <name>`. For a one-off test against a diffe
 **Root cause**: `sukko up` was run before `sukko auth keygen`. The provisioning service started without `ADMIN_BOOTSTRAP_KEY` and registered no admin key. The tester has a valid private key but it has no corresponding public key registered in provisioning, so admin JWTs are rejected.
 
 **Fix**: Run `sukko auth keygen` to generate the keypair, then restart the stack so provisioning starts with the bootstrap key: `sukko down && sukko up`.
+
+### TESTER_ADMIN_KEY_ID mismatch
+
+**Symptom**: The `provisioning`, `tenant-isolation`, or `token-revocation` suite fails at admin setup with a JWT validation error (`wrong_kid` or `invalid_key_id`), even though `TESTER_ADMIN_KEY_FILE` is set and the file contains 64 bytes.
+
+**Root cause**: The `kid` (key ID) in JWTs issued by the tester must match the ID under which the public key was registered in the provisioning service. `TESTER_ADMIN_KEY_ID` defaults to `bootstrap-0`. If the key was registered under a different ID, JWTs are rejected with `wrong_kid`.
+
+**Fix**: Set `TESTER_ADMIN_KEY_ID` to the key ID used during `sukko auth keygen` (shown in the output). The default is `bootstrap-0` when `sukko auth keygen` is run without flags.
+
+### TESTER_ADMIN_KEY_FILE missing at startup
+
+**Symptom**: The tester service fails to start entirely — it does not serve any HTTP requests and the container exits immediately with a startup error referencing the admin key file.
+
+**Root cause**: `TESTER_ADMIN_KEY_FILE` is set to a path that does not exist on the tester container. The tester validates the key file path at startup and exits if the file cannot be opened. This is a startup failure, not a test failure — suites will not run at all.
+
+**Fix**: Verify the file exists at the configured path on the tester container or pod. In local Docker, `sukko up` mounts `~/.sukko/admin.key` automatically — run `sukko auth keygen` first, then `sukko down && sukko up`. On Kubernetes, confirm the secret volume or ConfigMap is mounted at the correct path.
+
+### Webhooks suite skips everything
+
+**Symptom**: `sukko test validate --suite webhooks` reports `pass` with all checks returning `[skip]`.
+
+**Cause**: Either (a) `TESTER_WEBHOOK_BASE_URL` is not set, or (b) the current edition is Community. Both conditions cause the suite to skip all checks rather than fail.
+
+**Fix**: For (a), set `TESTER_WEBHOOK_BASE_URL` to the externally-reachable HTTP URL of the tester pod — the webhook-worker must be able to reach this URL to deliver payloads. For (b), the webhooks suite requires Pro edition or higher.
 
 ### Orphaned tester tenants from previous runs
 

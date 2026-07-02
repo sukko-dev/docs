@@ -24,9 +24,9 @@ type ConfigVar struct {
 }
 
 type ServiceConfig struct {
-	Name string      `json:"name"`
-	File string      `json:"file"`
-	Vars []ConfigVar `json:"vars"`
+	Name  string      `json:"name"`
+	Files []string    `json:"files"`
+	Vars  []ConfigVar `json:"vars"`
 }
 
 type Output struct {
@@ -39,29 +39,47 @@ func main() {
 		os.Exit(1)
 	}
 	wsRoot := os.Args[1]
+	platformDir := filepath.Join(wsRoot, "internal/shared/platform")
 
-	configFiles := map[string]string{
-		"gateway":      filepath.Join(wsRoot, "internal/shared/platform/gateway_config.go"),
-		"server":       filepath.Join(wsRoot, "internal/shared/platform/server_config.go"),
-		"provisioning": filepath.Join(wsRoot, "internal/shared/platform/provisioning_config.go"),
-		"base":         filepath.Join(wsRoot, "internal/shared/platform/config.go"),
-		"tester":       filepath.Join(wsRoot, "cmd/tester/config.go"),
+	configFiles := map[string][]string{
+		"base":    {filepath.Join(platformDir, "config.go")},
+		"gateway": {filepath.Join(platformDir, "gateway_config.go")},
+		"server":  {filepath.Join(platformDir, "server_config.go")},
+		"provisioning": {
+			filepath.Join(platformDir, "provisioning_config.go"),
+		},
+		"webhook-shared": {
+			filepath.Join(platformDir, "webhook_http_config.go"),
+			filepath.Join(platformDir, "webhook_internal_token_config.go"),
+			filepath.Join(platformDir, "credentials_config.go"),
+		},
+		"webhook-worker": {
+			filepath.Join(platformDir, "webhook_worker_config.go"),
+			filepath.Join(platformDir, "grpc_reconnect_config.go"),
+		},
+		"tester": {filepath.Join(wsRoot, "cmd/tester/config.go")},
 	}
 
 	output := Output{}
 	var extractErrors []error
 
-	for name, path := range configFiles {
-		vars, err := extractFromFile(path)
-		if err != nil {
-			extractErrors = append(extractErrors, fmt.Errorf("%s: %w", name, err))
-			continue
+	for name, paths := range configFiles {
+		var allVars []ConfigVar
+		var fileList []string
+		for _, path := range paths {
+			vars, err := extractFromFile(path, platformDir)
+			if err != nil {
+				extractErrors = append(extractErrors, fmt.Errorf("%s %s: %w", name, path, err))
+				continue
+			}
+			allVars = append(allVars, vars...)
+			fileList = append(fileList, path)
 		}
-		if len(vars) > 0 {
+		if len(allVars) > 0 {
 			output.Services = append(output.Services, ServiceConfig{
-				Name: name,
-				File: path,
-				Vars: vars,
+				Name:  name,
+				Files: fileList,
+				Vars:  allVars,
 			})
 		}
 	}
@@ -82,7 +100,7 @@ func main() {
 	}
 }
 
-func extractFromFile(path string) ([]ConfigVar, error) {
+func extractFromFile(path, platformDir string) ([]ConfigVar, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
 	if err != nil {
@@ -108,6 +126,22 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 			}
 
 			tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
+
+			// envPrefix expansion: only triggered for named fields with envPrefix tag.
+			// Anonymous embedded structs without envPrefix are handled by listing their
+			// defining files explicitly in configFiles — NOT by this expansion path.
+			// Mixing both mechanisms for the same struct would double-list its vars.
+			if prefix := tag.Get("envPrefix"); prefix != "" {
+				typeName := typeString(field.Type)
+				expanded, expandErr := expandEnvPrefix(typeName, prefix, platformDir)
+				if expandErr != nil {
+					fmt.Fprintf(os.Stderr, "extract-config: warning: envPrefix expansion for %s: %v\n", typeName, expandErr)
+				} else {
+					vars = append(vars, expanded...)
+				}
+				continue
+			}
+
 			envName := tag.Get("env")
 			if envName == "" || envName == "-" {
 				continue
@@ -152,6 +186,78 @@ func extractFromFile(path string) ([]ConfigVar, error) {
 	}
 
 	return vars, nil
+}
+
+// expandEnvPrefix finds typeName in platformDir and returns its env var fields
+// with prefix prepended to each env var name.
+// Only called when a struct field carries an envPrefix tag.
+func expandEnvPrefix(typeName, prefix, platformDir string) ([]ConfigVar, error) {
+	entries, err := os.ReadDir(platformDir)
+	if err != nil {
+		return nil, fmt.Errorf("read dir %s: %w", platformDir, err)
+	}
+
+	fset := token.NewFileSet()
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		f, err := parser.ParseFile(fset, filepath.Join(platformDir, name), nil, parser.ParseComments)
+		if err != nil {
+			return nil, fmt.Errorf("parse file %s: %w", name, err)
+		}
+		for _, decl := range f.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gd.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				if ts.Name.Name != typeName {
+					continue
+				}
+				st, ok := ts.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				var vars []ConfigVar
+				for _, field := range st.Fields.List {
+					if field.Tag == nil {
+						continue
+					}
+					tag := reflect.StructTag(strings.Trim(field.Tag.Value, "`"))
+					envName := tag.Get("env")
+					if envName == "" || envName == "-" {
+						continue
+					}
+					envDefault := tag.Get("envDefault")
+
+					fieldType := "string"
+					if field.Type != nil {
+						fieldType = typeString(field.Type)
+					}
+
+					description := ""
+					if field.Comment != nil {
+						description = strings.TrimSpace(field.Comment.Text())
+					}
+
+					vars = append(vars, ConfigVar{
+						Name:        prefix + envName,
+						Type:        fieldType,
+						Default:     envDefault,
+						Description: description,
+					})
+				}
+				return vars, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("type %s not found in %s", typeName, platformDir)
 }
 
 func typeString(expr ast.Expr) string {

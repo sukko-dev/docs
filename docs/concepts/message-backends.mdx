@@ -3,6 +3,8 @@ title: Message Backends
 description: Direct and Kafka message backends
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # Message Backends
 
 Sukko supports two pluggable message backends. Both deliver messages through the same broadcast bus to WebSocket clients — they differ in how messages enter the system.
@@ -20,7 +22,7 @@ Zero-dependency mode for local development and testing.
 MESSAGE_BACKEND=direct
 ```
 
-## Kafka / Redpanda
+## Kafka / Redpanda <EditionBadge edition="pro" />
 
 Production-grade persistent ingestion with offset-based replay.
 

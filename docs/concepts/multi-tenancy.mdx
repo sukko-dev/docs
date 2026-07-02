@@ -30,7 +30,7 @@ A tenant represents a customer or application environment. Each tenant has:
 | **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected at the gateway. |
 | **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput. |
 
-## Quotas
+## Quotas <EditionBadge edition="pro" />
 
 Each tenant has configurable resource quotas:
 
@@ -68,7 +68,7 @@ Configure per tenant via the provisioning API:
 sukko tenant create --id high-volume --name "High Volume" --consumer-type dedicated
 ```
 
-## Tenant Lifecycle
+## Tenant Lifecycle <EditionBadge edition="pro" />
 
 | State | Description |
 |-------|-------------|

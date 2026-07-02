@@ -25,12 +25,14 @@ function mdxSafe(str) {
 
 // ─── Config Reference ─────────────────────────────────────────────────────────
 
-const SERVICE_ORDER = ['base', 'gateway', 'server', 'provisioning', 'tester'];
+const SERVICE_ORDER = ['base', 'gateway', 'server', 'provisioning', 'webhook-shared', 'webhook-worker', 'tester'];
 const SERVICE_LABELS = {
   base: 'Shared (Base)',
   gateway: 'Gateway',
   server: 'Core',
   provisioning: 'Provisioning',
+  'webhook-shared': 'Shared Webhook Configuration',
+  'webhook-worker': 'Webhook Worker',
   tester: 'Tester',
 };
 
@@ -60,12 +62,30 @@ All configurable environment variables across Sukko services. Values are set via
   for (const svc of sorted) {
     const label = SERVICE_LABELS[svc.name] || svc.name;
     md += `## ${label}\n\n`;
+
+    // Callout before webhook-shared: operators must keep these in sync across services.
+    if (svc.name === 'webhook-shared') {
+      md += ':::note\nThese variables must be set **identically** across both the provisioning service and the webhook-worker. Setting them differently causes authentication failures or silent credential decryption mismatches.\n:::\n\n';
+    }
+
     md += '| Variable | Type | Default | Description |\n';
     md += '|----------|------|---------|-------------|\n';
     for (const v of svc.vars) {
       if (v.name === '-') continue;
       const def = v.default ? `\`${v.default}\`` : '—';
-      const rawDesc = v.description ?? '';
+      let rawDesc = v.description ?? '';
+      // Clarify PROVISIONING_GRPC_RECONNECT_* placement in the webhook-worker section.
+      // These vars carry a PROVISIONING_ prefix because they configure the connection
+      // to the provisioning service — they are read by webhook-worker, not provisioning.
+      if (
+        svc.name === 'webhook-worker' &&
+        (v.name === 'PROVISIONING_GRPC_RECONNECT_DELAY' ||
+          v.name === 'PROVISIONING_GRPC_RECONNECT_MAX_DELAY')
+      ) {
+        rawDesc =
+          rawDesc +
+          " Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars.";
+      }
       const desc = mdxSafe(rawDesc.replace(/\n/g, ' ').replace(/\|/g, '\\|'));
       md += `| \`${v.name}\` | ${v.type} | ${def} | ${desc} |\n`;
     }
@@ -254,6 +274,7 @@ const featureLabels = {
   'per-tenant configurable quotas': 'Per-Tenant Configurable Quotas',
   'tenant lifecycle manager': 'Tenant Lifecycle Manager',
   'ALERT_ENABLED': 'Alerting (AlertManager)',
+  'CHANNEL_TOPIC_ROUTING': 'Channel Topic Routing',
   'real-time analytics': 'Real-Time Analytics',
   'real-time analytics for push': 'Real-Time Analytics for Push',
   'live gap recovery': 'Live Gap Recovery',

@@ -3,6 +3,8 @@ title: REST API Reference
 description: Sukko Provisioning REST API reference
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # REST API Reference
 
 The Sukko Provisioning API is versioned at `/api/v1/`. All requests require a tenant JWT or admin JWT as a `Bearer` token in the `Authorization` header.
@@ -11,7 +13,7 @@ Full OpenAPI specification: `ws/docs/openapi/provisioning.openapi.yaml`
 
 ---
 
-## Webhooks (Pro/Enterprise)
+## Webhooks <EditionBadge edition="pro" /> <EditionBadge edition="enterprise" />
 
 Webhook management requires a Pro or Enterprise license. All webhook endpoints return `403 EDITION_LIMIT` on Community edition.
 
