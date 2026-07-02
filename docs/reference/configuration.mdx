@@ -30,13 +30,13 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE. |
 | `MESSAGE_BACKEND` | string | `direct` | Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay). |
 | `KAFKA_BROKERS` | string | `localhost:19092` | Comma-separated Kafka/Redpanda broker addresses for ws-server and tester only (provisioning uses PROVISIONING_KAFKA_BROKERS instead); required when MESSAGE_BACKEND=kafka. |
-| `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services. |
-| `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. |
-| `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
-| `KAFKA_SASL_PASSWORD` | string | — | SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
-| `KAFKA_TLS_ENABLED` | bool | `false` | Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services. |
-| `KAFKA_TLS_INSECURE` | bool | `false` | Skip TLS certificate verification. For development only — never use in production. |
-| `KAFKA_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Kafka broker's TLS certificate. |
+| `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections (ws-server and tester). Required for most managed Kafka/Redpanda services. |
+| `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
+| `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
+| `KAFKA_SASL_PASSWORD` | string | — | SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
+| `KAFKA_TLS_ENABLED` | bool | `false` | Enable TLS encryption for Kafka connections (ws-server and tester). Required for most managed Kafka/Redpanda services. |
+| `KAFKA_TLS_INSECURE` | bool | `false` | Skip TLS certificate verification (ws-server and tester). For development only — never use in production. |
+| `KAFKA_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Kafka broker's TLS certificate. Applies to ws-server and tester. |
 | `DATABASE_URL` | string | — | PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push). |
 
 ## Gateway
