@@ -320,6 +320,24 @@ Each scenario provisions a throw-away routing rule and webhook, publishes a mess
 
 **Skip behavior**: When `TESTER_WEBHOOK_BASE_URL` is not set, or the current edition is Community, all checks return `[skip]` and the suite still reports `pass`.
 
+#### `kafka-ingest`
+
+```bash
+sukko test validate --suite kafka-ingest --follow
+```
+
+Publishes a message **directly to Kafka/Redpanda** — bypassing the gateway and ws-server's producer — and verifies a gateway-subscribed client receives it. This exercises the ingestion pipeline (Kafka → ws-server consumer → broadcast → client) in isolation, matching how production data actually arrives (from an upstream producer, not a WebSocket client). It is the only tester suite that connects to the message backend itself; every other suite publishes through the gateway.
+
+To reach a managed Kafka (Confluent Cloud, Redpanda Cloud, AWS MSK, Aiven), configure the tester's Kafka connection env vars: `KAFKA_BROKERS`, `KAFKA_SASL_ENABLED`, `KAFKA_SASL_MECHANISM` (`plain` for Confluent Cloud, `scram-sha-256` for Redpanda Cloud/Aiven, or `scram-sha-512` for AWS MSK), `KAFKA_SASL_USERNAME`, `KAFKA_SASL_PASSWORD`, `KAFKA_TLS_ENABLED`, and optionally `KAFKA_TLS_CA_PATH`. To override the broker addresses for a single run, pass `--kafka-brokers`. Credentials always come from the tester's environment — never from the CLI.
+
+**Prerequisites**:
+- The **server under test must run `MESSAGE_BACKEND=kafka`** — otherwise records dropped into Kafka are never consumed and the suite times out (the failure message includes this hint).
+- The tester and the server under test must resolve to the **same Kafka topic namespace** — set the same `ENVIRONMENT` (and the same `KAFKA_TOPIC_NAMESPACE_OVERRIDE`, if used) on both.
+
+**Minimum edition**: Community.
+
+**Skip behavior**: When `KAFKA_BROKERS` is not set, the suite returns `[skip]` and the run still reports `pass`.
+
 ### Developer-Internal Suites
 
 These suites validate core WebSocket infrastructure. They run without an admin keypair and pass on Community. Include them in automated CI but they rarely need manual attention:
