@@ -29,7 +29,7 @@ No restart is needed for upgrades. Downgrades that change the message backend (e
 | Tenant limit | 3 → 50 (new tenants can be created immediately) |
 | Connection limit | 500 → 10,000 |
 | Shard limit | 1 → 8 |
-| Feature gates | Kafka, SSE, per-tenant channel rules, alerting — all activate immediately |
+| Feature gates | Kafka, SSE, alerting — all activate immediately. (Per-tenant channel rules are ungated — available in every edition.) |
 
 ### Community → Enterprise
 
@@ -71,7 +71,7 @@ Downgrades are graceful — existing resources are preserved, but new creation i
 | **Existing connections** | Maintained. New connections rejected if over 500. |
 | **Kafka backend** | Continues running but flagged as mismatched. **Restart required** to switch to `direct` backend. |
 | **SSE transport** | New SSE connections return `403 EDITION_LIMIT`. Existing SSE connections maintained. |
-| **Per-tenant channel rules** | Existing rules preserved in database. New rules creation blocked. Gateway continues enforcing existing rules. |
+| **Per-tenant channel rules** | Unaffected — channel rules are ungated (available in every edition). Existing rules keep enforcing; creation and updates remain available. |
 | **Push notifications** | New subscriptions blocked. Existing registrations preserved. |
 
 ### Pro → Community

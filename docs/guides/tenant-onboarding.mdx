@@ -28,6 +28,32 @@ curl -X POST http://localhost:8080/api/v1/tenants \
   -d '{"id": "acme", "name": "Acme Corp"}'
 ```
 
+## Admin: Set Channel Rules
+
+Channel authorization is provisioning-only and **deny-all by default** — a freshly created tenant cannot subscribe or publish to anything until channel rules exist. Set them right after creating the tenant:
+
+```bash
+curl -X PUT http://localhost:8080/api/v1/tenants/acme/channel-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "public": ["announce.*"],
+    "default": ["inbox.{principal}"],
+    "publish_public": ["chat.*"]
+  }'
+```
+
+Or open everything up while developing (the same rules `sukko up` seeds for its demo tenant):
+
+```bash
+curl -X PUT http://localhost:8080/api/v1/tenants/acme/channel-rules \
+  -H "Authorization: Bearer $ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"public": ["*"], "default": ["*"], "publish_public": ["*"]}'
+```
+
+Rules are side-specific: subscribe operations check `public`/`group_mappings`/`default`, publish operations check the `publish_*` fields — an empty publish side means the tenant's users cannot publish. See [Channels](../concepts/channels#per-tenant-channel-rules) for the full schema and pattern syntax.
+
 ## Admin: Register the Tenant's First Key
 
 The tenant generates an ES256 keypair and sends the public key to the admin out-of-band (email, shared secret store, etc.). The admin registers it:
