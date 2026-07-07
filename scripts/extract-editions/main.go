@@ -391,6 +391,14 @@ func markImplemented(features []FeatureGate, wsRoot string) {
 		if constName == "" {
 			continue
 		}
+		// Ungated (Community) features have no gate checks by design — the
+		// capability is available in every edition, so no EditionHasFeature
+		// call exists anywhere. Their implemented state comes from the
+		// featureMetadata status (already assigned); do not override it based
+		// on gate-check presence.
+		if features[i].Edition == "community" {
+			continue
+		}
 		// Search for gate-check patterns referencing this feature constant
 		patterns := []string{
 			"license." + constName,

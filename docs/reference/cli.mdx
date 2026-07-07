@@ -785,7 +785,7 @@ Sustained load test with configurable connections
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka) |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
@@ -802,7 +802,7 @@ Quick connectivity and health check
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka) |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |
 
@@ -819,7 +819,7 @@ Long-running stability test
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka) |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
@@ -839,7 +839,7 @@ Push to maximum capacity and find limits
 | `--connections` | int | `10` | Number of WebSocket connections |
 | `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka) |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
 | `--publish-rate` | int | `10` | Messages per second |
 | `--ramp-rate` | int | `5` | Connections per second during ramp-up |
 | `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
@@ -857,7 +857,7 @@ Run validation suites
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
 | `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
-| `--message-backend` | string | — | Publisher backend (direct, kafka) |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
 | `--suite` | string | `auth` | Validation suite (fetch available suites from tester via --help) |
 | `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
 | `--tester-url` | string | — | Tester service URL (overrides context) |

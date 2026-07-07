@@ -40,7 +40,7 @@ Channel access is enforced at the gateway, before any message reaches the server
 - **Public channels** — accessible to any authenticated connection (or API key holder). No additional claims required.
 - **User-scoped channels** — require the `sub` claim to match a placeholder in the channel pattern (e.g., `inbox.{principal}`). Only the owning user can subscribe.
 - **Group-scoped channels** — require the `groups` claim to include the group identifier in the channel name (e.g., `rooms.{group_id}`). Only group members can subscribe.
-- **Per-tenant channel rules** <EditionBadge edition="pro" /> — define custom access patterns per tenant through the provisioning API, giving operators fine-grained control over which channels each tenant's users can access.
+- **Per-tenant channel rules** — the sole channel-authorization source, available in every edition. Access patterns are defined per tenant through the provisioning API and streamed to the gateway. A tenant with no rules configured is denied all channel access (deny-all by default).
 
 Every access decision is evaluated at the gateway. Denied requests never reach the message bus.
 

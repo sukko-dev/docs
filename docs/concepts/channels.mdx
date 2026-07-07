@@ -57,23 +57,15 @@ The gateway resolves `{group_id}` from the JWT `groups` claim.
 
 **API-key-only connections** (no JWT) can only subscribe to public channels — user-scoped and group-scoped patterns require JWT claims.
 
-## Global Channel Patterns
+## Per-Tenant Channel Rules
 
-By default, the gateway enforces channel access using global patterns configured via environment variables. These apply to all tenants:
+Channel authorization is **provisioning-only**: per-tenant channel rules, configured via the provisioning API and streamed to the gateway, are the *sole* authorization source for every transport (WebSocket, SSE, Web Push, REST publish). There is no static pattern configuration and no fallback rule set.
 
-| Variable | Description |
-|----------|-------------|
-| `GATEWAY_PUBLIC_PATTERNS` | Channels any connection can subscribe to |
-| `GATEWAY_USER_SCOPED_PATTERNS` | Channels requiring `sub` claim match |
-| `GATEWAY_GROUP_SCOPED_PATTERNS` | Channels requiring `groups` claim match |
+:::warning Deny-all by default
+A tenant with **no channel rules configured is denied every subscribe and publish**. Setting channel rules is a required step after creating a tenant — `sukko up` seeds permissive rules for its demo tenant automatically.
+:::
 
-Operators should configure these patterns for their domain. At least one public pattern is required — the gateway will not start without it.
-
-See the [Configuration Reference](../reference/configuration) for defaults and full syntax.
-
-## Per-Tenant Channel Rules <EditionBadge edition="pro" /> <EditionBadge edition="enterprise" />
-
-For finer control, per-tenant channel rules override the global patterns on a per-tenant basis. Configure via the provisioning API:
+Configure rules via the provisioning API:
 
 ```bash
 curl -X PUT http://localhost:8080/api/v1/tenants/demo/channel-rules \
@@ -81,7 +73,7 @@ curl -X PUT http://localhost:8080/api/v1/tenants/demo/channel-rules \
   -H "Content-Type: application/json" \
   -d '{
     "public": ["*.chat", "announce.*"],
-    "default": ["*.chat", "inbox.{subject}"],
+    "default": ["*.chat", "inbox.{principal}"],
     "group_mappings": {
       "engineering": ["rooms.engineering", "rooms.{group_id}"],
       "support": ["rooms.support", "tickets.*"]
@@ -95,7 +87,7 @@ curl -X PUT http://localhost:8080/api/v1/tenants/demo/channel-rules \
   }'
 ```
 
-Patterns support wildcards (`*`) and placeholders (`{subject}`, `{group_id}`).
+Patterns support wildcards (`*`) and placeholders such as `{principal}` — see [Pattern Syntax](#pattern-syntax) for the full list.
 
 ### Rule Fields
 
@@ -108,7 +100,9 @@ Patterns support wildcards (`*`) and placeholders (`{subject}`, `{group_id}`).
 | `publish_default` | Fallback publish patterns when no group matches |
 | `publish_group_mappings` | Group name to publish patterns mapping |
 
-When per-tenant rules are enabled but a specific tenant has no rules configured, the gateway falls back to `GATEWAY_FALLBACK_PUBLIC_CHANNELS`. When per-tenant rules are disabled, all tenants use the global patterns above.
+Rules are **side-specific and may be asymmetric**: subscribe operations check only the subscribe-side fields, publish operations only the publish-side fields. An empty side denies all operations on that side — a tenant with subscribe rules but no `publish_*` rules cannot publish anything.
+
+If the gateway has not yet received its initial rules snapshot from provisioning (cold start), it fails closed: all channel operations are denied and readiness (`/ready`) is withheld until the snapshot is applied.
 
 ### Pattern Syntax
 
@@ -116,9 +110,12 @@ When per-tenant rules are enabled but a specific tenant has no rules configured,
 - In channel permission patterns, `*` matches a single segment (no dots): `general.*` matches `general.chat` but not `general.chat.v2`
 - In routing rule patterns, `*` matches any sequence including dots: `rooms.*` matches `rooms.general.messages`
 
-**Placeholders** (all resolve to the same JWT claim):
-- `{principal}`, `{subject}`, `{sub}`, `{user_id}` — all resolve to the JWT `sub` claim
-- `{group_id}` — resolves to group names from the JWT `groups` claim
+**Placeholders** (resolved against JWT claims at authorization time):
+- `{principal}`, `{sub}`, `{user_id}`, `{app_id}` — resolve to the JWT `sub` claim
+- `{tenant_id}`, `{tenant}` — resolve to the authenticated tenant
+- `{group_id}` — used inside `group_mappings` values; resolves to the mapped group name
+
+A pattern whose placeholder cannot be resolved (API-key-only connection with no JWT claims, or an empty claim) is dropped for that connection — it can never match.
 
 ## Publish Authorization
 

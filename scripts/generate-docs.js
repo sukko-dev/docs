@@ -269,7 +269,7 @@ const featureLabels = {
   'MESSAGE_BACKEND=kafka': 'Kafka/Redpanda Backend',
   'DATABASE_DRIVER=postgres': 'PostgreSQL for Provisioning',
   'SSE transport': 'SSE Transport',
-  'GATEWAY_PER_TENANT_CHANNEL_RULES': 'Per-Tenant Channel Rules',
+  'CHANNEL_RULES': 'Per-Tenant Channel Rules',
   'TENANT_CONNECTION_LIMIT_ENABLED': 'Per-Tenant Connection Limits',
   'per-tenant configurable quotas': 'Per-Tenant Configurable Quotas',
   'tenant lifecycle manager': 'Tenant Lifecycle Manager',
@@ -346,14 +346,21 @@ Sukko is available in three editions. Community is free — no license key requi
 
   // Auto-generate feature rows from extracted data
   const features = data.features || [];
+  // Community-tier entries are ungated features listed explicitly in the
+  // feature matrix so this page renders them as available in every edition.
+  const communityFeatures = features.filter(f => f.edition === 'community');
   const proFeatures = features.filter(f => f.edition === 'pro');
   const enterpriseFeatures = features.filter(f => f.edition === 'enterprise');
 
+  const implCommunityFeatures = communityFeatures.filter(f => f.implemented);
   const implProFeatures = proFeatures.filter(f => f.implemented);
   const comingSoonProFeatures = proFeatures.filter(f => !f.implemented);
   const implEntFeatures = enterpriseFeatures.filter(f => f.implemented);
   const comingSoonEntFeatures = enterpriseFeatures.filter(f => !f.implemented);
 
+  for (const f of implCommunityFeatures) {
+    md += `| **${mdxSafe(featureLabel(f.name))}** | Yes | Yes | Yes |\n`;
+  }
   for (const f of implProFeatures) {
     md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
   }

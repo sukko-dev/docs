@@ -28,15 +28,15 @@ All configurable environment variables across Sukko services. Values are set via
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` | Maximum idle time on a keep-alive connection before it is closed. |
 | `KAFKA_TOPIC_NAMESPACE_OVERRIDE` | string | — | Override for the Kafka topic namespace (normally derived from ENVIRONMENT). Use with care in production deployments. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE_OVERRIDE. |
+| `KAFKA_BROKERS` | string | — | Comma-separated Kafka/Redpanda broker addresses for ws-server, push, and the tester's kafka-ingest suite (provisioning uses PROVISIONING_KAFKA_BROKERS instead). Required when MESSAGE_BACKEND=kafka; no default. |
+| `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services. |
+| `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: plain, scram-sha-256, or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_SASL_PASSWORD` | string | — | SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. |
+| `KAFKA_TLS_ENABLED` | bool | `false` | Enable TLS encryption for Kafka connections. Required for most managed Kafka/Redpanda services. |
+| `KAFKA_TLS_INSECURE` | bool | `false` | Skip TLS certificate verification. For development only — never use in production. |
+| `KAFKA_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Kafka broker's TLS certificate. |
 | `MESSAGE_BACKEND` | string | `direct` | Message ingestion backend: direct (no persistence, no Kafka dependency) or kafka (full Kafka/Redpanda integration with replay). |
-| `KAFKA_BROKERS` | string | `localhost:19092` | Comma-separated Kafka/Redpanda broker addresses for ws-server and tester only (provisioning uses PROVISIONING_KAFKA_BROKERS instead); required when MESSAGE_BACKEND=kafka. |
-| `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections (ws-server and tester). Required for most managed Kafka/Redpanda services. |
-| `KAFKA_SASL_MECHANISM` | string | — | SASL mechanism: scram-sha-256 or scram-sha-512. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
-| `KAFKA_SASL_USERNAME` | string | — | SASL username for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
-| `KAFKA_SASL_PASSWORD` | string | — | SASL password for Kafka authentication. Required when KAFKA_SASL_ENABLED=true. Applies to ws-server and tester. |
-| `KAFKA_TLS_ENABLED` | bool | `false` | Enable TLS encryption for Kafka connections (ws-server and tester). Required for most managed Kafka/Redpanda services. |
-| `KAFKA_TLS_INSECURE` | bool | `false` | Skip TLS certificate verification (ws-server and tester). For development only — never use in production. |
-| `KAFKA_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Kafka broker's TLS certificate. Applies to ws-server and tester. |
 | `DATABASE_URL` | string | — | PostgreSQL connection URL (postgres://user:pass@host:5432/db). Required for services that use the database (provisioning, push). |
 
 ## Gateway
@@ -51,14 +51,9 @@ All configurable environment variables across Sukko services. Values are set via
 | `GATEWAY_DIAL_TIMEOUT` | time.Duration | `10s` | Timeout for dialing the ws-server backend when establishing a new proxied connection. |
 | `GATEWAY_MESSAGE_TIMEOUT` | time.Duration | `60s` | Timeout for forwarding a single message between a client and the ws-server backend. |
 | `GATEWAY_MAX_FRAME_SIZE` | int | `1048576` | Maximum WebSocket frame size in bytes. Frames larger than this are rejected before allocation. Default: 1MB. |
-| `GATEWAY_PER_TENANT_CHANNEL_RULES` | bool | `false` | When true, channel permissions are resolved per-tenant via gRPC streaming rules (Pro edition). |
-| `GATEWAY_FALLBACK_PUBLIC_CHANNELS` | []string | `*.metadata` | Channel patterns treated as public when a tenant has no per-tenant channel rules configured. |
 | `REQUIRE_TENANT_ID` | bool | `true` | When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit. |
 | `DEFAULT_TENANT_CONNECTION_LIMIT` | int | `1000` | Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true. |
 | `TENANT_CONNECTION_LIMIT_ENABLED` | bool | `false` | When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap. |
-| `GATEWAY_PUBLIC_PATTERNS` | []string | `*.trade,*.liquidity,*.metadata,*.analytics,*.creation,*.social,all.trade,all.liquidity,all.metadata,all.analytics,all.creation,all.social` | Channel patterns accessible without authentication. Supports wildcards. Comma-separated. |
-| `GATEWAY_USER_SCOPED_PATTERNS` | []string | `*.balances.{principal},*.trade.{principal},balances.{principal},notifications.{principal}` | Channel patterns restricted to the authenticated principal. \{principal\} is substituted with the JWT subject at connection time. Comma-separated. |
-| `GATEWAY_GROUP_SCOPED_PATTERNS` | []string | `*.community.{group_id},community.{group_id},social.{group_id}` | Channel patterns restricted to a specific group. \{group_id\} is substituted with the JWT group claim at connection time. Comma-separated. |
 | `GATEWAY_RATE_LIMIT_ENABLED` | bool | `true` | When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST. |
 | `GATEWAY_RATE_LIMIT_BURST` | int | `100` | Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate. |
 | `GATEWAY_RATE_LIMIT_RATE` | float64 | `10.0` | Sustained message rate limit per authenticated principal, in messages per second. |
@@ -250,50 +245,11 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` | Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup). |
 | `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | Retention window for old Kafka topics and ACLs after a tenant slug rename. Minimum 24h. |
 | `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum duration to retain a revoked token record before the prune loop removes it. |
-| `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
-| `PROVISIONING_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
-| `PROVISIONING_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
-| `PROVISIONING_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
-| `PROVISIONING_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
-| `PROVISIONING_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
 | `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | Maximum concurrent Valkey publishes during a bulk connection disconnect request. |
 | `MAX_WEBHOOKS_PER_TENANT` | int | `10` | Maximum number of webhook endpoint registrations per tenant. |
 | `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` | Polling interval for checking whether a tenant's webhook delivery should pause due to edition downgrade. |
 | `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT. |
 | `WEBHOOK_WORKER_GRPC_ADDR` | string | — | gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions. |
-
-## Shared Webhook Configuration
-
-:::note
-These variables must be set **identically** across both the provisioning service and the webhook-worker. Setting them differently causes authentication failures or silent credential decryption mismatches.
-:::
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. Must be set consistently across provisioning and webhook-worker. |
-| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. Must be set consistently across provisioning and webhook-worker; startup fails if absent. |
-| `CREDENTIALS_ENCRYPTION_KEY` | string | — | AES encryption key (hex-encoded, 32 bytes) for encrypting push provider credentials at rest. Must be set consistently across provisioning and webhook-worker; startup fails if absent. |
-
-## Webhook Worker
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private-IP endpoints (disables SSRF protection). Safe default: false; enable only in trusted environments via explicit opt-in. |
-| `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP port for the webhook worker's management API. |
-| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | gRPC port for internal communication between provisioning service and webhook worker. |
-| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | gRPC address of the provisioning service for webhook configuration queries. |
-| `WEBHOOK_WORKER_CONCURRENCY` | int | `50` | Maximum number of concurrent webhook delivery goroutines. |
-| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | In-memory retry queue capacity. Webhooks failing initial delivery are queued here. |
-| `WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `10s` | HTTP timeout for a single webhook delivery attempt. |
-| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from provisioning. |
-| `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
-| `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
-| `WEBHOOK_WORKER_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
-| `WEBHOOK_WORKER_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
-| `WEBHOOK_WORKER_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
-| `WEBHOOK_WORKER_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
-| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Initial backoff delay between provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
-| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Maximum backoff delay cap for provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
 
 ## Tester
 
