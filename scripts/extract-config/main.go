@@ -41,29 +41,35 @@ func main() {
 	wsRoot := os.Args[1]
 	platformDir := filepath.Join(wsRoot, "internal/shared/platform")
 
-	configFiles := map[string][]string{
-		"base":    {filepath.Join(platformDir, "config.go")},
-		"gateway": {filepath.Join(platformDir, "gateway_config.go")},
-		"server":  {filepath.Join(platformDir, "server_config.go")},
-		"provisioning": {
-			filepath.Join(platformDir, "provisioning_config.go"),
-		},
-		"webhook-shared": {
+	// Ordered slice (not a map): Go map iteration order is randomized, which would
+	// reshuffle output.Services on every run and produce huge spurious diffs in the
+	// generated config-reference.json. A fixed order keeps generation deterministic
+	// and preserves the intended documentation section order.
+	configFiles := []struct {
+		name  string
+		paths []string
+	}{
+		{"base", []string{filepath.Join(platformDir, "config.go")}},
+		{"gateway", []string{filepath.Join(platformDir, "gateway_config.go")}},
+		{"server", []string{filepath.Join(platformDir, "server_config.go")}},
+		{"provisioning", []string{filepath.Join(platformDir, "provisioning_config.go")}},
+		{"webhook-shared", []string{
 			filepath.Join(platformDir, "webhook_http_config.go"),
 			filepath.Join(platformDir, "webhook_internal_token_config.go"),
 			filepath.Join(platformDir, "credentials_config.go"),
-		},
-		"webhook-worker": {
+		}},
+		{"webhook-worker", []string{
 			filepath.Join(platformDir, "webhook_worker_config.go"),
 			filepath.Join(platformDir, "grpc_reconnect_config.go"),
-		},
-		"tester": {filepath.Join(wsRoot, "cmd/tester/config.go")},
+		}},
+		{"tester", []string{filepath.Join(wsRoot, "cmd/tester/config.go")}},
 	}
 
 	output := Output{}
 	var extractErrors []error
 
-	for name, paths := range configFiles {
+	for _, cf := range configFiles {
+		name, paths := cf.name, cf.paths
 		var allVars []ConfigVar
 		var fileList []string
 		for _, path := range paths {
