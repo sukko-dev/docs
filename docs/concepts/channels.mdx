@@ -121,7 +121,7 @@ A pattern whose placeholder cannot be resolved (API-key-only connection with no 
 
 Publishing is controlled by the `publish_public`, `publish_default`, and `publish_group_mappings` rules. If a client publishes to a channel they're not authorized for, the gateway rejects it with a `forbidden` error.
 
-Published messages are routed to backend topics via **topic routing rules** configured per-tenant. If no routing rule matches the channel, the publish is rejected.
+Published messages are routed to backend topics via **topic routing rules** configured per-tenant (Kafka backend). If the tenant has no routing rules, or has rules but none match the channel, the publish is **rejected** — never silently dropped or dead-lettered. See [Unroutable Publishes](#unroutable-publishes) for the exact responses.
 
 ## Topic Routing Rules <EditionBadge edition="pro" />
 
@@ -198,18 +198,20 @@ Each value in `topics` is a **topic suffix** (not a full topic name). The full K
 
 For example, with namespace `prod` and tenant `demo`, suffix `trades` becomes topic `prod.demo.trades`.
 
-### Dead-Letter Topic
+### Unroutable Publishes
 
-When no routing rule matches a published channel, the message is routed to the tenant's **dead-letter topic** (`{namespace}.{tenant_id}.dead-letter`) instead of being dropped. This allows operators to inspect unmatched messages without losing them.
+A publish that cannot be routed to a topic is **rejected** — never silently dropped or dead-lettered. Because REST publish is synchronous, the publisher receives the rejection immediately instead of a misleading `200` for a message that would never reach subscribers. Two cases, both rejected:
 
-Two failure modes:
+| Case | REST response | WebSocket error code |
+|------|---------------|----------------------|
+| Tenant has no routing rules provisioned | `409 PUBLISH_NOT_ROUTABLE` | `no_routing_rules` |
+| Tenant has rules but none match the channel | `409 PUBLISH_NOT_ROUTABLE` | `no_matching_route` |
 
-| Mode | When | Behavior |
-|------|------|----------|
-| Routing-time | No rule matches at publish time | Message silently routed to dead-letter topic |
-| Provisioning-time | Dead-letter or default topic fails to create at tenant setup | Logged at Error level + `provisioning_reactivate_topic_provision_errors_total` counter incremented; reactivation continues |
+Resolve either by provisioning a routing rule whose pattern matches the channel — add a catch-all `**` rule to accept every channel suffix. This applies to the **Kafka backend** only; the direct (Community) backend has no routing rules and never returns these errors.
 
-Infrastructure topics (`dead-letter` and `default`) are created automatically when a tenant is provisioned. If upgrading from an older release, run [`migrate-dlq`](../guides/deploy/local#migrate-dlq) to create these topics for existing active tenants.
+#### Infrastructure topics
+
+The `default` and `dead-letter` topics are created automatically when a tenant is provisioned. If a topic fails to create during tenant setup, the error is logged at Error level, `provisioning_reactivate_topic_provision_errors_total` is incremented, and reactivation continues. To create these topics for tenants provisioned before they existed, run [`migrate-dlq`](../guides/deploy/local#migrate-dlq).
 
 ## Next Steps
 
