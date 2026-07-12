@@ -178,12 +178,13 @@ All configurable environment variables across Sukko services. Values are set via
 | `KAFKA_PRODUCER_CB_TIMEOUT` | time.Duration | `30s` | Circuit breaker observation window for Kafka producer failures. |
 | `KAFKA_PRODUCER_CB_MAX_FAILURES` | int | `5` | Maximum producer failures within the circuit breaker window before the producer circuit opens (pauses). |
 | `KAFKA_PRODUCER_CB_HALF_OPEN_REQS` | int | `1` | Number of test requests permitted when the Kafka producer circuit breaker is in half-open state. |
-| `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Number of parallel workers for routing message fan-out to subscribed clients. Increase for high-subscription-count workloads. |
-| `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` | Internal queue depth for the routing fan-out worker pool. |
-| `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Maximum retry attempts for a failed message delivery before it is discarded. |
-| `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` | Initial retry delay for failed message deliveries (exponential backoff starting point). |
-| `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` | Maximum retry delay cap for failed message deliveries. |
-| `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` | Number of parallel workers processing the dead-letter retry queue. |
+| `KAFKA_PRODUCER_SHUTDOWN_TIMEOUT` | time.Duration | `10s` | Maximum time to wait for in-flight Kafka fan-out/DLQ writes to finish during shutdown before force-closing the producer connection. |
+| `WS_ROUTING_FANOUT_WORKERS` | int | `4` | Number of parallel workers that produce a record to each Kafka topic when a routing rule fans a channel out to multiple topics. |
+| `WS_ROUTING_FANOUT_QUEUE_SIZE` | int | `256` | Queue depth for the Kafka multi-topic fan-out worker pool; when full, the overflowing topic write is routed to the dead-letter path. |
+| `WS_ROUTING_DLQ_MAX_RETRIES` | int | `3` | Maximum retry attempts for a failed dead-letter topic write before the record is discarded. |
+| `WS_ROUTING_DLQ_BASE_DELAY` | time.Duration | `100ms` | Initial backoff delay before retrying a failed dead-letter topic write (exponential backoff starting point). |
+| `WS_ROUTING_DLQ_MAX_DELAY` | time.Duration | `5s` | Maximum backoff delay cap for dead-letter topic write retries. |
+| `WS_ROUTING_DLQ_RETRY_WORKERS` | int | `4` | Number of parallel workers retrying failed dead-letter topic writes. |
 | `WS_MAX_CHANNELS_PER_CLIENT` | int | `100` | Maximum concurrent channel subscriptions per client connection. Subscription requests beyond this limit are rejected. |
 | `WS_HISTORY_ENABLED` | bool | `false` | When true, message history is retained in a Valkey Streams ring buffer with Kafka as a fallback for deeper replay. Enables client history replay requests. |
 | `WS_HISTORY_BUFFER_DEPTH` | int | `1000` | Maximum number of messages retained per channel in the Valkey Streams ring buffer (XADD MAXLEN ~). Older messages are evicted when the limit is reached. |
@@ -243,13 +244,52 @@ All configurable environment variables across Sukko services. Values are set via
 | `CORS_MAX_AGE` | int | `3600` | Maximum seconds a CORS preflight response may be cached by the browser. |
 | `PROVISIONING_MAX_TENANTS_FETCH_LIMIT` | int | `10000` | Maximum number of tenants returned by internal bulk-fetch operations. |
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` | Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup). |
-| `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | Retention window for old Kafka topics and ACLs after a tenant slug rename. Minimum 24h. |
+| `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | How long a tenant's previous slug is honored after a rename: retention window for old Kafka topics/ACLs, and the grace window during which old-slug JWTs are still accepted on both the provisioning API and the WebSocket gateway. Minimum 24h. |
 | `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum duration to retain a revoked token record before the prune loop removes it. |
+| `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
+| `PROVISIONING_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
+| `PROVISIONING_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
+| `PROVISIONING_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
+| `PROVISIONING_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
+| `PROVISIONING_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
 | `PROVISIONING_BULK_DISCONNECT_CONCURRENCY` | int | `10` | Maximum concurrent Valkey publishes during a bulk connection disconnect request. |
 | `MAX_WEBHOOKS_PER_TENANT` | int | `10` | Maximum number of webhook endpoint registrations per tenant. |
 | `WEBHOOK_DOWNGRADE_POLL_INTERVAL` | time.Duration | `5m` | Polling interval for checking whether a tenant's webhook delivery should pause due to edition downgrade. |
 | `WEBHOOK_WORKER_GRPC_PORT` | int | `9091` | gRPC listen port for the webhook-worker internal service. Must differ from GRPC_PORT. |
 | `WEBHOOK_WORKER_GRPC_ADDR` | string | — | gRPC address provisioning dials to reach the webhook-worker service. Required for Pro/Enterprise editions. |
+
+## Shared Webhook Configuration
+
+:::note
+These variables must be set **identically** across both the provisioning service and the webhook-worker. Setting them differently causes authentication failures or silent credential decryption mismatches.
+:::
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBHOOK_ALLOW_HTTP` | bool | `false` | Allow webhook delivery to plain HTTP endpoints. Disabled by default; enable only in trusted network environments. |
+| `WEBHOOK_INTERNAL_TOKEN` | string | — | Shared secret for authenticating internal webhook reload calls between the provisioning service and webhook worker. |
+| `CREDENTIALS_ENCRYPTION_KEY` | string | — | AES encryption key (hex-encoded, 32 bytes) for encrypting sensitive credentials at rest (push provider keys and webhook signing secrets). |
+
+## Webhook Worker
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `WEBHOOK_ALLOW_PRIVATE_IPS` | bool | `false` | Allow webhook delivery to private-IP endpoints (disables SSRF protection). Safe default: false; enable only in trusted environments via explicit opt-in. |
+| `WEBHOOK_HTTP_PORT` | int | `8083` | HTTP port for the webhook worker's management API. |
+| `WEBHOOK_WORKER_INTERNAL_GRPC_PORT` | int | `9095` | gRPC port for internal communication between provisioning service and webhook worker. |
+| `WEBHOOK_WORKER_PROVISIONING_GRPC_ADDR` | string | — | gRPC address of the provisioning service for webhook configuration queries. |
+| `WEBHOOK_WORKER_CONCURRENCY` | int | `50` | Maximum number of concurrent webhook delivery goroutines. |
+| `WEBHOOK_WORKER_RETRY_QUEUE_SIZE` | int | `10000` | In-memory retry queue capacity. Webhooks failing initial delivery are queued here. |
+| `WEBHOOK_DELIVERY_TIMEOUT` | time.Duration | `10s` | HTTP timeout for a single webhook delivery attempt. |
+| `WEBHOOK_CACHE_TTL` | time.Duration | `30s` | TTL for cached webhook endpoint configurations fetched from provisioning. |
+| `WEBHOOK_WORKER_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
+| `WEBHOOK_WORKER_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
+| `WEBHOOK_WORKER_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
+| `WEBHOOK_WORKER_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
+| `WEBHOOK_WORKER_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
+| `WEBHOOK_WORKER_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
+| `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Initial backoff delay between provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
+| `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Maximum backoff delay cap for provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
 
 ## Tester
 
@@ -262,6 +302,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `TESTER_SIGNING_KEY_FILE` | string | — | Path to Ed25519 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests. |
 | `TESTER_ADMIN_KEY_FILE` | string | — | Path to Ed25519 private key file for admin JWT signing. When unset, an ephemeral keypair is generated per test run (local dev only). |
 | `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | Key ID embedded in admin JWTs; must match the kid registered with the provisioning service. |
+| `TESTER_PUSH_RECEIVER_HOST` | string | — | Hostname the push service uses to reach the tester's mock WebPush receiver for delivery verification. Empty skips the delivery check. |
+| `TESTER_PUSH_RECEIVER_PORT` | int | `8095` | Port the tester's mock WebPush receiver listens on for push delivery verification. |
 | `TESTER_JWT_LIFETIME` | time.Duration | `15m` | Lifetime of JWTs issued by the tester. Must be positive and greater than TESTER_JWT_REFRESH_BEFORE. |
 | `TESTER_JWT_REFRESH_BEFORE` | time.Duration | `2m` | How early before JWT expiry the tester proactively refreshes tokens to avoid auth gaps during long-running tests. |
 | `TESTER_KEY_EXPIRY` | time.Duration | `24h` | Lifetime of API keys created by the tester for test runs. Must be &gt;= TESTER_JWT_LIFETIME. |
