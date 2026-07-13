@@ -336,7 +336,7 @@ To reach a managed Kafka (Confluent Cloud, Redpanda Cloud, AWS MSK, Aiven), conf
 
 **Prerequisites**:
 - The **server under test must run `MESSAGE_BACKEND=kafka`** — otherwise records dropped into Kafka are never consumed and the suite times out (the failure message includes this hint).
-- The tester and the server under test must resolve to the **same Kafka topic namespace** — set the same `ENVIRONMENT` (and the same `KAFKA_TOPIC_NAMESPACE_OVERRIDE`, if used) on both.
+- The tester and the server under test must use the **same `KAFKA_TOPIC_NAMESPACE`** — set the identical explicit value on both (the namespace is no longer inferred from `ENVIRONMENT`). This is required whenever `KAFKA_BROKERS` is set; a per-run override is available via the `kafka_topic_namespace` request field.
 
 **Minimum edition**: Community.
 
