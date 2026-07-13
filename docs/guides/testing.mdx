@@ -259,7 +259,11 @@ Validates that edition limits are enforced: verifies tenant count limits, connec
 sukko test validate --suite push --follow
 ```
 
-Validates the push notification pipeline: registers a test device, publishes a message, and verifies it reaches the push queue. Requires push credentials configured on the tester service.
+Validates the push notification pipeline: device registration, subscription CRUD, credential management, and — when a mock receiver is configured — **actual Web Push delivery**. The delivery check registers a subscription against the tester's built-in mock WebPush receiver with real P-256 client keys, publishes a message, and asserts the encrypted notification arrives (RFC 8030). The delivery check runs only when `TESTER_PUSH_RECEIVER_HOST` points at the receiver (it skips on managed deployments where no receiver is reachable); the rest of the suite runs regardless. This delivery path is exercised continuously by the `e2e-push-validate` CI job against a kafka-mode, Enterprise-licensed stack.
+
+:::info Real delivery is Web Push only
+End-to-end delivery is verified for **Web Push** (VAPID) only. The FCM (Android) and APNs (iOS) legs register a device with a fake provider token and assert the subscription is accepted — they do not deliver to Google/Apple (that requires live external services). A green suite means Web Push is delivered and verified; mobile push is registered but not delivered.
+:::
 
 On Community or Pro, the suite is skipped.  
 **Minimum edition**: Enterprise
