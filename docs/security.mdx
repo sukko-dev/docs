@@ -57,6 +57,12 @@ Every tenant is isolated at every layer of the stack. There is no shared state b
 
 Cross-tenant JWT tokens — where the `tenant_id` claim doesn't match the target resource — are rejected at the gateway with no further processing.
 
+### Defense in Depth on the Ingestion Path
+
+Gateway authorization is the primary control, but the ws-server consumer re-validates tenant ownership on every record it reads from Kafka — a second, independent layer so a bad or misrouted record can never fan out to the wrong tenant, even if it bypasses the gateway.
+
+For every consumed record, the consumer resolves the topic's owning tenant from the routing snapshot and confirms the record's target channel is prefixed with that same tenant (`{tenant_id}.{suffix}`). A record whose channel-tenant does not match its topic-tenant — or that carries no channel header at all — is quarantined to the [dead-letter queue](./concepts/message-backends#tenant-validation--dead-lettering) and **never broadcast**. This guarantee holds on both the shared and dedicated consumer paths.
+
 [Learn more about multi-tenancy &rarr;](./concepts/multi-tenancy)
 
 ## Key Management

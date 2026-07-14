@@ -26,7 +26,7 @@ A tenant represents a customer or application environment. Each tenant has:
 |-------|-----------|
 | **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced via quotas. |
 | **Channels** | Channel names are namespaced as `{tenant}.{suffix}`. Tenant A's `general.chat` is completely separate from Tenant B's. |
-| **Topics** | Backend topics are prefixed: `{namespace}.{tenant_id}.{category}` |
+| **Topics** | Backend topics are prefixed: `{namespace}.{tenant_id}.{category}`. The Kafka consumer re-validates that each record's channel-tenant matches its topic-tenant and [dead-letters](./message-backends#tenant-validation--dead-lettering) any mismatch. |
 | **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected at the gateway. |
 | **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput. |
 
