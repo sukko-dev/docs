@@ -163,6 +163,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALKEY_PUBLISH_STALENESS_THRESHOLD` | time.Duration | `60s` | Staleness window for the Valkey broadcast publisher — a warning is logged if no message is published within this interval (indicates silent consumer failures). |
 | `KAFKA_BATCH_SIZE` | int | `50` | Maximum number of Kafka messages processed per consumer batch. |
 | `KAFKA_BATCH_TIMEOUT` | time.Duration | `10ms` | Maximum time to wait to fill a batch before processing it. |
+| `KAFKA_METADATA_MIN_AGE` | time.Duration | `5s` | Minimum interval before the Kafka producer refreshes topic metadata (lower = faster new-topic produce, more metadata traffic). |
 | `KAFKA_FETCH_MAX_WAIT` | time.Duration | `500ms` | Maximum time the Kafka broker waits before returning a fetch response, even if KAFKA_FETCH_MIN_BYTES has not been met. Lower values reduce latency; higher values improve throughput. |
 | `KAFKA_FETCH_MIN_BYTES` | int32 | `1` | Minimum bytes a broker should accumulate before returning a fetch response. |
 | `KAFKA_FETCH_MAX_BYTES` | int32 | `10485760` | Maximum bytes returned per fetch request. |
