@@ -47,6 +47,33 @@ Example: `prod.acme.messages`, `dev.demo.chat`
 - **Shared** — all tenants on one consumer group (default)
 - **Dedicated** — per-tenant consumer group for high-volume tenants
 
+### Tenant Validation & Dead-Lettering
+
+The consumer resolves each topic's owning tenant from the routing snapshot and re-checks that every record it reads belongs to that tenant — the ingestion-path half of Sukko's [tenant isolation](../security#defense-in-depth-on-the-ingestion-path) guarantee. Records are handled by outcome:
+
+| Outcome | Condition | Disposition |
+|---------|-----------|-------------|
+| **Broadcast** | Channel header present and its tenant matches the topic's tenant | Delivered to the broadcast bus |
+| **Dead-lettered** | Missing channel header, or channel-tenant ≠ topic-tenant | Sent to the dead-letter queue, committed, never broadcast |
+| **Redelivered** | Topic not yet present in the routing snapshot | Dropped **without commit** — Kafka redelivers once the snapshot catches up |
+
+The redeliver path is deliberate: an unknown topic usually means the routing snapshot hasn't arrived yet, so the record is left uncommitted rather than discarded. Dead-letter and unknown-topic events are exported as Prometheus metrics for operator visibility.
+
+### Readiness Gate
+
+Because the consumer must know every topic's owning tenant before it can safely route, ws-server exposes a dedicated **`/ready`** endpoint that stays not-ready until the routing snapshot has been applied:
+
+| Endpoint | Purpose | Not-ready behavior |
+|----------|---------|--------------------|
+| `/ready` | Readiness — has the routing snapshot been applied? | `503` with `{"status":"not_ready","ready":false}` until the snapshot arrives; `200` with `{"status":"ready","ready":true}` after |
+| `/health` | Liveness — is the process running? | Always `200` while the process is alive — never gated on the snapshot |
+
+Keeping readiness separate from liveness is intentional: Kubernetes pulls a not-ready pod out of the Service endpoints (so no client traffic reaches a pod that can't resolve topics yet) **without** restarting it, avoiding a cluster-wide crash-loop during a provisioning outage. In `direct` mode there is no snapshot to wait for, so `/ready` reports ready immediately.
+
+:::note
+This `/ready` is the ws-server endpoint. The [gateway](./gateway#health-checks) exposes its own `/ready` for accepting WebSocket connections — they are separate probes on separate services.
+:::
+
 ## Comparison
 
 | | Direct | Kafka |
