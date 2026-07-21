@@ -289,6 +289,12 @@ These variables must be set **identically** across both the provisioning service
 | `WEBHOOK_WORKER_VALKEY_TLS_ENABLED` | bool | `false` | Enable TLS for Valkey connections. Required for managed Valkey services. |
 | `WEBHOOK_WORKER_VALKEY_TLS_INSECURE` | bool | `false` | Skip Valkey TLS certificate verification. For development only. |
 | `WEBHOOK_WORKER_VALKEY_TLS_CA_PATH` | string | — | Path to CA certificate file for verifying the Valkey server's TLS certificate. |
+| `WEBHOOK_WORKER_VALKEY_CHANNEL` | string | `ws.broadcast` | Valkey pub/sub channel prefix for broadcast events. MUST match ws-server's VALKEY_CHANNEL or the worker receives no events (the full per-tenant channel is \{prefix\}:\{tenantID\}). |
+| `WEBHOOK_WORKER_VALKEY_STARTUP_PING_TIMEOUT` | time.Duration | `5s` | Timeout for the Valkey connectivity check during webhook-worker startup. Must be &gt; 0 or the check fails instantly. |
+| `WEBHOOK_WORKER_VALKEY_WRITE_TIMEOUT` | time.Duration | `3s` | Timeout for Valkey write operations (SUBSCRIBE/PSUBSCRIBE) from the broadcast bus. |
+| `WEBHOOK_WORKER_VALKEY_HEALTH_CHECK_INTERVAL` | time.Duration | `10s` | Interval for periodic Valkey health checks. Must be &gt; 0 or the health monitor is disabled. |
+| `WEBHOOK_WORKER_VALKEY_HEALTH_CHECK_TIMEOUT` | time.Duration | `5s` | Timeout for each Valkey health check PING. |
+| `WEBHOOK_WORKER_BROADCAST_SHUTDOWN_TIMEOUT` | time.Duration | `5s` | Timeout for draining the broadcast bus during graceful shutdown. |
 | `PROVISIONING_GRPC_RECONNECT_DELAY` | time.Duration | `1s` | Initial backoff delay between provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
 | `PROVISIONING_GRPC_RECONNECT_MAX_DELAY` | time.Duration | `30s` | Maximum backoff delay cap for provisioning gRPC stream reconnect attempts. Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars. |
 
