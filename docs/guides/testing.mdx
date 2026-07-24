@@ -284,9 +284,9 @@ Validates hot license reload: loads a new license key via the webhook endpoint, 
 sukko test validate --suite api-key --follow
 ```
 
-Validates static API key authentication in isolation — no JWT provisioning. Confirms that a client connecting with a valid API key is accepted, and that an invalid or missing key is rejected.
+Validates static API key authentication in isolation — no JWT provisioning. Confirms that an API-key client is accepted, can subscribe to a public channel, is denied a private channel, and cannot REST-publish.
 
-**Prerequisites**: Set `TESTER_AUTH_MODE=api-key` and supply a pre-provisioned key via `TESTER_API_KEY` before running this suite. The key must belong to the tenant the tester is configured for.
+**Prerequisites**: none — `--suite api-key` is sufficient. The tester infers api-key mode from the suite and, when no key or tenant is supplied, self-provisions a throwaway tenant and a run-scoped API key, cleaning both up afterward. To pin a specific key, set `TESTER_API_KEY` (or pass `api_key` in the request); an explicitly supplied key or `tenant_id` is used as-is and never removed.
 
 **Minimum edition**: Community
 
@@ -508,7 +508,7 @@ sukko test validate --suite push --follow
 If your deployment uses API key auth or the auth upgrade flow, run:
 
 ```bash
-# Requires TESTER_AUTH_MODE=api-key and TESTER_API_KEY
+# No prerequisites — self-provisions a tenant + key when none is supplied
 sukko test validate --suite api-key --follow
 
 # Requires TESTER_AUTH_MODE=upgrade and TESTER_API_KEY
