@@ -296,9 +296,9 @@ Validates static API key authentication in isolation — no JWT provisioning. Co
 sukko test validate --suite upgrade --follow
 ```
 
-Validates the auth upgrade flow: the client connects with a static API key, sends an `auth` message containing a JWT, and asserts that the server responds with `auth_ack` and grants access to private channels that require a JWT. This suite is the canonical test for the dual-credential connection pattern.
+Validates the auth upgrade flow: the client connects with a static API key, sends an `auth` message containing a JWT, and asserts that the server responds with `auth_ack` for a valid JWT and `auth_error` for an expired one. This suite is the canonical test for the dual-credential connection pattern.
 
-**Prerequisites**: Set `TESTER_AUTH_MODE=upgrade` and supply `TESTER_API_KEY`. The upgrade timeout is controlled by `TESTER_AUTH_UPGRADE_TIMEOUT` (default 10s, max 60s).
+**Prerequisites**: none — `--suite upgrade` is sufficient. The tester infers upgrade mode from the suite and, when no key or tenant is supplied, self-provisions a throwaway tenant, a JWT keypair (to mint the upgrade token), and a run-scoped API key (to make the initial connection), cleaning them up afterward. To pin a specific key, set `TESTER_API_KEY` (or pass `api_key` in the request); explicitly supplied credentials are used as-is and never removed. The upgrade timeout is controlled by `TESTER_AUTH_UPGRADE_TIMEOUT` (default 10s, max 60s).
 
 **Minimum edition**: Community
 
@@ -511,7 +511,7 @@ If your deployment uses API key auth or the auth upgrade flow, run:
 # No prerequisites — self-provisions a tenant + key when none is supplied
 sukko test validate --suite api-key --follow
 
-# Requires TESTER_AUTH_MODE=upgrade and TESTER_API_KEY
+# No prerequisites — self-provisions a tenant, keypair, and key when none is supplied
 sukko test validate --suite upgrade --follow
 ```
 
