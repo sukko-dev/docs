@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         'guides/admin-auth',
+        'guides/admin-ui',
         'guides/tenant-onboarding',
         'guides/sse',
         'guides/push-notifications',

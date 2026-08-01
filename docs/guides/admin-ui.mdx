@@ -1,0 +1,106 @@
+---
+title: Admin UI
+description: Enable, secure, and use the operator admin dashboard for per-tenant management, connections, and analytics
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Admin UI <EditionBadge edition="pro" />
+
+The Admin UI is a visual **operator dashboard** for running a Sukko deployment — per-tenant
+management, connection inspection, and analytics. It is server-rendered by the provisioning service
+and mounted under `/admin/`; there is no separate frontend to deploy.
+
+It is distinct from two other surfaces:
+
+- **The CLI / provisioning API** — the same operator tasks, scripted. The Admin UI is a visual layer
+  over the same provisioning backend; it adds no API of its own.
+- **Grafana** — system-wide infrastructure health ("is the system healthy?"). The Admin UI shows
+  **per-tenant** operational data ("what is tenant X doing?"). No overlap.
+
+:::note Editions
+The Admin UI's tenant-management and analytics views require **Pro**. Push (web/android/iOS) analytics
+requires **Enterprise**. See [Editions](../editions/comparison).
+:::
+
+## Prerequisites
+
+- A running Sukko **provisioning** service (the Admin UI is served from it).
+- A **Pro** (or Enterprise) license.
+- Access to set environment variables on the provisioning deployment.
+
+## Enable the Admin UI
+
+The Admin UI is **off by default**. Enable it on the provisioning service:
+
+```bash
+ADMIN_UI_ENABLED=true
+```
+
+When disabled, every `/admin/*` route returns **404** — the dashboard is not reachable at all.
+
+## Authenticate
+
+The Admin UI uses a single **shared admin token** that you exchange for a browser **session cookie**.
+
+:::info Admin UI vs. CLI authentication
+These are two separate mechanisms — configuring one does not configure the other:
+
+- **Admin UI (this guide)** — a static `ADMIN_TOKEN` shared secret; you log in once in the browser and
+  receive a session cookie.
+- **CLI / provisioning API** — no static token; every request is signed with a fresh Ed25519 JWT. See
+  **[Admin Authentication](./admin-auth)**.
+:::
+
+Set the token — required whenever the UI is enabled, **minimum 32 characters**, and treated as a
+secret (never commit it or write it to logs):
+
+```bash
+ADMIN_UI_ENABLED=true
+ADMIN_TOKEN=<a randomly generated 32+ character secret>
+```
+
+Log in at `/admin/login` with the token. Sessions last `ADMIN_SESSION_TTL` (default `8h`), after which
+you re-authenticate; log out at any time to clear the session cookie.
+
+:::caution OIDC is not yet available
+`ADMIN_OIDC_ISSUER` is reserved for a future SSO integration and is **not implemented**. Setting it
+causes the provisioning service to fail at startup. Use `ADMIN_TOKEN` for now.
+:::
+
+## Access the dashboard
+
+With the UI enabled and the token set, open the provisioning service's `/admin/` URL in a browser and
+log in at `/admin/login`. From the dashboard you can inspect tenants, connections, and analytics.
+
+## System health panel
+
+The dashboard's system-health panel probes the ws-server and gateway health endpoints. Point it at
+them from the provisioning service:
+
+```bash
+WS_SERVER_HEALTH_URL=http://ws-server:3005/health
+GATEWAY_HEALTH_URL=http://ws-gateway:3000/health
+```
+
+Each is **optional**. When a URL is unset, that service is simply **excluded** from the panel (rather
+than shown as failing). Per-service status is one of `ok`, `degraded`, `unknown`, or `unconfigured`.
+
+## Capabilities by edition
+
+| Capability | Edition |
+| --- | --- |
+| Per-tenant management, connection inspection, analytics | Pro |
+| Push (web / android / iOS) analytics | Enterprise |
+
+## Configuration
+
+The admin environment variables used above — `ADMIN_UI_ENABLED`, `ADMIN_TOKEN`, `ADMIN_SESSION_TTL`,
+`WS_SERVER_HEALTH_URL`, `GATEWAY_HEALTH_URL`, and `ADMIN_OIDC_ISSUER` — are defined authoritatively in
+the **[Configuration Reference](../reference/configuration)**.
+
+## Next Steps
+
+- **[Admin Authentication](./admin-auth)** — CLI / provisioning API auth (Ed25519 JWT)
+- **[Tenant Onboarding](./tenant-onboarding)** — provisioning the tenants the dashboard manages
+- **[Observability](./observability)** — system-wide monitoring with Grafana
