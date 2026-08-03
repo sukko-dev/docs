@@ -274,7 +274,7 @@ On Community or Pro, the suite is skipped.
 sukko test validate --suite license-reload --follow
 ```
 
-Validates hot license reload: loads a new license key via the webhook endpoint, verifies the edition changes, then restores the original license. Requires `TESTER_SIGNING_KEY_FILE` — a separate Ed25519 private key for signing test license tokens.
+Validates hot license reload: loads a new license key via the webhook endpoint, verifies the edition changes, then restores the original license. Requires `TESTER_SIGNING_KEY_FILE` — a separate PEM PKCS#8 ECDSA P-256 private key for signing test license tokens.
 
 **Minimum edition**: Community (tests the reload mechanism, not a specific edition)
 
@@ -562,7 +562,7 @@ All checks are automatically skipped (suite still passes) when the base URL is n
 
 **Symptom**: `license-reload` suite fails with a key parsing or signature error.
 
-**Fix**: `TESTER_SIGNING_KEY_FILE` on the tester service is not set, is set to the wrong file, or contains a key in the wrong format (must be raw 64-byte Ed25519, same format as `TESTER_ADMIN_KEY_FILE`). Verify the key is present and correct format (`wc -c` prints 64).
+**Fix**: `TESTER_SIGNING_KEY_FILE` on the tester service is not set, is set to the wrong file, or contains a key in the wrong format. It must be a **PEM PKCS#8 ECDSA P-256** private key — a *different* format from `TESTER_ADMIN_KEY_FILE` (which is a raw 64-byte Ed25519 admin key). Verify the file begins with `-----BEGIN PRIVATE KEY-----` (`head -1 "$TESTER_SIGNING_KEY_FILE"`).
 
 ### license-reload suite fails to restore original license
 
