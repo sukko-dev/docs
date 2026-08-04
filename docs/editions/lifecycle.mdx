@@ -131,6 +131,27 @@ Or via the CLI:
 sukko edition
 ```
 
+## Key rotation & versioned upgrades
+
+Sukko's license public key is embedded in each binary, and license validation is fully
+offline — there is no license server to call. Two things follow for you as an operator:
+
+- **Pin an immutable version.** Deploy a specific `ghcr.io/klurvio/sukko-*:vX.Y.Z` image tag
+  rather than a moving tag, so you always know exactly which build you are running.
+- **Upgrades never invalidate a license.** Upgrading to a newer Sukko version never breaks an
+  existing, valid license key — upgrade whenever suits you.
+
+On the rare occasion Klurvio rotates the license signing key, the new Sukko release embeds
+**both** the previous and new keys during an overlap window. So:
+
+- Your existing license keeps validating after you upgrade — **no coordinated cutover, no
+  downtime**.
+- Once you are on the newer release, any renewed or re-issued license simply works.
+
+The one thing to know: **stay reasonably current.** If you skip the overlap release entirely
+and then renew your license after a rotation, the renewed key may be signed by a key your
+older binary does not embed — upgrading to a current `vX.Y.Z` release resolves it.
+
 ## Next Steps
 
 - **[Upgrade to Pro](./upgrade)** — Set your license key
