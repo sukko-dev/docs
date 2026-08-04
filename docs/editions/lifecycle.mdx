@@ -7,13 +7,13 @@ import EditionBadge from '@site/src/components/EditionBadge';
 
 # License Lifecycle
 
-Sukko uses Ed25519-signed license keys to determine which edition (Community, Pro, Enterprise) is active. License changes take effect immediately via hot-reload — no restart required for upgrades or limit changes.
+Sukko uses ECDSA P-256-signed license keys to determine which edition (Community, Pro, Enterprise) is active. License changes take effect immediately via hot-reload — no restart required for upgrades or limit changes.
 
 ## How License Changes Propagate
 
 When a license is reloaded via `POST /api/v1/license`:
 
-1. Provisioning validates the Ed25519 signature and checks replay protection (`iat` must be newer)
+1. Provisioning validates the ECDSA P-256 signature and checks replay protection (`iat` must be newer)
 2. New edition and limits are atomically swapped in memory
 3. All services (Core, Gateway, Push) receive the update via gRPC stream
 4. Feature gates and limits take effect immediately
