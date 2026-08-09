@@ -1,41 +1,35 @@
-# Website
+# Sukko Docs
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+Developer documentation for **Sukko** — a multi-tenant WebSocket infrastructure platform. Built with [Docusaurus 3](https://docusaurus.io/) (TypeScript + MDX) and published at **[docs.sukko.dev](https://docs.sukko.dev)**.
 
-## Installation
+## Prerequisites
 
-```bash
-yarn
-```
+- **Node.js ≥ 20** and **npm**
 
-## Local Development
+## Local development
 
 ```bash
-yarn start
+npm install
+npm start
 ```
 
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
+`npm start` launches a hot-reloading dev server at **http://localhost:3000**. Editing MDX under `docs/` reflects live.
 
-## Build
+Other commands:
 
 ```bash
-yarn build
+npm run build      # Production build to build/
+npm run serve      # Serve the production build locally
+npm run clear      # Clear the Docusaurus cache
+npm run typecheck  # tsc
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+## Content
 
-## Deployment
+Authored content lives in `docs/` as MDX. Some reference pages are **generated at build time** — they are gitignored and rebuilt on every `start`/`build`, so **do not hand-edit generated output**.
 
-Using SSH:
+See [`CLAUDE.md`](./CLAUDE.md) for content conventions (required frontmatter, edition badges, copy-pasteable examples, guide structure) and full local setup. When adding, removing, or renaming a page, also update `static/llms.txt`.
 
-```bash
-USE_SSH=true yarn deploy
-```
+## Deploy
 
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> yarn deploy
-```
-
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+The site is built and deployed automatically by CI on merge to `main`. `npm run build` produces the static site in `build/`.
