@@ -56,7 +56,7 @@ cd scripts/extract-cli && go run . /path/to/sukko-cli
 cd scripts/extract-sdk && node index.js /path/to/sukko-js
 ```
 
-Output goes to `generated/` (gitignored). Docusaurus plugins in `plugins/` render the JSON into docs pages.
+Output goes to `generated/` (gitignored). `scripts/generate-docs.js` (run via `npm run generate`) renders the JSON into MDX docs pages (reference, editions, roadmap).
 
 ## Project Structure
 
@@ -66,8 +66,7 @@ src/
 ├── components/    # React components (EditionBadge, etc.)
 ├── pages/         # Custom pages (landing page)
 └── css/           # Theme overrides
-plugins/           # Docusaurus plugins for auto-generated reference pages
-scripts/           # Go/Node extraction tools
+scripts/           # Go/Node extraction + doc-generation tools (extract.sh, generate-docs.js)
 static/            # Images, llms.txt, openapi.yaml
 generated/         # Extracted JSON (gitignored, built at CI time)
 ```
