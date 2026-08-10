@@ -14,7 +14,8 @@
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "node --test 'scripts/extract-sdk/**/*.test.js'"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
@@ -47,6 +48,6 @@
     ]
   },
   "engines": {
-    "node": ">=20.0"
+    "node": ">=22"
   }
 }
