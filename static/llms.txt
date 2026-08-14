@@ -8,6 +8,7 @@
 - [Security](/security): How Sukko secures multi-tenant WebSocket infrastructure at every layer
 - [Concepts](/concepts/architecture): Architecture, multi-tenancy, channels, authentication, message backends, gateway
 - [SDK Guides](/guides/sdk/react): React, Vue, Svelte, React Native, and vanilla TypeScript integration guides
+- [Python SDK Guide](/guides/sdk/python): Python client SDK (async + sync/notebook) — subscribe, recovery, auth, REST publish, push
 - [Deployment](/guides/deploy/local): Local dev (Docker Compose) and Kubernetes (Helm) deployment guides
 - [Testing](/guides/testing): Deployment validation using the Sukko tester service — suite commands, edition requirements, and troubleshooting
 - [Admin UI](/guides/admin-ui): Enable, secure (ADMIN_TOKEN + browser session), and use the operator admin dashboard — per-tenant management, connections, analytics, system-health panel, and edition availability
