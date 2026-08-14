@@ -65,6 +65,7 @@ const sidebars: SidebarsConfig = {
             'reference/sdk/react',
             'reference/sdk/vue',
             'reference/sdk/svelte',
+            'reference/sdk/python',
           ],
         },
       ],
