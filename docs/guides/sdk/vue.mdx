@@ -43,6 +43,8 @@ app.use(createSukkoPlugin({
 app.mount('#app');
 ```
 
+The plugin creates the client during `app.use()`, so it connects immediately (it has no component lifecycle to defer to). **For SSR (Nuxt), pass `options.autoConnect: false`** so it doesn't open a connection on the server, and connect client-side once mounted.
+
 ## Subscribe to a Channel
 
 `useSubscription` takes an **array of channels** (a ref or getter works too) and exposes the latest message as reactive refs (`lastMessage`, `data`). Accumulate a list with `onMessage`:
