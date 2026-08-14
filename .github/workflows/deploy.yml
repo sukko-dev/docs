@@ -45,6 +45,15 @@ jobs:
       - name: Clone sukko-js
         run: git clone --depth 1 https://github.com/klurvio/sukko-js.git .sources/sukko-js
 
+      # The SDK reference is extracted with TypeDoc, which COMPILES the TypeScript. sukko-js must be
+      # installed AND built: the framework packages re-export core types (Message, SukkoClientOptions, …)
+      # from @sukko/sdk, which TypeDoc resolves through its emitted dist/index.d.ts — and dist/ is
+      # gitignored, so without a build those re-exports silently drop from the framework reference.
+      - uses: oven-sh/setup-bun@v2
+      - name: Install + build sukko-js
+        run: bun install && bun run build
+        working-directory: .sources/sukko-js
+
       # --- Build site (extract.sh handles source repo discovery) ---
 
       - uses: actions/setup-go@v5

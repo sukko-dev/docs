@@ -13,49 +13,27 @@ npm install @sukko/vue
 
 ### `createSukkoPlugin(pluginOptions: SukkoPluginOptions): Plugin`
 
-**Parameters:** `pluginOptions: SukkoPluginOptions`
+---
 
-**Returns:** `Plugin`
+### `useConnectionState(): ConnectionStateResult`
+
+---
+
+### `useSubscription(options: UseSubscriptionOptions&lt;T&gt;): UseSubscriptionResult&lt;T&gt;`
 
 ---
 
 ### `useSukkoClient(): SukkoClient`
 
-**Returns:** `SukkoClient`
-
 ---
 
-### `useConnectionState(): ConnectionStateResult`
-
-**Returns:** `ConnectionStateResult`
-
----
-
-### `useSubscription(options: UseSubscriptionOptions&lt;T&gt;,): UseSubscriptionResult&lt;T&gt;`
-
-**Parameters:** `options: UseSubscriptionOptions&lt;T&gt;,`
-
-**Returns:** `UseSubscriptionResult&lt;T&gt;`
-
----
-
-### `useSukkoEvent(event: K,
-	handler: SukkoClientEvents[K],): void`
-
-**Parameters:** `event: K,
-	handler: SukkoClientEvents[K],`
-
-**Returns:** `void`
+### `useSukkoEvent(event: K, handler: unknown): void`
 
 ---
 
 ## Types
 
-### `SukkoProviderProps`
-
----
-
-### `SukkoPluginOptions`
+### `ConnectionState`
 
 ---
 
@@ -63,11 +41,35 @@ npm install @sukko/vue
 
 ---
 
-### `UseSubscriptionOptions&lt;T = unknown&gt;`
+### `Message`
 
 ---
 
-### `UseSubscriptionResult&lt;T = unknown&gt;`
+### `SukkoClientEvents`
+
+---
+
+### `SukkoClientOptions`
+
+---
+
+### `SukkoPluginOptions`
+
+---
+
+### `SukkoProviderProps`
+
+---
+
+### `TypedMessage&lt;T&gt;`
+
+---
+
+### `UseSubscriptionOptions&lt;T&gt;`
+
+---
+
+### `UseSubscriptionResult&lt;T&gt;`
 
 ---
 
