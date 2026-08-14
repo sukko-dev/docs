@@ -1,16 +1,22 @@
 #!/usr/bin/env node
 
-// Extract SDK reference from sukko-js TypeScript packages.
+// Extract SDK reference from the sukko-js TypeScript packages using TypeDoc.
 //
-// Produces a simplified reference by regex-parsing each package's index.ts
-// (and the local files it re-exports) for exported types, functions, classes,
-// and constants. A future improvement could replace this with a TypeScript
-// compiler API-based extractor.
+// TypeDoc runs the real TypeScript compiler over each package's barrel entry
+// point, so it resolves named re-exports, directory barrels (e.g. `./transport`),
+// and generics — and reports exactly the public surface, excluding internals a
+// file happens to export. It replaces the earlier regex parser, which missed
+// `SseTransport` (a directory re-export) and over-extracted internals like
+// `HttpApi` (named re-export lists were not honored).
+//
+// Output matches the schema `scripts/generate-docs.js` consumes:
+//   { packages: [{ name, dir, exports: [{ name, kind, signature, parameters?, returnType? }] }] }
+// `kind` is one of: function | type | class | constant.
 //
 // Usage: node index.js /path/to/sukko-js
 
-const fs = require('fs');
-const path = require('path');
+const path = require('node:path');
+const { Application, TSConfigReader } = require('typedoc');
 
 const packages = [
   { name: '@sukko/sdk', dir: 'packages/sdk' },
@@ -20,111 +26,96 @@ const packages = [
   { name: '@sukko/svelte', dir: 'packages/svelte' },
 ];
 
-function extractExports(filePath) {
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
+// TypeDoc ReflectionKind → the docs schema's `kind`.
+const KIND = {
+  128: 'class', // Class
+  256: 'type', // Interface — grouped under "type" in the reference
+  2097152: 'type', // TypeAlias
+  64: 'function', // Function
+  32: 'constant', // Variable
+  8: 'type', // Enum
+};
 
-  const content = fs.readFileSync(filePath, 'utf-8');
+/** Render a TypeDoc serialized type to a compact display string. Best-effort — the reference lists
+ * signatures, it is not a type checker; unknown shapes fall back to their name or `unknown`. */
+function typeToString(t) {
+  if (!t) return 'unknown';
+  switch (t.type) {
+    case 'intrinsic':
+    case 'reference':
+    case 'typeParameter': {
+      const args = t.typeArguments?.length
+        ? `<${t.typeArguments.map(typeToString).join(', ')}>`
+        : '';
+      return `${t.name}${args}`;
+    }
+    case 'array':
+      return `${typeToString(t.elementType)}[]`;
+    case 'union':
+      return t.types.map(typeToString).join(' | ');
+    case 'intersection':
+      return t.types.map(typeToString).join(' & ');
+    case 'literal':
+      return typeof t.value === 'string' ? `"${t.value}"` : String(t.value);
+    case 'tuple':
+      return `[${(t.elements ?? []).map(typeToString).join(', ')}]`;
+    case 'reflection':
+      return 'object';
+    default:
+      return t.name ?? 'unknown';
+  }
+}
+
+/** Type parameter suffix, e.g. `<T = unknown>` → `<T>`. */
+function typeParams(refl) {
+  const tp = refl.typeParameters;
+  if (!tp?.length) return '';
+  return `<${tp.map((p) => p.name).join(', ')}>`;
+}
+
+/** Build the display signature for one exported reflection. */
+function signatureOf(refl, kind) {
+  if (kind === 'function') {
+    const sig = refl.signatures?.[0];
+    const params = (sig?.parameters ?? [])
+      .map((p) => `${p.name}${p.flags?.isOptional ? '?' : ''}: ${typeToString(p.type)}`)
+      .join(', ');
+    const ret = sig?.type ? `: ${typeToString(sig.type)}` : '';
+    return `${refl.name}(${params})${ret}`;
+  }
+  // class / interface / type-alias / constant — the name plus any type parameters.
+  return `${refl.name}${typeParams(refl)}`;
+}
+
+/** Convert one package's barrel to the schema's `exports` array via TypeDoc. */
+async function extractPackage(pkgSrcDir) {
+  const app = await Application.bootstrapWithPlugins(
+    {
+      entryPoints: [path.join(pkgSrcDir, 'src', 'index.ts')],
+      tsconfig: path.join(pkgSrcDir, 'tsconfig.json'),
+      excludeExternals: true,
+      excludeInternal: true,
+      skipErrorChecking: true,
+      logLevel: 'Error', // suppress "referenced but not included" warnings for excluded internals
+    },
+    [new TSConfigReader()],
+  );
+
+  const project = await app.convert();
+  if (!project) return [];
+
   const exports = [];
-
-  // Match: export function name(...): type
-  const funcRegex = /export\s+function\s+(\w+)\s*(<[^>]*>)?\s*\(([^)]*)\)\s*(?::\s*([^\n{;]+))?/g;
-  let match;
-  while ((match = funcRegex.exec(content)) !== null) {
-    exports.push({
-      name: match[1],
-      kind: 'function',
-      signature: `${match[1]}(${match[3].trim()})${match[4] ? ': ' + match[4].trim() : ''}`,
-      parameters: match[3].trim() || undefined,
-      returnType: match[4] ? match[4].trim() : undefined,
-    });
+  for (const refl of project.children ?? []) {
+    const kind = KIND[refl.kind];
+    if (!kind) continue; // skip anything not in the reference taxonomy
+    exports.push({ name: refl.name, kind, signature: signatureOf(refl, kind) });
   }
-
-  // Match: export interface/type Name
-  const typeRegex = /export\s+(?:interface|type)\s+(\w+)\s*(<[^>]*>)?/g;
-  while ((match = typeRegex.exec(content)) !== null) {
-    exports.push({
-      name: match[1],
-      kind: 'type',
-      signature: `${match[1]}${match[2] || ''}`,
-    });
-  }
-
-  // Match: export class Name
-  const classRegex = /export\s+class\s+(\w+)\s*(<[^>]*>)?/g;
-  while ((match = classRegex.exec(content)) !== null) {
-    exports.push({
-      name: match[1],
-      kind: 'class',
-      signature: `${match[1]}${match[2] || ''}`,
-    });
-  }
-
-  // Match: export const name
-  const constRegex = /export\s+const\s+(\w+)\s*(?::\s*([^\n=]+))?\s*=/g;
-  while ((match = constRegex.exec(content)) !== null) {
-    exports.push({
-      name: match[1],
-      kind: 'constant',
-      signature: match[1],
-      returnType: match[2] ? match[2].trim() : undefined,
-    });
-  }
-
+  // Stable, name-sorted output so regenerations produce no spurious diffs.
+  exports.sort((a, b) => a.name.localeCompare(b.name));
   return exports;
 }
 
-// Discover the local files re-exported by a barrel's index content.
-// Returns the matched target names (the `x` in `from "./x"`), de-duplicated in
-// first-seen order — a barrel commonly re-exports one file from two statements
-// (a value export and a `export type` export), and each file must be scanned
-// only once.
-//
-// The pattern is non-greedy and semicolon-bounded so it matches EACH re-export
-// separately — including multi-line `export type { ... } from "./x"` blocks —
-// without a greedy match collapsing the whole barrel into one. Only local
-// `./x` targets are captured; bare specifiers (e.g. `from "@sukko/sdk"`) are
-// excluded (they reference external packages, not local files).
-function discoverReExports(indexContent) {
-  const reExportRegex = /export\s+[^;]*?\s+from\s+['"]\.\/([^'"]+)['"]/g;
-  const targets = [];
-  const seen = new Set();
-  let match;
-  while ((match = reExportRegex.exec(indexContent)) !== null) {
-    if (!seen.has(match[1])) {
-      seen.add(match[1]);
-      targets.push(match[1]);
-    }
-  }
-  return targets;
-}
-
-// Extract all exported symbols for one package: the barrel's own exports plus
-// those of every local file it re-exports. A re-export whose target file does
-// not resolve is skipped with a stderr log (stdout is reserved for the JSON).
-function extractPackage(pkgSrcDir) {
-  const indexFile = path.join(pkgSrcDir, 'index.ts');
-  if (!fs.existsSync(indexFile)) {
-    return [];
-  }
-
-  const content = fs.readFileSync(indexFile, 'utf-8');
-  const allExports = extractExports(indexFile);
-
-  for (const target of discoverReExports(content)) {
-    const refFile = path.join(pkgSrcDir, target + '.ts');
-    if (fs.existsSync(refFile)) {
-      allExports.push(...extractExports(refFile));
-    } else {
-      console.error(`skip: cannot resolve re-export ./${target} (${refFile})`);
-    }
-  }
-
-  return allExports;
-}
-
-function main() {
+async function main() {
   const sdkRoot = process.argv[2];
   if (!sdkRoot) {
     console.error('Usage: node index.js /path/to/sukko-js');
@@ -132,21 +123,24 @@ function main() {
   }
 
   const output = { packages: [] };
-
   for (const pkg of packages) {
-    const pkgSrcDir = path.join(sdkRoot, pkg.dir, 'src');
-    output.packages.push({
-      name: pkg.name,
-      dir: pkg.dir,
-      exports: extractPackage(pkgSrcDir),
-    });
+    const exports = await extractPackage(path.join(sdkRoot, pkg.dir));
+    if (exports.length === 0) {
+      // Never silently emit an empty package (a compile failure or an unbuilt sukko-js `dist/` would do
+      // this). stderr only — stdout is the JSON. Surfaces the class of failure that unit tests can't.
+      console.error(`WARNING: ${pkg.name} produced 0 exports — is sukko-js installed and built (dist/)?`);
+    }
+    output.packages.push({ name: pkg.name, dir: pkg.dir, exports });
   }
 
   console.log(JSON.stringify(output, null, 2));
 }
 
-module.exports = { extractExports, discoverReExports, extractPackage };
+module.exports = { typeToString, signatureOf, extractPackage };
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

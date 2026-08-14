@@ -11,43 +11,63 @@ npm install @sukko/react
 
 ## Functions
 
-### `useSukkoClient(): SukkoClient`
-
-**Returns:** `SukkoClient`
+### `SukkoProvider(__namedParameters: SukkoProviderProps): ReactNode`
 
 ---
 
 ### `useConnectionState(): ConnectionStateResult`
 
-**Returns:** `ConnectionStateResult`
+---
+
+### `useSubscription(options: UseSubscriptionOptions&lt;T&gt;): UseSubscriptionResult&lt;T&gt;`
 
 ---
 
-### `useSubscription(options: UseSubscriptionOptions&lt;T&gt;,): UseSubscriptionResult&lt;T&gt;`
-
-**Parameters:** `options: UseSubscriptionOptions&lt;T&gt;,`
-
-**Returns:** `UseSubscriptionResult&lt;T&gt;`
+### `useSukkoClient(): SukkoClient`
 
 ---
 
-### `useSukkoEvent(event: K,
-	handler: SukkoClientEvents[K],): void`
-
-**Parameters:** `event: K,
-	handler: SukkoClientEvents[K],`
-
-**Returns:** `void`
+### `useSukkoEvent(event: K, handler: unknown): void`
 
 ---
 
 ## Types
 
-### `UseSubscriptionOptions&lt;T = unknown&gt;`
+### `ConnectionState`
 
 ---
 
-### `UseSubscriptionResult&lt;T = unknown&gt;`
+### `Message`
+
+---
+
+### `SukkoClientEvents`
+
+---
+
+### `SukkoClientOptions`
+
+---
+
+### `SukkoProviderProps`
+
+---
+
+### `TypedMessage&lt;T&gt;`
+
+---
+
+### `UseSubscriptionOptions&lt;T&gt;`
+
+---
+
+### `UseSubscriptionResult&lt;T&gt;`
+
+---
+
+## Constants
+
+### `SukkoContext`
 
 ---
 

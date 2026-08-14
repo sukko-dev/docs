@@ -11,55 +11,57 @@ npm install @sukko/svelte
 
 ## Functions
 
-### `setSukkoClient(client: SukkoClient): void`
+### `createConnectionState(): Readable&lt;ConnectionStateResult&gt;`
 
-**Parameters:** `client: SukkoClient`
+---
 
-**Returns:** `void`
+### `createSubscription(options: SubscriptionOptions&lt;T&gt;): Readable&lt;SubscriptionResult&lt;T&gt;&gt;`
 
 ---
 
 ### `getSukkoClient(): SukkoClient`
 
-**Returns:** `SukkoClient`
+---
+
+### `onSukkoEvent(event: K, handler: unknown): void`
 
 ---
 
-### `createConnectionState(): Readable&lt;ConnectionStateResult&gt;`
-
-**Returns:** `Readable&lt;ConnectionStateResult&gt;`
-
----
-
-### `createSubscription(options: SubscriptionOptions&lt;T&gt;,): Readable&lt;SubscriptionResult&lt;T&gt;&gt;`
-
-**Parameters:** `options: SubscriptionOptions&lt;T&gt;,`
-
-**Returns:** `Readable&lt;SubscriptionResult&lt;T&gt;&gt;`
-
----
-
-### `onSukkoEvent(event: K,
-	handler: SukkoClientEvents[K],): void`
-
-**Parameters:** `event: K,
-	handler: SukkoClientEvents[K],`
-
-**Returns:** `void`
+### `setSukkoClient(client: SukkoClient): void`
 
 ---
 
 ## Types
 
+### `ConnectionState`
+
+---
+
 ### `ConnectionStateResult`
 
 ---
 
-### `SubscriptionOptions&lt;T = unknown&gt;`
+### `Message`
 
 ---
 
-### `SubscriptionResult&lt;T = unknown&gt;`
+### `SubscriptionOptions&lt;T&gt;`
+
+---
+
+### `SubscriptionResult&lt;T&gt;`
+
+---
+
+### `SukkoClientEvents`
+
+---
+
+### `SukkoClientOptions`
+
+---
+
+### `TypedMessage&lt;T&gt;`
 
 ---
 

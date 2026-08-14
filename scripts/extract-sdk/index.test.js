@@ -1,40 +1,74 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
-const path = require('node:path');
 
 // Importing must NOT run main() — verifies the require.main === module guard.
-const { discoverReExports, extractPackage } = require('./index.js');
+const { typeToString, signatureOf } = require('./index.js');
 
-const fixtureSrc = path.join(__dirname, 'testdata', 'pkg', 'src');
-
-test('discoverReExports finds all local targets, excludes bare specifiers, de-dups', () => {
-  const indexContent = fs.readFileSync(path.join(fixtureSrc, 'index.ts'), 'utf-8');
-  // Exact list guards three regressions at once: a greedy-regex collapse (which
-  // would drop all but the last), inclusion of the bare `@external` specifier,
-  // and duplication of `./a` (re-exported from two statements — must appear once).
-  assert.deepStrictEqual(discoverReExports(indexContent), ['a', 'b', 'c', 'missing']);
+test('typeToString renders the type shapes the reference needs', () => {
+  assert.equal(typeToString({ type: 'intrinsic', name: 'string' }), 'string');
+  assert.equal(
+    typeToString({
+      type: 'reference',
+      name: 'Promise',
+      typeArguments: [{ type: 'intrinsic', name: 'void' }],
+    }),
+    'Promise<void>',
+  );
+  assert.equal(
+    typeToString({ type: 'array', elementType: { type: 'intrinsic', name: 'number' } }),
+    'number[]',
+  );
+  assert.equal(
+    typeToString({
+      type: 'union',
+      types: [
+        { type: 'literal', value: 'web' },
+        { type: 'literal', value: 'android' },
+      ],
+    }),
+    '"web" | "android"',
+  );
+  assert.equal(typeToString({ type: 'reflection' }), 'object'); // inline object type
+  assert.equal(typeToString(undefined), 'unknown'); // missing type falls back
 });
 
-test('extractPackage captures multi-line, single-line, and wildcard re-exports', () => {
-  const names = extractPackage(fixtureSrc).map((e) => e.name);
-  // multi-line `export type { B, C } from "./b"` — the case the fix restores
-  assert.ok(names.includes('B'), 'B (multi-line) present');
-  assert.ok(names.includes('C'), 'C (multi-line) present');
-  // single-line `export { A } from "./a"` — no regression
-  assert.ok(names.includes('A'), 'A (single-line) present');
-  // `export * from "./c"` — no regression
-  assert.ok(names.includes('D'), 'D (wildcard) present');
+test('signatureOf builds a typed function signature', () => {
+  const fn = {
+    name: 'buildChannel',
+    signatures: [
+      {
+        parameters: [
+          { name: 'tenant', type: { type: 'intrinsic', name: 'string' } },
+          { name: 'suffix', type: { type: 'intrinsic', name: 'string' } },
+        ],
+        type: { type: 'intrinsic', name: 'string' },
+      },
+    ],
+  };
+  assert.equal(signatureOf(fn, 'function'), 'buildChannel(tenant: string, suffix: string): string');
 });
 
-test('a file re-exported from multiple statements is scanned only once', () => {
-  const exports = extractPackage(fixtureSrc);
-  const aCount = exports.filter((e) => e.name === 'A').length;
-  assert.strictEqual(aCount, 1, 'A must appear once — ./a is scanned once despite two re-export statements');
-  assert.ok(exports.some((e) => e.name === 'AKind'), 'AKind (from the second ./a statement) is present');
+test('signatureOf marks optional parameters', () => {
+  const fn = {
+    name: 'history',
+    signatures: [
+      {
+        parameters: [
+          { name: 'channel', type: { type: 'intrinsic', name: 'string' } },
+          { name: 'limit', flags: { isOptional: true }, type: { type: 'intrinsic', name: 'number' } },
+        ],
+        type: { type: 'intrinsic', name: 'void' },
+      },
+    ],
+  };
+  assert.equal(signatureOf(fn, 'function'), 'history(channel: string, limit?: number): void');
 });
 
-test('unresolvable re-export target is skipped without throwing', () => {
-  // ./missing does not resolve; extractPackage logs to stderr and continues.
-  assert.doesNotThrow(() => extractPackage(fixtureSrc));
+test('signatureOf renders a class/type name with its type parameters', () => {
+  assert.equal(signatureOf({ name: 'SukkoClient' }, 'class'), 'SukkoClient');
+  assert.equal(
+    signatureOf({ name: 'TypedMessage', typeParameters: [{ name: 'T' }] }, 'type'),
+    'TypedMessage<T>',
+  );
+  assert.equal(signatureOf({ name: 'CLOSE_CODES' }, 'constant'), 'CLOSE_CODES');
 });
