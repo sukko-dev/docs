@@ -257,6 +257,63 @@ npm install ${pkg.name}
   }
 }
 
+// ─── Python SDK Reference ─────────────────────────────────────────────────────
+
+// The Python reference comes from a separate extractor (scripts/extract-py, griffe) writing
+// generated/python-reference.json in the same shape as sdk-reference.json — a single package `sukko`.
+function generatePythonSDKReference() {
+  const jsonPath = path.join(GEN_DIR, 'python-reference.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip python-reference (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const pkg = data.packages.find(p => p.name === 'sukko');
+  if (!pkg) {
+    console.log('  skip python-reference (no `sukko` package)');
+    return;
+  }
+
+  const kinds = ['class', 'function', 'type', 'constant'];
+  const kindLabels = { class: 'Classes', function: 'Functions', type: 'Types', constant: 'Constants' };
+
+  let md = `---
+title: "Python SDK"
+description: "sukko (Python client) API reference"
+---
+
+# Python SDK
+
+\`\`\`bash
+pip install sukko
+\`\`\`
+
+`;
+
+  const seen = new Set();
+  const unique = pkg.exports.filter(e => {
+    if (seen.has(e.name)) return false;
+    seen.add(e.name);
+    return true;
+  });
+
+  for (const kind of kinds) {
+    const items = unique.filter(e => e.kind === kind);
+    if (items.length === 0) continue;
+
+    md += `## ${kindLabels[kind]}\n\n`;
+    for (const item of items) {
+      md += `### \`${mdxSafe(item.signature)}\`\n\n`;
+      md += '---\n\n';
+    }
+  }
+
+  const outPath = path.join(DOCS_DIR, 'reference', 'sdk', 'python.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  python-reference: sukko (${unique.length} exports)`);
+}
+
 // ─── Editions Comparison ──────────────────────────────────────────────────────
 
 function formatLimit(value) {
@@ -496,6 +553,7 @@ console.log('Generating reference docs from extracted JSON...');
 generateConfigReference();
 generateCLIReference();
 generateSDKReference();
+generatePythonSDKReference();
 generateEditionsComparison();
 generateRoadmap();
 console.log('Done.');

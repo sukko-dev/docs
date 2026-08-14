@@ -45,6 +45,10 @@ jobs:
       - name: Clone sukko-js
         run: git clone --depth 1 https://github.com/klurvio/sukko-js.git .sources/sukko-js
 
+      # sukko-py (public)
+      - name: Clone sukko-py
+        run: git clone --depth 1 https://github.com/klurvio/sukko-py.git .sources/sukko-py
+
       # The SDK reference is extracted with TypeDoc, which COMPILES the TypeScript. sukko-js must be
       # installed AND built: the framework packages re-export core types (Message, SukkoClientOptions, …)
       # from @sukko/sdk, which TypeDoc resolves through its emitted dist/index.d.ts — and dist/ is
@@ -59,6 +63,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
+
+      # The Python SDK reference is extracted with griffe, which STATICALLY analyses sukko-py's
+      # source — no sukko-py install or build step needed (unlike the TypeScript path above).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install griffe
+        run: pip install 'griffe~=2.1'  # pin the major — griffe has changed its API across majors
 
       - uses: actions/setup-node@v4
         with:
