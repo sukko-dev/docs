@@ -134,6 +134,29 @@ curl -X POST https://gateway.example.com/api/v1/push/subscribe \
   }'
 ```
 
+**Using the SDK:**
+
+The `@sukko/sdk` client exposes a `push` namespace (Enterprise-gated — a lower edition throws `EditionRequiredError`). In the browser, `enableWebPush` runs the entire W3C Web Push flow (fetch the VAPID key → `PushManager.subscribe` → register) in one call:
+
+```typescript
+// Browser — one call does VAPID + PushManager.subscribe + register.
+// Requires a service worker; returns the deviceId as a string (persist it — there is no list endpoint).
+const deviceId = await client.push.enableWebPush({
+  channels: ['demo.alerts.urgent', 'demo.notifications.dm'],
+});
+
+// Mobile — register an FCM/APNs device token you obtained natively.
+const androidId = await client.push.subscribe({
+  platform: 'android',
+  token: fcmDeviceToken,
+  channels: ['demo.alerts.urgent'],
+});
+
+// Later: client.push.unsubscribe(deviceId);
+```
+
+`client.push.getVapidKey()` returns the tenant's VAPID public key if you drive `PushManager.subscribe` yourself. `enableWebPush` is browser-only — it throws `ConfigurationError` under Node or any runtime without `serviceWorker`/`PushManager`.
+
 ## How Delivery Works
 
 1. A message is published to a channel matching a push pattern

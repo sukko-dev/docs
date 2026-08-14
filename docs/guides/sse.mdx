@@ -49,6 +49,31 @@ source.onerror = () => {
 };
 ```
 
+## Using the Sukko SDK
+
+The `@sukko/sdk` package ships an `SseTransport` so you get the same `SukkoClient` API as WebSocket — plus automatic recovery, idle-timeout detection, and `Last-Event-ID` resume — without hand-rolling `EventSource`. On a receive-only transport the client transparently adapts: `subscribe`/`unsubscribe` reconnect the stream with the new channel set, `publish` routes over the REST endpoint, and an expired token is refreshed via `getToken` and reconnected on a `401`.
+
+```typescript
+import { SukkoClient, SseTransport } from '@sukko/sdk';
+
+const client = new SukkoClient({
+  transport: new SseTransport({
+    url: 'https://gateway.example.com',
+    channels: ['demo.general.chat'],
+  }),
+  getToken: async () => (await fetch('/api/token')).text(),
+});
+
+// On a receive-only transport, subscribing opens/updates the stream.
+client.subscribe(['demo.general.chat']);
+client.on('message', (msg) => console.log(msg.channel, msg.data));
+
+// publish() transparently routes over REST; a failure surfaces on `publishError`.
+client.publish('demo.general.chat', { text: 'Hello from SSE' });
+```
+
+Where an SSE reconnect can't confirm a replay, the client emits a per-channel `possible_gap` on its `messages()` stream rather than dropping silently — see [Automatic Recovery](./sdk/vanilla-ts#automatic-recovery).
+
 ## Event Format
 
 ```

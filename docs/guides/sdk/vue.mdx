@@ -19,34 +19,47 @@ npm install @sukko/sdk @sukko/websocket @sukko/vue
 
 ## Setup Plugin
 
-Register the Sukko plugin in your app:
+Register the Sukko plugin, passing **`options`** (a `SukkoClientOptions`) for the plugin to create the client, or a pre-built **`client`**:
 
 ```typescript
 // src/main.ts
 import { createApp } from 'vue';
 import { createSukkoPlugin } from '@sukko/vue';
+import { WebSocketTransport } from '@sukko/websocket';
 import App from './App.vue';
 
 const app = createApp(App);
 
 app.use(createSukkoPlugin({
-  url: 'ws://localhost:3000',
-  getToken: async () => {
-    const res = await fetch('/api/auth/sukko-token');
-    return res.text();
+  options: {
+    transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+    getToken: async () => {
+      const res = await fetch('/api/auth/sukko-token');
+      return res.text();
+    },
   },
 }));
 
 app.mount('#app');
 ```
 
+The plugin creates the client during `app.use()`, so it connects immediately (it has no component lifecycle to defer to). **For SSR (Nuxt), pass `options.autoConnect: false`** so it doesn't open a connection on the server, and connect client-side once mounted.
+
 ## Subscribe to a Channel
+
+`useSubscription` takes an **array of channels** (a ref or getter works too) and exposes the latest message as reactive refs (`lastMessage`, `data`). Accumulate a list with `onMessage`:
 
 ```vue
 <script setup lang="ts">
-import { useSubscription } from '@sukko/vue';
+import { ref } from 'vue';
+import { useSubscription, type TypedMessage } from '@sukko/vue';
 
-const { messages } = useSubscription('general.chat');
+const messages = ref<TypedMessage[]>([]);
+
+useSubscription({
+  channels: ['general.chat'],
+  onMessage: (msg) => messages.value.push(msg),
+});
 </script>
 
 <template>
@@ -58,13 +71,45 @@ const { messages } = useSubscription('general.chat');
 </template>
 ```
 
+For a single latest-value view, read `data` directly:
+
+```vue
+<script setup lang="ts">
+import { useSubscription } from '@sukko/vue';
+
+const { data } = useSubscription<Trade>({ channels: ['tenant.BTC.trade'] });
+</script>
+
+<template>
+  <span>Last price: {{ data?.price }}</span>
+</template>
+```
+
+## Publish a Message
+
+```vue
+<script setup lang="ts">
+import { useSukkoClient } from '@sukko/vue';
+
+const client = useSukkoClient();
+</script>
+
+<template>
+  <button @click="client.publish('general.chat', { text: 'Hello from Vue!' })">
+    Send
+  </button>
+</template>
+```
+
 ## Connection State
+
+`useConnectionState` returns reactive refs; `state` auto-unwraps in the template:
 
 ```vue
 <script setup lang="ts">
 import { useConnectionState } from '@sukko/vue';
 
-const state = useConnectionState();
+const { state, isConnected, isReconnecting } = useConnectionState();
 </script>
 
 <template>
