@@ -25,19 +25,22 @@ npm install @sukko/sdk @sukko/websocket @sukko/react
 
 ## Setup Provider
 
-Wrap your app with `SukkoProvider`:
+Wrap your app with `SukkoProvider`. Pass **`options`** (a `SukkoClientOptions`) to have the provider create and own the client, or pass a pre-built **`client`**:
 
 ```tsx
 // src/App.tsx
 import { SukkoProvider } from '@sukko/react';
+import { WebSocketTransport } from '@sukko/websocket';
 
 function App() {
   return (
     <SukkoProvider
-      url="ws://localhost:3000"
-      getToken={async () => {
-        const res = await fetch('/api/auth/sukko-token');
-        return res.text();
+      options={{
+        transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+        getToken: async () => {
+          const res = await fetch('/api/auth/sukko-token');
+          return res.text();
+        },
       }}
     >
       <ChatRoom />
@@ -46,15 +49,23 @@ function App() {
 }
 ```
 
-The `getToken` callback is called on connect and before token expiry. Your backend should return a fresh JWT.
+The provider connects on mount and disconnects on unmount (for clients it created). `getToken` is called on connect and before token expiry — your backend should return a fresh JWT.
 
 ## Subscribe to a Channel
 
+`useSubscription` takes an **array of channels**. It returns the most recent message (`lastMessage` / `data`), plus an `onMessage` callback for streaming — accumulate a list yourself when you need history:
+
 ```tsx
-import { useSubscription } from '@sukko/react';
+import { useState } from 'react';
+import { useSubscription, type TypedMessage } from '@sukko/react';
 
 function ChatRoom() {
-  const { messages } = useSubscription('general.chat');
+  const [messages, setMessages] = useState<TypedMessage[]>([]);
+
+  useSubscription({
+    channels: ['general.chat'],
+    onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+  });
 
   return (
     <ul>
@@ -66,14 +77,20 @@ function ChatRoom() {
 }
 ```
 
+For a single latest-value view (e.g. a live price), read `data` directly:
+
+```tsx
+const { data } = useSubscription<Trade>({ channels: ['tenant.BTC.trade'] });
+```
+
 ## Connection State
 
 ```tsx
 import { useConnectionState } from '@sukko/react';
 
 function StatusBar() {
-  const { state } = useConnectionState();
-  // state: 'connecting' | 'connected' | 'disconnected' | 'reconnecting'
+  const { state, isConnected, isReconnecting } = useConnectionState();
+  // state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'error'
 
   return <span>Status: {state}</span>;
 }
@@ -95,43 +112,39 @@ function MessageInput() {
 }
 ```
 
-## Gap-Free Reconnect
+## Automatic Recovery
 
-Access the underlying `SukkoClient` with `useSukkoClient()` to call `reconnectWithReplay()` after a reconnection:
+There is no manual replay call. When the connection drops and reconnects, the SDK **automatically** replays messages missed during the gap (Kafka backend), tracking an opaque per-channel cursor. Where recovery can't be guaranteed it surfaces a `gap` / `possible_gap` marker on the client's `messages()` stream rather than dropping silently, and a truncated recovery fires a `recoveryInterrupted` event — subscribe to it with `useSukkoEvent`:
 
 ```tsx
-import { useSukkoClient, useConnectionState } from '@sukko/react';
-import { useEffect, useRef } from 'react';
+import { useSukkoEvent } from '@sukko/react';
 
-function GapFreeReconnect() {
-  const client = useSukkoClient();
-  const { state } = useConnectionState();
-  const hasConnectedBefore = useRef(false);
-
-  useEffect(() => {
-    if (state === 'connected') {
-      if (hasConnectedBefore.current) {
-        client.reconnectWithReplay();
-      }
-      hasConnectedBefore.current = true;
-    }
-  }, [state, client]);
-
+function RecoveryWatcher() {
+  useSukkoEvent('recoveryInterrupted', (err) => {
+    console.warn('recovery interrupted:', err.message);
+  });
   return null;
 }
 ```
 
-Place this component inside `SukkoProvider`. The SDK tracks the latest `pos` cursor per channel automatically and replays missed Kafka messages on reconnect. See the [Vanilla TypeScript guide](./vanilla-ts#gap-free-reconnect) for details on `pos` and `CLIENT_ID_KEY`.
+See the [Vanilla TypeScript guide](./vanilla-ts#automatic-recovery) for the full recovery model and the `messages()` stream.
 
 ## Complete Example
 
 ```tsx
-import { SukkoProvider, useSubscription, useSukkoClient, useConnectionState } from '@sukko/react';
+import { useState } from 'react';
+import { SukkoProvider, useSubscription, useSukkoClient, useConnectionState, type TypedMessage } from '@sukko/react';
+import { WebSocketTransport } from '@sukko/websocket';
 
 function ChatRoom() {
-  const { messages } = useSubscription('general.chat');
+  const [messages, setMessages] = useState<TypedMessage[]>([]);
   const client = useSukkoClient();
   const { state } = useConnectionState();
+
+  useSubscription({
+    channels: ['general.chat'],
+    onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+  });
 
   return (
     <div>
@@ -150,7 +163,12 @@ function ChatRoom() {
 
 export default function App() {
   return (
-    <SukkoProvider url="ws://localhost:3000" getToken={() => fetch('/api/token').then(r => r.text())}>
+    <SukkoProvider
+      options={{
+        transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+        getToken: () => fetch('/api/token').then((r) => r.text()),
+      }}
+    >
       <ChatRoom />
     </SukkoProvider>
   );

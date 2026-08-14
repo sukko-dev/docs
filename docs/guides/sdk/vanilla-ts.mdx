@@ -32,15 +32,19 @@ const client = new SukkoClient({
     return res.text();
   },
 });
-
-await client.connect();
 ```
+
+The client connects automatically on construction (`autoConnect` defaults to `true`). Pass `autoConnect: false` to connect manually with `client.connect()`.
 
 ## Subscribe
 
+`subscribe` takes an **array of channels**. Messages arrive on the `message` event (or the back-pressured `messages()` stream — see below).
+
 ```typescript
-client.subscribe('general.chat', (message) => {
-  console.log('Received:', message.data);
+client.subscribe(['general.chat']);
+
+client.on('message', (msg) => {
+  console.log(msg.channel, msg.data);
 });
 ```
 
@@ -52,43 +56,59 @@ client.publish('general.chat', {
 });
 ```
 
-## Connection Events
+`data` must be a JSON **object**. `publish` is fire-and-forget over WebSocket; for an awaitable publish that resolves on the gateway's ack (and works without a live socket), use `await client.restPublish('general.chat', { text: '…' })` — REST publish is a **Pro** feature and rejects with `EditionRequiredError` on Community.
+
+## Connection State
+
+There are no separate `connected`/`disconnected` events — the client emits a single `stateChange` with the current [`ConnectionState`](../../reference/sdk/core) (`connecting`, `connected`, `reconnecting`, `disconnected`, `error`):
 
 ```typescript
-client.on('connected', () => console.log('Connected'));
-client.on('disconnected', () => console.log('Disconnected'));
-client.on('reconnecting', () => console.log('Reconnecting...'));
-```
-
-## Gap-Free Reconnect
-
-When the connection drops and reconnects, the SDK can replay messages that arrived during the gap. Messages sourced from the Kafka backend include an optional `pos` field — an opaque cursor the SDK tracks per channel automatically.
-
-```typescript
-import { CLIENT_ID_KEY } from '@sukko/sdk';
-
-let hasConnectedBefore = false;
-
 client.on('stateChange', (state) => {
-  if (state === 'connected') {
-    if (hasConnectedBefore) {
-      // Replay missed messages from the last known pos on each channel
-      client.reconnectWithReplay();
-    }
-    hasConnectedBefore = true;
-  }
+  console.log('State:', state);
 });
 
-client.on('message', (msg) => {
-  console.log(msg.channel, msg.data);
-  // msg.pos is tracked by the SDK automatically — no manual handling needed
+client.on('reconnecting', (attempt) => {
+  console.log(`Reconnecting (attempt ${attempt})…`);
 });
 ```
 
-The SDK sends `last_pos` on reconnect and the server replays up to 100 missed messages per channel within a 5-second window. The `client_id` is stored in `localStorage` under `CLIENT_ID_KEY` so replay works across page reloads.
+## Automatic Recovery
+
+When the connection drops and reconnects, the SDK **automatically** replays messages missed during the gap — you don't call anything. It tracks an opaque per-channel cursor (`pos`) and, on reconnect, resumes from the last-seen position (Kafka backend). The `client_id` is stored in `localStorage` under `CLIENT_ID_KEY` and survives page reloads, but the `pos` cursor is held in memory — so a page reload starts a fresh session and does **not** replay messages missed while the page was gone.
+
+Where recovery cannot be *guaranteed*, the SDK never silently drops messages — it surfaces a marker on the delivery stream instead. To observe those, consume the **`messages()`** async iterator (the authoritative, back-pressured delivery surface) rather than the `message` event tap:
+
+```typescript
+for await (const item of client.messages()) {
+  switch (item.type) {
+    case 'message':
+    case 'replay_message':
+      // Live messages and replayed (recovered) messages — replayed ones arrive here on the
+      // stream, not on the `message` event tap.
+      console.log(item.channel, item.data);
+      break;
+    case 'gap':
+      // A detected gap being recovered — `last_pos` is the replay anchor.
+      console.warn('gap on', item.channel, 'before', item.last_pos);
+      break;
+    case 'possible_gap':
+      // Recovery could not be confirmed (Direct backend, or an SSE reconnect).
+      console.warn('possible gap on', item.channel);
+      break;
+  }
+}
+```
+
+A recovery that is truncated (e.g. the connection drops again mid-replay) is advisory, not fatal — it fires a `recoveryInterrupted` event and the next reconnect retries:
+
+```typescript
+client.on('recoveryInterrupted', (err) => {
+  console.warn('recovery interrupted:', err.message);
+});
+```
 
 :::note
-`msg.pos` is absent for messages delivered by the Direct backend (`MESSAGE_BACKEND=direct`). `reconnectWithReplay()` is a no-op when no Kafka messages have been received on the current page session.
+`msg.pos` is absent for messages delivered by the Direct backend (`MESSAGE_BACKEND=direct`), which has no replay cursor — on that backend a reconnect degrades to a re-subscribe and emits a `possible_gap` per channel rather than replaying.
 :::
 
 ## Complete Example
@@ -99,20 +119,16 @@ import { WebSocketTransport } from '@sukko/websocket';
 
 const client = new SukkoClient({
   transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
-  getToken: () => fetch('/api/token').then(r => r.text()),
+  getToken: () => fetch('/api/token').then((r) => r.text()),
 });
 
-client.on('connected', () => {
-  console.log('Connected to Sukko');
+client.subscribe(['general.chat']);
 
-  client.subscribe('general.chat', (msg) => {
-    const li = document.createElement('li');
-    li.textContent = JSON.stringify(msg.data);
-    document.getElementById('messages')?.appendChild(li);
-  });
+client.on('message', (msg) => {
+  const li = document.createElement('li');
+  li.textContent = JSON.stringify(msg.data);
+  document.getElementById('messages')?.appendChild(li);
 });
-
-await client.connect();
 
 // Publish on button click
 document.getElementById('send')?.addEventListener('click', () => {
@@ -123,7 +139,7 @@ document.getElementById('send')?.addEventListener('click', () => {
 ## Cleanup
 
 ```typescript
-client.unsubscribe('general.chat');
+client.unsubscribe(['general.chat']);
 client.disconnect();
 ```
 

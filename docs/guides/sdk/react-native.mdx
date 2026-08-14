@@ -22,14 +22,17 @@ npm install @sukko/sdk @sukko/websocket @sukko/react
 ```tsx
 // App.tsx
 import { SukkoProvider } from '@sukko/react';
+import { WebSocketTransport } from '@sukko/websocket';
 
 export default function App() {
   return (
     <SukkoProvider
-      url="ws://your-gateway:3000"
-      getToken={async () => {
-        const res = await fetch('https://your-api.com/auth/sukko-token');
-        return res.text();
+      options={{
+        transport: new WebSocketTransport({ url: 'ws://your-gateway:3000' }),
+        getToken: async () => {
+          const res = await fetch('https://your-api.com/auth/sukko-token');
+          return res.text();
+        },
       }}
     >
       <ChatScreen />
@@ -40,13 +43,21 @@ export default function App() {
 
 ## Subscribe and Display Messages
 
+`useSubscription` takes an array of channels and returns the latest message; accumulate a list with `onMessage` for a scrollback view:
+
 ```tsx
-import { useSubscription, useConnectionState } from '@sukko/react';
+import { useState } from 'react';
+import { useSubscription, useConnectionState, type TypedMessage } from '@sukko/react';
 import { View, Text, FlatList } from 'react-native';
 
 function ChatScreen() {
-  const { messages } = useSubscription('general.chat');
+  const [messages, setMessages] = useState<TypedMessage[]>([]);
   const { state } = useConnectionState();
+
+  useSubscription({
+    channels: ['general.chat'],
+    onMessage: (msg) => setMessages((prev) => [...prev, msg]),
+  });
 
   return (
     <View>
@@ -54,9 +65,7 @@ function ChatScreen() {
       <FlatList
         data={messages}
         keyExtractor={(_, i) => String(i)}
-        renderItem={({ item }) => (
-          <Text>{JSON.stringify(item.data)}</Text>
-        )}
+        renderItem={({ item }) => <Text>{JSON.stringify(item.data)}</Text>}
       />
     </View>
   );
@@ -83,7 +92,7 @@ function SendButton() {
 ## Platform Notes
 
 - **WebSocket** — React Native includes a built-in WebSocket implementation. The `@sukko/websocket` transport uses it automatically.
-- **Background** — WebSocket connections are closed when the app is backgrounded on iOS/Android. The SDK auto-reconnects when the app returns to the foreground. Call `client.reconnectWithReplay()` after reconnection to replay any Kafka messages missed while offline — see the [gap-free reconnect guide](./vanilla-ts#gap-free-reconnect) for the pattern. `pos` state is held in memory, so it persists across background/foreground cycles within the same app session.
+- **Background** — WebSocket connections are closed when the app is backgrounded on iOS/Android. The SDK auto-reconnects when the app returns to the foreground and **automatically** replays any Kafka messages missed while offline — no manual call. Where a replay can't be confirmed the SDK surfaces a `possible_gap` marker on the client's `messages()` stream instead of dropping silently (see [Automatic Recovery](./vanilla-ts#automatic-recovery)). The per-channel `pos` cursor is held in memory, so it persists across background/foreground cycles within the same app session.
 - **Client ID persistence** — Unlike web, React Native has no `localStorage`. The SDK generates a fresh `client_id` each time the app cold-starts, so gap-free replay does not persist across app restarts on React Native. Replay still works within the same app session (across background/foreground cycles).
 - **Token refresh** — The `getToken` callback is called automatically before token expiry, same as web.
 

@@ -72,17 +72,22 @@ JWTs expire. To maintain long-lived connections, refresh the token over the WebS
 
 The gateway responds with `auth_ack` (success) or `auth_error` (rejected).
 
-SDK clients handle this automatically via the `getToken` callback:
+SDK clients handle this automatically via the `getToken` callback — the SDK refreshes **proactively** before the token expires (and reactively if the server rejects one), preserving your subscriptions:
 
 ```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
 const client = new SukkoClient({
-  url: 'ws://localhost:3000',
+  transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
   getToken: async () => {
     const res = await fetch('/api/auth/sukko-token');
     return res.text();
   },
 });
 ```
+
+Call `await client.refreshToken()` to force an immediate refresh (WebSocket connections only — over SSE, refresh happens on reconnect).
 
 ## API Key Alternative
 
@@ -93,6 +98,14 @@ sukko api-keys create --tenant demo --name "backend-producer"
 ```
 
 Pass via header: `X-API-Key: pk_live_...`
+
+### Upgrading an API key to a JWT
+
+An API-key connection sees only channels the key is permitted. To gain access to permission-scoped channels mid-session, **escalate** to a JWT — the SDK sends the new credential and re-subscribes the channels the API key was previously denied:
+
+```typescript
+await client.escalate(userJwt);
+```
 
 ## Next Steps
 
