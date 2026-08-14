@@ -31,3 +31,6 @@ scripts/extract-sdk/extract-sdk
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Claude Code skills/settings — local, not shared
+.claude/
