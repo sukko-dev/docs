@@ -1,0 +1,127 @@
+---
+title: Python
+description: Use the Sukko SDK from Python backends, pipelines, and notebooks
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Python
+
+`sukko` is an asyncio-first Python client for the Sukko real-time platform — for backend services, data pipelines, and notebooks. It's built to the same AsyncAPI v1.4.0 + gateway OpenAPI contracts as the TypeScript SDK, with async-iterator delivery, back-pressure, full gap recovery, automatic auth refresh, and a Jupyter-safe sync wrapper. Fully typed (`py.typed`).
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+pip install sukko
+```
+
+Requires Python 3.11+.
+
+## Quickstart (async)
+
+The client is an async context manager. `subscribe` takes a list of channels, and messages — live **and** recovered — arrive on the `messages()` async iterator:
+
+```python
+import asyncio
+from sukko import SukkoClient
+
+async def main():
+    async with SukkoClient("wss://gateway.example.com/ws", token="<jwt>") as client:
+        await client.subscribe(["acme.trades"])
+        async for msg in client.messages():
+            print(msg.channel, msg.data)
+
+asyncio.run(main())
+```
+
+## Sync client (scripts & notebooks)
+
+`SyncSukkoClient` runs the async client on its own background event loop, so you can use it from plain scripts or a Jupyter cell with no `asyncio` boilerplate. Iterate delivery with the blocking `stream()`:
+
+```python
+from sukko import SyncSukkoClient
+
+with SyncSukkoClient("wss://gateway.example.com/ws", token="<jwt>") as client:
+    client.subscribe(["acme.trades"])
+    for msg in client.stream():
+        print(msg.channel, msg.data)
+```
+
+## Publishing
+
+```python
+await client.publish("acme.trades", {"price": 100})       # fire-and-forget over the WS connection
+await client.rest_publish("acme.trades", {"price": 100})  # awaitable REST — no WS needed (Pro)
+```
+
+`rest_publish` resolves on the gateway's ack and works without a live socket; it's a **Pro** feature and raises `EditionRequiredError` on Community.
+
+## Automatic Recovery
+
+On the Kafka backend the SDK recovers missed messages automatically — it reconnects with backoff + jitter and replays from the last position, surfacing recovered records on the same `messages()` stream (they carry `pos`). Where recovery can't be confirmed (the Direct backend, or an SSE reconnect) it emits a `PossibleGap` per channel rather than dropping silently. Match on the delivery item type to handle each:
+
+```python
+from sukko import Message, ReplayMessage, Gap, PossibleGap
+
+async for item in client.messages():
+    if isinstance(item, (Message, ReplayMessage)):
+        print(item.channel, item.data)                     # live + recovered messages
+    elif isinstance(item, Gap):
+        print("gap on", item.channel, "before", item.last_pos)
+    elif isinstance(item, PossibleGap):
+        print("possible gap on", item.channel)             # Direct backend / SSE reconnect
+```
+
+The delivery guarantee is **at-least-once within the replay window, best-effort beyond**. You can also request history explicitly (Pro + server history enabled) — it arrives as history-flagged messages on the same stream:
+
+```python
+await client.history("acme.trades", limit=50)
+```
+
+## Auth
+
+Credentials ride **request headers by default** (`Authorization: Bearer` / `X-API-Key`); pass `auth_via="query"` to use query-param auth instead. Supply an async `get_token` callback and long-lived tokens are refreshed automatically. An API-key connection can **escalate** to a JWT mid-session to gain permission-scoped channels:
+
+```python
+client = SukkoClient(url, api_key="<key>", get_token=fetch_fresh_jwt)
+...
+await client.escalate("<jwt>")   # gains JWT permissions; re-subscribes newly-permitted channels
+```
+
+## Channels
+
+Channels are `"{tenant}.{suffix}"` — the tenant is the segment before the first dot, the suffix an opaque dotted remainder:
+
+```python
+from sukko import build_channel, parse_channel
+
+build_channel("acme", "trades.btc")   # -> "acme.trades.btc"
+parse_channel("acme.trades.btc")      # -> ParsedChannel(tenant="acme", suffix="trades.btc")
+```
+
+## Push subscription management <EditionBadge edition="enterprise" />
+
+Register a mobile/browser device for push on a user's behalf (this SDK does not *receive* push):
+
+```python
+device_id = await client.push.subscribe(
+    platform="android", channels=["acme.alerts"], token="<fcm-token>",
+)
+await client.push.unsubscribe(device_id)
+key = await client.push.get_vapid_key()
+```
+
+## Errors
+
+Every failure is a typed subclass of `sukko.SukkoError` — `NotConnectedError`, `EditionRequiredError`, `RateLimitError`, `RecoveryInterruptedError`, `PublishError`, and more. Credentials never appear in an error message, `repr`, or log record.
+
+## Next Steps
+
+- **[Vanilla TypeScript](./vanilla-ts)** — the TypeScript SDK, same contracts
+- **[Channels](../../concepts/channels)** — channel types and scoping
+- **[Authentication](../../concepts/authentication)** — JWT and API key setup
+```
