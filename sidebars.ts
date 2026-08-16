@@ -62,7 +62,9 @@ const sidebars: SidebarsConfig = {
           items: [
             'reference/sdk/core',
             'reference/sdk/websocket',
+            'reference/sdk/websocket-node',
             'reference/sdk/react',
+            'reference/sdk/react-native',
             'reference/sdk/vue',
             'reference/sdk/svelte',
             'reference/sdk/python',
