@@ -21,7 +21,9 @@ const { Application, TSConfigReader } = require('typedoc');
 const packages = [
   { name: '@sukko/sdk', dir: 'packages/sdk' },
   { name: '@sukko/websocket', dir: 'packages/websocket' },
+  { name: '@sukko/websocket-node', dir: 'packages/websocket-node' },
   { name: '@sukko/react', dir: 'packages/react' },
+  { name: '@sukko/react-native', dir: 'packages/react-native' },
   { name: '@sukko/vue', dir: 'packages/vue' },
   { name: '@sukko/svelte', dir: 'packages/svelte' },
 ];

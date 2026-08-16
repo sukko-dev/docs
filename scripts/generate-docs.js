@@ -189,7 +189,9 @@ scoop install sukko
 const PACKAGE_FILES = {
   '@sukko/sdk': 'reference/sdk/core.mdx',
   '@sukko/websocket': 'reference/sdk/websocket.mdx',
+  '@sukko/websocket-node': 'reference/sdk/websocket-node.mdx',
   '@sukko/react': 'reference/sdk/react.mdx',
+  '@sukko/react-native': 'reference/sdk/react-native.mdx',
   '@sukko/vue': 'reference/sdk/vue.mdx',
   '@sukko/svelte': 'reference/sdk/svelte.mdx',
 };
@@ -197,7 +199,9 @@ const PACKAGE_FILES = {
 const PACKAGE_LABELS = {
   '@sukko/sdk': 'Core SDK',
   '@sukko/websocket': 'WebSocket Transport',
+  '@sukko/websocket-node': 'Node WebSocket Transport',
   '@sukko/react': 'React Hooks',
+  '@sukko/react-native': 'React Native Push',
   '@sukko/vue': 'Vue Composables',
   '@sukko/svelte': 'Svelte Stores',
 };

@@ -3,6 +3,8 @@ title: React Native
 description: Add real-time features to your React Native app with the Sukko TypeScript SDK
 ---
 
+import EditionBadge from '@site/src/components/EditionBadge';
+
 # React Native
 
 The Sukko TypeScript SDK works in React Native out of the box. No separate native SDK needed — `@sukko/sdk` and `@sukko/websocket` run on React Native's JavaScript runtime, and `@sukko/react` hooks work identically to web React.
@@ -96,8 +98,48 @@ function SendButton() {
 - **Client ID persistence** — Unlike web, React Native has no `localStorage`. The SDK generates a fresh `client_id` each time the app cold-starts, so gap-free replay does not persist across app restarts on React Native. Replay still works within the same app session (across background/foreground cycles).
 - **Token refresh** — The `getToken` callback is called automatically before token expiry, same as web.
 
+## Push Notifications <EditionBadge edition="enterprise" />
+
+Register a device for push with **`@sukko/react-native`**. It bundles no push library — you provide a small `MessagingAdapter` over whatever your app already uses (`@react-native-firebase/messaging`, `expo-notifications`, …), and the SDK registers the device token with the gateway and re-registers automatically when it rotates.
+
+```bash
+npm install @sukko/react-native
+```
+
+```tsx
+import { enableMobilePush, type MessagingAdapter } from '@sukko/react-native';
+import { Platform } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
+
+// A thin adapter over your app's messaging library — the SDK depends on none directly.
+const adapter: MessagingAdapter = {
+  requestPermission: async () => {
+    const status = await messaging().requestPermission();
+    return status === messaging.AuthorizationStatus.AUTHORIZED;
+  },
+  getToken: () => messaging().getToken(),
+  onTokenRefresh: (cb) => messaging().onTokenRefresh(cb),
+};
+
+const registration = await enableMobilePush(client, adapter, {
+  platform: Platform.OS === 'ios' ? 'ios' : 'android',
+  channels: ['acme.alerts'],
+  onError: (err) => console.warn('push re-registration failed', err),
+});
+
+// registration.deviceId — persist it (it rotates when the token refreshes).
+// Later: await registration.disable();
+```
+
+The SDK is a push **registrar**, not a receiver — the device receives notifications through the OS (FCM/APNs) and your app's own handler, never over the Sukko socket.
+
+:::caution iOS via Firebase is not supported
+The gateway routes push by platform (`ios` → APNs). An iOS app using **Firebase** holds an FCM token that `platform: "ios"` can't express — use **APNs directly on iOS**, and FCM on Android.
+:::
+
 ## Next Steps
 
 - **[React Integration](./react)** — Same API, web-specific examples
 - **[Authentication](../../concepts/authentication)** — Token management
 - **[SDK Reference](../../reference/sdk/react)** — Full hooks API reference
+- **[React Native Push Reference](../../reference/sdk/react-native)** — `enableMobilePush` + `MessagingAdapter`
