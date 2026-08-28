@@ -350,7 +350,9 @@ const featureLabels = {
   'Web Push transport': 'Web Push Transport',
   'per-tenant IP allowlisting': 'Per-Tenant IP Allowlisting',
   'audit logging': 'Audit Logging',
-  'push notifications': 'Push Notifications',
+  'REST publish': 'REST Publish',
+  'web push notifications': 'Web Push',
+  'mobile push notifications (FCM + APNs)': 'Mobile Push (FCM/APNs)',
   'end-to-end encryption': 'End-to-End Encryption',
   'priority message routing': 'Priority Message Routing',
   'custom quota policies': 'Custom Quota Policies',
@@ -447,25 +449,27 @@ Sukko is available in three editions. Community is free — no license key requi
 
 ### Community (Free)
 
-For evaluation, development, and small deployments. No license key required.
+For evaluation, development, and proof-of-concept deployments. No license key required — and no feature wall on the data path: the Kafka/Redpanda backend, message history, live gap recovery, and REST publish are all included. Capacity caps are the tier boundary, not features.
 
-- Up to ${formatLimit(c.max_tenants)} tenants, ${formatLimit(c.max_total_connections)} connections
-- All core features (gateway, multi-tenant, JWT auth, Kafka)
+- Up to ${formatLimit(c.max_tenants)} tenants, ${formatLimit(c.max_total_connections)} connections, ${formatLimit(c.max_shards)} shard
+- The full data path: Kafka/Redpanda ingestion, message history, live gap recovery, REST publish
 - Community support via GitHub Issues
 
 ### Pro <EditionBadge edition="pro" />
 
-For production workloads with multiple tenants and higher scale.
+For production workloads: production scale plus the operations surface.
 
-- Up to ${formatLimit(p.max_tenants)} tenants, ${formatLimit(p.max_total_connections)} connections
-- Advanced features: dedicated consumers, alerting, TLS, tracing
+- Up to ${formatLimit(p.max_tenants)} tenants, ${formatLimit(p.max_total_connections)} connections, ${formatLimit(p.max_shards)} shards
+- SSE transport and Web Push
+- Operations: per-tenant connection limits and quotas, tenant lifecycle, channel-topic routing, alerting, tracing, analytics, admin UI, token revocation, webhooks, connections API
 - Email support
 
 ### Enterprise <EditionBadge edition="enterprise" />
 
-For large-scale deployments with no limits.
+For compliance-driven and large-scale deployments.
 
-- Unlimited everything
+- Unlimited tenants, connections, and shards
+- Audit-log query API and mobile push (FCM/APNs)
 - Priority support with custom SLA
 - Contact us for pricing
 

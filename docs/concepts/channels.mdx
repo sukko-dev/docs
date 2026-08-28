@@ -123,7 +123,7 @@ Publishing is controlled by the `publish_public`, `publish_default`, and `publis
 
 Published messages are routed to backend topics via **topic routing rules** configured per-tenant (Kafka backend). If the tenant has no routing rules, or has rules but none match the channel, the publish is **rejected** — never silently dropped or dead-lettered. See [Unroutable Publishes](#unroutable-publishes) for the exact responses.
 
-## Topic Routing Rules <EditionBadge edition="pro" />
+## Topic Routing Rules <EditionBadge edition="pro" /> {#topic-routing-rules}
 
 Every tenant must configure routing rules that map channel patterns to backend Kafka topic suffixes. Without routing rules, all client publishes are rejected (secure by default).
 
@@ -207,7 +207,7 @@ A publish that cannot be routed to a topic is **rejected** — never silently dr
 | Tenant has no routing rules provisioned | `409 PUBLISH_NOT_ROUTABLE` | `no_routing_rules` |
 | Tenant has rules but none match the channel | `409 PUBLISH_NOT_ROUTABLE` | `no_matching_route` |
 
-Resolve either by provisioning a routing rule whose pattern matches the channel — add a catch-all `**` rule to accept every channel suffix. This applies to the **Kafka backend** only; the direct (Community) backend has no routing rules and never returns these errors.
+Resolve either by provisioning a routing rule whose pattern matches the channel — add a catch-all `**` rule to accept every channel suffix. This applies to the **Kafka backend** only; the direct backend has no routing rules and never returns these errors. Note that routing rules are a **Pro** feature: on a Community deployment running the kafka backend, client and REST publishes are always rejected as unroutable — there, messages enter via your own Kafka producers (the ingest path), or you use the direct backend for client publishing.
 
 #### Infrastructure topics
 

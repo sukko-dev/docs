@@ -100,6 +100,8 @@ function SendButton() {
 
 ## Push Notifications <EditionBadge edition="enterprise" />
 
+Mobile push (FCM/APNs) is an **Enterprise** feature — registering `android`/`ios` devices below Enterprise is rejected with `403 EDITION_LIMIT`. (Web Push, used by browser apps, is **Pro** — see the [push notifications guide](../push-notifications).)
+
 Register a device for push with **`@sukko/react-native`**. It bundles no push library — you provide a small `MessagingAdapter` over whatever your app already uses (`@react-native-firebase/messaging`, `expo-notifications`, …), and the SDK registers the device token with the gateway and re-registers automatically when it rotates.
 
 ```bash
