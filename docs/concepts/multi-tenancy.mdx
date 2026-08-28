@@ -20,15 +20,17 @@ A tenant represents a customer or application environment. Each tenant has:
 - Routing rules mapping channels to backend topics
 - Quotas limiting connections, topics, throughput, and storage
 
-## Isolation Guarantees
+## Isolation Controls {#isolation-guarantees}
+
+Tenant isolation in Sukko is **security scoping** — every channel, subscription, topic, and database query is scoped to the authenticated tenant — plus **per-tenant admission controls** (connection limits and quotas, Pro). It is not a runtime resource-fairness guarantee: tenants share the same process, broadcast bus, and backend infrastructure, so isolation means no tenant can *see or touch* another tenant's data, not that a heavy tenant cannot affect shared capacity (admission controls exist to bound that).
 
 | Layer | Isolation |
 |-------|-----------|
-| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced via quotas. |
-| **Channels** | Channel names are namespaced as `{tenant}.{suffix}`. Tenant A's `general.chat` is completely separate from Tenant B's. |
+| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced via quotas (admission control, Pro). |
+| **Channels** | Channel names are namespaced as `{tenant}.{suffix}`. Tenant A's `general.chat` is a different channel from Tenant B's — subscriptions never cross tenants. |
 | **Topics** | Backend topics are prefixed: `{namespace}.{tenant_id}.{suffix}`. The Kafka consumer re-validates that each record's channel-tenant matches its topic-tenant and [dead-letters](./message-backends#tenant-validation--dead-lettering) any mismatch. |
 | **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected at the gateway. |
-| **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput. |
+| **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput (admission control, Pro). |
 
 ## Quotas <EditionBadge edition="pro" />
 

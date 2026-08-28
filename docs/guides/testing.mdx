@@ -141,12 +141,14 @@ wc -c ~/.sukko/admin.key   # must print exactly 64
 
 ### Edition Requirements
 
-Two suites require a specific edition:
+Four suites require a specific edition:
 
 | Suite | Minimum Edition |
 |-------|----------------|
+| `sse` | Pro <EditionBadge edition="pro" /> |
 | `token-revocation` | Pro <EditionBadge edition="pro" /> |
-| `push` | Enterprise <EditionBadge edition="enterprise" /> |
+| `push` | Pro <EditionBadge edition="pro" /> (the FCM/APNs mobile legs are Enterprise <EditionBadge edition="enterprise" />) |
+| `webhooks` | Pro <EditionBadge edition="pro" /> |
 
 Running a gated suite on the wrong edition returns a `pass` result with one `[skip]` check (the edition gate). No failures — the suite just skips the gated checks. To actually validate the feature, you need a valid license key for the required edition.
 
@@ -173,13 +175,13 @@ Run all 18 suites in this order. Each suite is independent and can be run indivi
 | 5 | `ordering` | Community | no | FIFO message ordering |
 | 6 | `reconnect` | Community | no | Disconnect/reconnect recovery |
 | 7 | `ratelimit` | Community | no | Rate limit enforcement |
-| 8 | `sse` | Community | no | SSE transport validation |
-| 9 | `rest-publish` | Community | no | REST publish delivery |
+| 8 | `sse` | **Pro** | no | SSE transport validation (SSE transport is Pro-gated) |
+| 9 | `rest-publish` | Community | no | REST publish delivery (`/api/v1/publish` is open on all editions; the SSE receive leg skips below Pro) |
 | 10 | `provisioning` | Community | **yes** | Provisioning API CRUD lifecycle |
 | 11 | `tenant-isolation` | Community | **yes** | Cross-tenant message isolation |
 | 12 | `token-revocation` | **Pro** | **yes** | Token revocation force-disconnect |
 | 13 | `edition-limits` | Community | no | Edition boundary limits |
-| 14 | `push` | **Enterprise** | no | Push notification pipeline |
+| 14 | `push` | **Pro** | no | Push notification pipeline (Web Push is Pro; the FCM/APNs legs are Enterprise and skip on Pro) |
 | 15 | `license-reload` | Community | no | License hot-reload propagation |
 | 16 | `api-key` | Community | no | Static API key auth in isolation |
 | 17 | `upgrade` | Community | no | Auth upgrade flow: API key → JWT |
@@ -231,7 +233,7 @@ sukko test validate --suite sse --follow
 
 Validates the SSE transport: connects as an SSE client, subscribes to channels, verifies message delivery. Confirms SSE clients and WebSocket clients on the same channel both receive messages.
 
-**Minimum edition**: Community
+**Minimum edition**: Pro (the SSE transport is Pro-gated; on Community the gated checks skip and the suite reports `pass` with `[skip]`)
 
 #### `rest-publish`
 
@@ -239,9 +241,9 @@ Validates the SSE transport: connects as an SSE client, subscribes to channels, 
 sukko test validate --suite rest-publish --follow
 ```
 
-Validates the REST publish endpoint: publishes a message via HTTP and verifies it is delivered to WebSocket subscribers on the target channel.
+Validates the REST publish endpoint: publishes a message via HTTP and verifies it is delivered to WebSocket subscribers on the target channel. After the delivery check passes, the suite also asserts **`rest publish mid equality`** — the REST response's `mid` (the message's stable identity) must be present and equal to the `mid` on the delivered envelope. In CI this check is required to pass on all Pro and Enterprise cells (both backends).
 
-**Minimum edition**: Community
+**Minimum edition**: Community (`/api/v1/publish` is open on all editions; the SSE receive leg skips below Pro)
 
 #### `edition-limits`
 
@@ -253,7 +255,7 @@ Validates that edition limits are enforced: verifies tenant count limits, connec
 
 **Minimum edition**: Community
 
-#### `push` <EditionBadge edition="enterprise" />
+#### `push` <EditionBadge edition="pro" />
 
 ```bash
 sukko test validate --suite push --follow
@@ -265,8 +267,8 @@ Validates the push notification pipeline: device registration, subscription CRUD
 End-to-end delivery is verified for **Web Push** (VAPID) only. The FCM (Android) and APNs (iOS) legs register a device with a fake provider token and assert the subscription is accepted — they do not deliver to Google/Apple (that requires live external services). A green suite means Web Push is delivered and verified; mobile push is registered but not delivered.
 :::
 
-On Community or Pro, the suite is skipped.  
-**Minimum edition**: Enterprise
+On Community, the suite is skipped. On Pro, the Web Push checks (including real delivery) run; the Enterprise-gated FCM/APNs legs skip.  
+**Minimum edition**: Pro (Web Push); Enterprise for the FCM/APNs mobile legs
 
 #### `license-reload`
 
@@ -486,7 +488,6 @@ Run the operator-relevant suites in order:
 sukko test validate --suite provisioning --follow
 sukko test validate --suite pubsub --follow
 sukko test validate --suite tenant-isolation --follow
-sukko test validate --suite sse --follow
 sukko test validate --suite rest-publish --follow
 sukko test validate --suite edition-limits --follow
 ```
@@ -497,9 +498,10 @@ Run only the suites your edition supports:
 
 ```bash
 # Pro+ only
+sukko test validate --suite sse --follow
 sukko test validate --suite token-revocation --follow
 
-# Enterprise only
+# Pro+ (the FCM/APNs mobile legs skip below Enterprise)
 sukko test validate --suite push --follow
 ```
 

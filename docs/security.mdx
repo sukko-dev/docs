@@ -48,7 +48,7 @@ Every access decision is evaluated at the gateway. Denied requests never reach t
 
 ## Tenant Isolation
 
-Every tenant is isolated at every layer of the stack. There is no shared state between tenants, and cross-tenant access is rejected at the gateway before processing.
+Tenant isolation is enforced as **security scoping** at every layer of the stack — channels, subscriptions, topics, and database queries are all scoped to the authenticated tenant, and cross-tenant access is rejected at the gateway before processing. Per-tenant admission controls (connection limits and quotas, Pro) bound each tenant's use of shared capacity; tenants do share process and infrastructure resources, so isolation is a data-access boundary, not a runtime resource-fairness guarantee.
 
 - **Connections** — the tenant is extracted from the JWT `tenant_id` claim at connection time. All subsequent operations are scoped to that tenant.
 - **Channels** — channel names are internally namespaced as `{tenant_id}.{suffix}`. A subscription to `general.chat` in tenant A is a completely different channel from `general.chat` in tenant B.
@@ -112,12 +112,15 @@ Sensitive credentials are never stored in plaintext configuration files or logge
 
 [See configuration reference &rarr;](./reference/configuration)
 
-## Planned Security Enhancements
+## Edition-Gated and Planned Security Features
 
-Sukko's security surface continues to grow. These features are in active development:
+Available today:
 
 - **Token Revocation** <EditionBadge edition="pro" /> — revoke individual JWT tokens (not just signing keys) for immediate session termination
-- **Audit Logging** <EditionBadge edition="enterprise" /> — immutable, queryable audit trail of all provisioning actions with actor attribution
+- **Audit Logging** <EditionBadge edition="enterprise" /> — audit trail of all provisioning actions with actor attribution (records are always written; the query API is Enterprise)
+
+In active development:
+
 - **Per-Tenant IP Allowlisting** <EditionBadge edition="enterprise" /> — restrict tenant connections to approved IP ranges
 - **End-to-End Encryption** <EditionBadge edition="enterprise" /> — encrypted message delivery where Sukko cannot read message payloads
 
