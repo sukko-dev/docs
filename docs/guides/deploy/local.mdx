@@ -102,20 +102,20 @@ sukko down && sukko up
 
 ### Message Backend
 
-The default local setup uses the **direct** message backend (no Kafka) — this is the Community edition.
+The default local setup uses the **direct** message backend (no Kafka) — zero external dependencies.
 
-The **Kafka/Redpanda** backend is a **Pro/Enterprise feature**. To run it locally you need a Pro or Enterprise license configured; `sukko up` fails fast with a clear message if you select kafka mode without one (the server also rejects `MESSAGE_BACKEND=kafka` on Community at startup).
+The **Kafka/Redpanda** backend runs on **every edition**, Community included — no license is required to select it:
 
 ```bash
-# 1. Configure a Pro/Enterprise license (skip if already set)
-sukko license set <your-license-token>
-
-# 2. Select the kafka backend and restart
 sukko config set message-backend kafka
 sukko down && sukko up
 ```
 
-This starts a local Redpanda broker (Kafka-wire-compatible) under the `kafka` compose profile and points ws-server at it. Without a license, keep the default `direct` backend.
+This starts a local Redpanda broker (Kafka-wire-compatible) under the `kafka` compose profile and points ws-server at it.
+
+:::note Client publish on the kafka backend needs routing rules
+On the kafka backend, client and REST publishes are routed to topics via per-tenant [routing rules](../../concepts/channels#topic-routing-rules) — a **Pro** feature. On Community + kafka, publishes without a matching rule are rejected (`409 PUBLISH_NOT_ROUTABLE` — deliberately, never silently dropped). Community + kafka is the **ingest path**: your own producers publish to the tenant's Kafka topics and Sukko fans out to clients, with message history and gap recovery included. For client publishing on Community, use the default `direct` backend.
+:::
 
 ## migrate-dlq {#migrate-dlq}
 

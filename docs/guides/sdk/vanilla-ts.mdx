@@ -56,7 +56,7 @@ client.publish('general.chat', {
 });
 ```
 
-`data` must be a JSON **object**. `publish` is fire-and-forget over WebSocket; for an awaitable publish that resolves on the gateway's ack (and works without a live socket), use `await client.restPublish('general.chat', { text: '…' })` — REST publish is a **Pro** feature and rejects with `EditionRequiredError` on Community.
+`data` must be a JSON **object**. `publish` is fire-and-forget over WebSocket; for an awaitable publish that resolves on the gateway's ack (and works without a live socket), use `await client.restPublish('general.chat', { text: '…' })` — REST publish is available in **every edition**. The gateway's REST publish response (and the WebSocket `publish_ack`) carries the message's stable identity `mid` — the same `mid` subscribers receive on the delivered envelope (omitted when a routing rule fans the publish out to multiple topics).
 
 ## Connection State
 
@@ -110,6 +110,10 @@ client.on('recoveryInterrupted', (err) => {
 :::note
 `msg.pos` is absent for messages delivered by the Direct backend (`MESSAGE_BACKEND=direct`), which has no replay cursor — on that backend a reconnect degrades to a re-subscribe and emits a `possible_gap` per channel rather than replaying.
 :::
+
+### Message identity (`mid`) vs. cursor (`pos`)
+
+Delivered envelopes (live, replay, and history) also carry an optional **`mid`** — a stable, opaque message identity (at most 64 characters). Unlike `seq` (per-connection) and `pos` (a per-channel replay cursor), the **same message carries the same `mid` on every copy delivered**, so you can deduplicate a reconnect-replay overlap or process messages idempotently by keying on it. `mid` is identity, never a cursor: keep sending `pos` values for replay (`from_pos`/`last_pos`), and never parse `mid` — its format is backend-specific and may change between releases.
 
 ## Complete Example
 

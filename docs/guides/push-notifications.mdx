@@ -5,9 +5,13 @@ description: Deliver messages to offline clients via FCM, APNs, and Web Push
 
 import EditionBadge from '@site/src/components/EditionBadge';
 
-# Push Notifications <EditionBadge edition="enterprise" />
+# Push Notifications <EditionBadge edition="pro" />
 
 When a client is offline or disconnected, Sukko can deliver messages via push notifications — FCM (Android), APNs (iOS/macOS), and Web Push (browsers). The Push service runs independently from the real-time path, consuming from the message backend and dispatching to registered devices.
+
+:::note Editions
+The Push service requires **Pro** or higher. **Web Push** (browsers) is fully available on Pro. **Mobile push** — `android`/`ios` device registration and FCM/APNs credential upload — requires **Enterprise**; below it those requests are rejected with `403 EDITION_LIMIT`.
+:::
 
 ## Architecture
 
@@ -28,10 +32,10 @@ Push requires a persistent message backend — `direct` mode is not supported.
 
 ### Step 1: Enable the Push Service
 
-**Docker Compose (Enterprise profile):**
+**Docker Compose (`enterprise` profile):**
 
 ```bash
-sukko init  # Select enterprise profile
+sukko init  # Select the enterprise profile (the compose service set that includes the push service)
 sukko up
 ```
 
@@ -43,9 +47,9 @@ helm install sukko klurvio/sukko --set push.enabled=true
 
 ### Step 2: Upload Provider Credentials
 
-Each tenant needs credentials for the push providers they use.
+Each tenant needs credentials for the push providers they use. Web Push needs none (VAPID keys are auto-generated); FCM and APNs credential upload is **Enterprise**-gated.
 
-**Android (FCM):**
+**Android (FCM)** <EditionBadge edition="enterprise" />**:**
 
 ```bash
 curl -X POST https://gateway.example.com/api/v1/push/credentials \
@@ -60,7 +64,7 @@ curl -X POST https://gateway.example.com/api/v1/push/credentials \
 
 The `credential_data` is the Firebase service account JSON (from Firebase Console > Project Settings > Service Accounts).
 
-**iOS/macOS (APNs):**
+**iOS/macOS (APNs)** <EditionBadge edition="enterprise" />**:**
 
 ```bash
 curl -X POST https://gateway.example.com/api/v1/push/credentials \
@@ -121,7 +125,7 @@ curl -X POST https://gateway.example.com/api/v1/push/subscribe \
   }'
 ```
 
-**Android/iOS:**
+**Android/iOS** <EditionBadge edition="enterprise" />**:**
 
 ```bash
 curl -X POST https://gateway.example.com/api/v1/push/subscribe \
@@ -136,7 +140,7 @@ curl -X POST https://gateway.example.com/api/v1/push/subscribe \
 
 **Using the SDK:**
 
-The `@sukko/sdk` client exposes a `push` namespace (Enterprise-gated — a lower edition throws `EditionRequiredError`). In the browser, `enableWebPush` runs the entire W3C Web Push flow (fetch the VAPID key → `PushManager.subscribe` → register) in one call:
+The `@sukko/sdk` client exposes a `push` namespace — **Pro** for Web Push; registering `android`/`ios` tokens requires **Enterprise** (a lower edition throws `EditionRequiredError`). In the browser, `enableWebPush` runs the entire W3C Web Push flow (fetch the VAPID key → `PushManager.subscribe` → register) in one call:
 
 ```typescript
 // Browser — one call does VAPID + PushManager.subscribe + register.
@@ -189,5 +193,5 @@ In dry-run mode, push payloads are logged instead of sent to providers. Register
 ## Next Steps
 
 - **[Architecture](../concepts/architecture)** — How the Push service fits in the data flow
-- **[Edition Comparison](../editions/comparison)** — Push is an Enterprise feature
+- **[Edition Comparison](../editions/comparison)** — Web Push is Pro; mobile push (FCM/APNs) is Enterprise
 - **[Security](../security)** — How push credentials are encrypted at rest

@@ -5,32 +5,43 @@ description: Sukko edition pricing
 
 # Pricing
 
+All prices are **flat annual subscriptions** — no usage metering, no per-message fees. Tiers within an edition differ by licensed connection capacity.
+
 ## Community
 
 **Free** — forever.
 
-- 3 tenants, 1,000 connections, 1 shard
-- All core features
+- 3 tenants, 500 connections, 1 shard
+- The full data path: Kafka/Redpanda ingestion, message history, live gap recovery, REST publish
 - Community support via [GitHub Issues](https://github.com/klurvio/sukko-issues/issues)
 
 [Get Started](../quickstart)
 
 ## Pro
 
-**Contact us** for pricing.
+Production scale plus the operations surface: SSE transport, Web Push, per-tenant limits and quotas, tenant lifecycle, channel-topic routing, alerting, tracing, analytics, admin UI, token revocation, webhooks, and the connections API. Base edition limits: 50 tenants, 10,000 connections, 8 shards — higher tiers license higher connection caps.
 
-- 50 tenants, 100,000 connections, 8 shards
-- Dedicated consumers, alerting, TLS, tracing
+| Tier | Licensed capacity | Price |
+|------|-------------------|-------|
+| **Pro** | Up to 10,000 connections | $7,500/yr |
+| **Pro Growth** | Up to 50,000 connections | $15,000/yr |
+| **Pro Scale** | Up to 150,000 connections | $30,000/yr |
+
 - Email support
 
 [Contact Sales](https://sukko.dev/pricing)
 
 ## Enterprise
 
-**Custom pricing** based on deployment scale.
+Everything in Pro, plus unlimited tenants and shards, the audit-log query API, and mobile push (FCM/APNs).
 
-- Unlimited everything
-- Priority support with custom SLA
+| Tier | Scope | Price |
+|------|-------|-------|
+| **Enterprise Entry** | 1 cluster, up to 10,000 connections | $60,000–75,000/yr |
+| **Enterprise Standard** | Up to 50,000 connections | $100,000–125,000/yr |
+| **Enterprise Scale** | Custom capacity | $200,000–250,000+/yr |
+
+- Priority support; add **24/7 SLA coverage** for a 20–25% uplift
 - Dedicated onboarding
 
 [Contact Sales](https://sukko.dev/pricing)
