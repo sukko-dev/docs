@@ -543,7 +543,7 @@ Have feedback or feature requests? Join the discussion on [GitHub Discussions](h
 
   md += `---
 
-*This roadmap is auto-generated from the [feature matrix](https://github.com/klurvio/sukko) in the Sukko source code. Priorities may change based on community feedback.*
+*This roadmap is auto-generated from the [feature matrix](https://sukko.dev) in the Sukko source code. Priorities may change based on community feedback.*
 `;
 
   const outPath = path.join(DOCS_DIR, 'roadmap.mdx');
