@@ -55,10 +55,10 @@ with SyncSukkoClient("wss://gateway.example.com/ws", token="<jwt>") as client:
 
 ```python
 await client.publish("acme.trades", {"price": 100})       # fire-and-forget over the WS connection
-await client.rest_publish("acme.trades", {"price": 100})  # awaitable REST — no WS needed (Pro)
+await client.rest_publish("acme.trades", {"price": 100})  # awaitable REST — no WS needed
 ```
 
-`rest_publish` resolves on the gateway's ack and works without a live socket; it's a **Pro** feature and raises `EditionRequiredError` on Community.
+`rest_publish` resolves on the gateway's ack and works without a live socket; REST publish is available in **every edition**. The gateway's REST publish response carries the message's stable identity `mid` — the same `mid` subscribers receive on the delivered envelope (omitted when a routing rule fans the publish out to multiple topics; see the [TypeScript guide](./vanilla-ts#message-identity-mid-vs-cursor-pos) for identity-vs-cursor semantics).
 
 ## Automatic Recovery
 
@@ -76,7 +76,7 @@ async for item in client.messages():
         print("possible gap on", item.channel)             # Direct backend / SSE reconnect
 ```
 
-The delivery guarantee is **at-least-once within the replay window, best-effort beyond**. You can also request history explicitly (Pro + server history enabled) — it arrives as history-flagged messages on the same stream:
+The delivery guarantee is **at-least-once within the replay window, best-effort beyond** — delivered envelopes carry a stable `mid` identity you can deduplicate on. You can also request history explicitly (any edition, when the server has history enabled) — it arrives as history-flagged messages on the same stream:
 
 ```python
 await client.history("acme.trades", limit=50)
@@ -103,9 +103,9 @@ build_channel("acme", "trades.btc")   # -> "acme.trades.btc"
 parse_channel("acme.trades.btc")      # -> ParsedChannel(tenant="acme", suffix="trades.btc")
 ```
 
-## Push subscription management <EditionBadge edition="enterprise" />
+## Push subscription management <EditionBadge edition="pro" />
 
-Register a mobile/browser device for push on a user's behalf (this SDK does not *receive* push):
+Register a mobile/browser device for push on a user's behalf (this SDK does not *receive* push). Push requires **Pro** (Web Push); registering **android**/**ios** devices (FCM/APNs) additionally requires **Enterprise** — below it the gateway rejects those platforms with `403 EDITION_LIMIT`:
 
 ```python
 device_id = await client.push.subscribe(
@@ -124,4 +124,3 @@ Every failure is a typed subclass of `sukko.SukkoError` — `NotConnectedError`,
 - **[Vanilla TypeScript](./vanilla-ts)** — the TypeScript SDK, same contracts
 - **[Channels](../../concepts/channels)** — channel types and scoping
 - **[Authentication](../../concepts/authentication)** — JWT and API key setup
-```
