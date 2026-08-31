@@ -32,7 +32,7 @@ Production-grade persistent ingestion with offset-based replay. Available in **e
 - Offset-based replay on client reconnection
 
 :::note Client publish into the kafka backend needs routing rules
-Client (WebSocket) and REST publishes into the kafka backend are routed to topics via per-tenant [routing rules](./channels#topic-routing-rules) — a **Pro** feature. Without a matching rule the publish is rejected, never silently dropped. On Community, the kafka backend is the **ingest path**: your producers publish to the tenant's Kafka topics and Sukko fans out to clients (with history and gap recovery); client publishing works on the direct backend.
+Client (WebSocket) and REST publishes into the kafka backend are routed to topics via per-tenant [routing rules](./channels#topic-routing-rules) — a **Pro** feature. Without a matching rule the publish is rejected, never silently dropped. On Community, the kafka backend is the **ingest path**: your producers publish to the tenant's automatically provisioned `default` topic and Sukko fans out to clients (with history and gap recovery) — no routing rules needed; client publishing works on the direct backend.
 :::
 
 ```bash
@@ -45,6 +45,15 @@ KAFKA_BROKERS=redpanda:9092
 Topics follow a three-part scheme: `{namespace}.{tenant_id}.{suffix}`
 
 Example: `prod.acme.messages`, `dev.demo.chat`
+
+### Which Topics Sukko Consumes
+
+Provisioning is the sole authority on each tenant's topic set. For every active tenant, Sukko creates and consumes exactly:
+
+- the tenant's **`default` topic** (`{namespace}.{tenant_id}.default`) — provisioned automatically with every tenant, on every edition. Publish records here and they fan out to subscribed clients with no further setup — this is the Community ingest path
+- every topic suffix referenced by the tenant's [routing rules](./channels#topic-routing-rules) — rules **extend** the consumed set on Pro and above; they never gate the default topic
+
+Records produced into any other topic are never read — Sukko only consumes provisioning-opened, tenant-scoped, namespace-prefixed topics, which is the ingestion-path half of [tenant isolation](../security#defense-in-depth-on-the-ingestion-path). (The auto-provisioned `dead-letter` topic is written by Sukko but never consumed — infrastructure, not an ingest target.)
 
 ### Consumer Modes
 
