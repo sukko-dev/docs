@@ -125,7 +125,7 @@ Published messages are routed to backend topics via **topic routing rules** conf
 
 ## Topic Routing Rules <EditionBadge edition="pro" /> {#topic-routing-rules}
 
-Every tenant must configure routing rules that map channel patterns to backend Kafka topic suffixes. Without routing rules, all client publishes are rejected (secure by default).
+Every tenant must configure routing rules that map channel patterns to backend Kafka topic suffixes. Without routing rules, all client publishes are rejected (secure by default). Routing rules gate **client and REST publishing only** — ingesting via the tenant's automatically provisioned `default` topic needs no rules on any edition (see [Which Topics Sukko Consumes](./message-backends#which-topics-sukko-consumes)).
 
 Rules are evaluated in **ascending priority order** — the rule with the lowest `priority` value is checked first (first match wins). Add a catch-all rule at priority `100` and tenant-specific rules at `0–99` to override it.
 
