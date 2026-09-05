@@ -50,7 +50,7 @@ The private key file has `0600` permissions — readable only by your user.
 Pass the public key to Helm:
 
 ```bash
-helm upgrade sukko klurvio/sukko \
+helm upgrade sukko sukko-dev/sukko \
   --set provisioning.adminBootstrapKey="$(cat ~/.sukko/contexts/production/admin.pub)"
 ```
 

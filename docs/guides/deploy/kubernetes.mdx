@@ -23,7 +23,7 @@ Deploy Sukko to any Kubernetes cluster using the Helm chart. Supports DOKS (Digi
 The Helm chart is in the Sukko repository:
 
 ```bash
-git clone https://github.com/klurvio/sukko.git
+git clone https://github.com/sukko-dev/sukko.git
 cd sukko
 ```
 
@@ -40,7 +40,7 @@ Edit `my-values.yaml` for your environment:
 ```yaml
 global:
   namespace: sukko
-  imageRegistry: "ghcr.io/klurvio"
+  imageRegistry: "ghcr.io/sukko-dev"
 
 ws-gateway:
   replicaCount: 2
