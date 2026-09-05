@@ -14,7 +14,7 @@ const config: Config = {
   url: 'https://docs.sukko.dev',
   baseUrl: '/',
 
-  organizationName: 'klurvio',
+  organizationName: 'sukko-dev',
   projectName: 'sukko-docs',
 
   onBrokenLinks: 'throw',
@@ -30,7 +30,7 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/klurvio/sukko-docs/edit/main/',
+          editUrl: 'https://github.com/sukko-dev/docs/edit/main/',
           routeBasePath: 'docs',
         },
         blog: false,
@@ -81,7 +81,7 @@ const config: Config = {
           position: 'left',
         },
         {
-          href: 'https://github.com/klurvio/sukko-cli',
+          href: 'https://github.com/sukko-dev/cli',
           label: 'GitHub',
           position: 'right',
         },
@@ -109,12 +109,12 @@ const config: Config = {
         {
           title: 'More',
           items: [
-            {label: 'GitHub', href: 'https://github.com/klurvio/sukko-cli'},
-            {label: 'Issues', href: 'https://github.com/klurvio/sukko-issues/issues'},
+            {label: 'GitHub', href: 'https://github.com/sukko-dev/cli'},
+            {label: 'Issues', href: 'https://github.com/sukko-dev/sukko-issues/issues'},
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Klurvio. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Sukko Pty Ltd. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

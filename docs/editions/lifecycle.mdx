@@ -134,12 +134,12 @@ sukko edition
 Sukko's license public key is embedded in each binary, and license validation is fully
 offline — there is no license server to call. Two things follow for you as an operator:
 
-- **Pin an immutable version.** Deploy a specific `ghcr.io/klurvio/sukko-*:vX.Y.Z` image tag
+- **Pin an immutable version.** Deploy a specific `ghcr.io/sukko-dev/sukko-*:vX.Y.Z` image tag
   rather than a moving tag, so you always know exactly which build you are running.
 - **Upgrades never invalidate a license.** Upgrading to a newer Sukko version never breaks an
   existing, valid license key — upgrade whenever suits you.
 
-On the rare occasion Klurvio rotates the license signing key, the new Sukko release embeds
+On the rare occasion Sukko rotates the license signing key, the new Sukko release embeds
 **both** the previous and new keys during an overlap window. So:
 
 - Your existing license keeps validating after you upgrade — **no coordinated cutover, no

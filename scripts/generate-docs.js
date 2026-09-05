@@ -121,10 +121,10 @@ The \`sukko\` CLI manages your Sukko deployment — tenants, keys, testing, and 
 
 \`\`\`bash
 # macOS / Linux
-brew install klurvio/tap/sukko
+brew install sukko-dev/tap/sukko
 
 # Windows
-scoop bucket add sukko https://github.com/klurvio/scoop-bucket
+scoop bucket add sukko https://github.com/sukko-dev/scoop-bucket
 scoop install sukko
 \`\`\`
 
@@ -526,7 +526,7 @@ description: Upcoming features planned for Sukko
 
 Planned features for upcoming Sukko releases. This page is auto-generated from the feature matrix in the Sukko source code.
 
-Have feedback or feature requests? Join the discussion on [GitHub Discussions](https://github.com/klurvio/sukko-issues/discussions).
+Have feedback or feature requests? Join the discussion on [GitHub Discussions](https://github.com/sukko-dev/sukko-issues/discussions).
 
 `;
 
