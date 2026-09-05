@@ -31,23 +31,23 @@ jobs:
         with:
           app-id: ${{ secrets.DOCS_BUILD_APP_ID }}
           private-key: ${{ secrets.DOCS_BUILD_APP_PRIVATE_KEY }}
-          owner: klurvio
+          owner: sukko-dev
           repositories: sukko
 
       - name: Clone sukko (private)
-        run: git clone --depth 1 https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/klurvio/sukko.git .sources/sukko
+        run: git clone --depth 1 https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/sukko-dev/sukko.git .sources/sukko
 
       # sukko-cli (public)
       - name: Clone sukko-cli
-        run: git clone --depth 1 https://github.com/klurvio/sukko-cli.git .sources/sukko-cli
+        run: git clone --depth 1 https://github.com/sukko-dev/cli.git .sources/sukko-cli
 
       # sukko-js (public)
       - name: Clone sukko-js
-        run: git clone --depth 1 https://github.com/klurvio/sukko-js.git .sources/sukko-js
+        run: git clone --depth 1 https://github.com/sukko-dev/sdk-js.git .sources/sukko-js
 
       # sukko-py (public)
       - name: Clone sukko-py
-        run: git clone --depth 1 https://github.com/klurvio/sukko-py.git .sources/sukko-py
+        run: git clone --depth 1 https://github.com/sukko-dev/sdk-py.git .sources/sukko-py
 
       # The SDK reference is extracted with TypeDoc, which COMPILES the TypeScript. sukko-js must be
       # installed AND built: the framework packages re-export core types (Message, SukkoClientOptions, …)

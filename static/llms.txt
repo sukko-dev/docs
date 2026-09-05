@@ -23,6 +23,6 @@
 
 - Website: https://sukko.dev
 - Documentation: https://docs.sukko.dev
-- CLI: https://github.com/klurvio/sukko-cli
-- JS SDK: https://github.com/klurvio/sukko-js
-- Issues: https://github.com/klurvio/sukko-issues
+- CLI: https://github.com/sukko-dev/cli
+- JS SDK: https://github.com/sukko-dev/sdk-js
+- Issues: https://github.com/sukko-dev/sukko-issues
