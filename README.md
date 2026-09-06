@@ -28,7 +28,7 @@ npm run typecheck  # tsc
 
 Authored content lives in `docs/` as MDX. Some reference pages are **generated at build time** — they are gitignored and rebuilt on every `start`/`build`, so **do not hand-edit generated output**.
 
-See [`CLAUDE.md`](./CLAUDE.md) for content conventions (required frontmatter, edition badges, copy-pasteable examples, guide structure) and full local setup. When adding, removing, or renaming a page, also update `static/llms.txt`.
+See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for content conventions (required frontmatter, edition badges, copy-pasteable examples, guide structure). When adding, removing, or renaming a page, also update `static/llms.txt`.
 
 ## Deploy
 
