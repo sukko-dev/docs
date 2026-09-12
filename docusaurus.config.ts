@@ -41,7 +41,15 @@ const config: Config = {
     ],
   ],
 
+  // Diagrams are authored as mermaid rather than ASCII art or hand-written HTML:
+  // the source stays diffable in review, and the rendered diagram follows the
+  // site's light/dark colour mode instead of being fixed to one theme.
+  markdown: {
+    mermaid: true,
+  },
+
   themes: [
+    '@docusaurus/theme-mermaid',
     [
       require.resolve('@easyops-cn/docusaurus-search-local'),
       {
@@ -55,6 +63,11 @@ const config: Config = {
     image: 'img/sukko-social-card.png',
     colorMode: {
       respectPrefersColorScheme: true,
+    },
+    // Mermaid follows the site's colour mode; without the pair, diagrams render
+    // light-on-light in dark mode.
+    mermaid: {
+      theme: {light: 'neutral', dark: 'dark'},
     },
     navbar: {
       title: 'Sukko',

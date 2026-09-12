@@ -21,63 +21,44 @@ Sukko is a multi-service platform that ingests messages from a pluggable message
 
 ### Ingestion (Backend → Clients)
 
+```mermaid
+flowchart TD
+    PROD["External API / Producer"] --> BACKEND["Message Backend<br/><small>Kafka/Redpanda or direct</small>"]
+    BACKEND --> POOL["Core: Consumer Pool<br/><small>consume, rate limit, CPU backpressure</small>"]
+    POOL --> BUS["Core: Broadcast Bus<br/><small>Valkey — fan-out across all replicas</small>"]
+    BUS --> S1["Shard"]
+    BUS --> S2["Shard"]
+    BUS --> S3["Shard"]
+    S1 --> LB["Core: Load Balancer<br/><small>least-connections, port 3005</small>"]
+    S2 --> LB
+    S3 --> LB
+    LB --> GW["Gateway<br/><small>reverse proxy, port 3000</small>"]
+    GW --> CLI["WebSocket / SSE Clients"]
 ```
-External API / Producer
-        │
-        ▼
-  Message Backend             Kafka/Redpanda or direct
-        │
-        ▼
-  Core: Consumer Pool         consume, rate limit, CPU backpressure
-        │
-        ▼
-  Core: Broadcast Bus         Valkey, fan-out across all replicas
-        │
-   ┌────┼────┐
-   ▼    ▼    ▼
-  Shard Shard Shard           each with subscription index
-   │    │    │
-   └────┼────┘
-        ▼
-  Core: Load Balancer         least-connections, port 3005
-        │
-        ▼
-  Gateway                     reverse proxy, port 3000
-        │
-        ▼
-  WebSocket / SSE Clients
-```
+
+Each shard maintains its own subscription index for O(1) subscriber lookup.
 
 Every Core instance both consumes from the message backend and subscribes to the broadcast bus. The consumer pool ingests messages and publishes them to the bus. Each shard receives from the bus and delivers to its local clients. When running multiple Core replicas, the bus ensures every replica receives every message.
 
 ### Push Notifications (Backend → Mobile/Browser)
 
-```
-  Message Backend             (Kafka/Redpanda)
-        │
-        ▼
-  Push Service                (consumes push-eligible messages)
-        │
-   ┌────┼────┐
-   ▼    ▼    ▼
-  FCM  APNs  Web Push        (Android, iOS/macOS, browsers)
+```mermaid
+flowchart TD
+    BACKEND["Message Backend<br/><small>Kafka/Redpanda — persistent only</small>"] --> PUSH["Push Service<br/><small>consumes push-eligible messages</small>"]
+    PUSH --> FCM["FCM<br/><small>Android</small>"]
+    PUSH --> APNS["APNs<br/><small>iOS / macOS</small>"]
+    PUSH --> WEB["Web Push<br/><small>browsers</small>"]
 ```
 
 The Push service runs independently from the real-time path. It consumes from the message backend, matches messages against per-tenant push channel patterns, and dispatches to registered devices via FCM, APNs, or Web Push. Push requires a persistent backend — direct mode is not supported.
 
 ### Client Publish (Clients → Backend)
 
-```
-  WebSocket / SSE Clients
-        │
-        ▼
-  Gateway                     (auth, tenant validation, rate limiting)
-        │
-        ▼
-  Core                        (topic routing rules → resolve destination)
-        │
-        ▼
-  Message Backend             (persisted, then consumed back via ingestion path)
+```mermaid
+flowchart TD
+    CLI["WebSocket / SSE Clients"] --> GW["Gateway<br/><small>auth, tenant validation, rate limiting</small>"]
+    GW --> CORE["Core<br/><small>topic routing rules resolve the destination</small>"]
+    CORE --> BACKEND["Message Backend<br/><small>persisted, then consumed back via the ingestion path</small>"]
 ```
 
 Client-published messages flow through the gateway for auth and rate limiting, then Core routes them to the correct destination based on per-tenant routing rules. From there, they re-enter the ingestion path and fan out to all subscribers — including the publisher if subscribed.
