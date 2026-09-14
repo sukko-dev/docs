@@ -1,0 +1,114 @@
+---
+title: Authentication
+description: JWT authentication, key registration, and token refresh
+---
+
+# Authentication
+
+Sukko authenticates WebSocket connections using **JWT tokens** signed with ES256 (ECDSA P-256). Each tenant registers its own signing keys.
+
+## Flow
+
+1. **Register a key** — Tenant admin registers an ES256 public key via the provisioning API
+2. **Mint a token** — Your backend signs a JWT with the private key
+3. **Connect** — Client sends the JWT in the `Authorization` header during WebSocket upgrade
+4. **Verify** — Gateway verifies signature, expiration, and tenant membership
+5. **Refresh** — Client sends a new token over the WebSocket before expiry
+
+## JWT Claims
+
+```json
+{
+  "sub": "user-123",
+  "tenant_id": "demo",
+  "groups": ["engineering", "support"],
+  "roles": ["admin"],
+  "exp": 1711900800,
+  "iat": 1711900000
+}
+```
+
+| Claim | Required | Description |
+|-------|----------|-------------|
+| `sub` | Yes | User identifier. Used for user-scoped channels (`dm.{principal}`). |
+| `tenant_id` | Yes | Tenant this token belongs to. Gateway rejects cross-tenant tokens. |
+| `groups` | No | Group memberships. Used for group-scoped channel access. |
+| `roles` | No | Roles for RBAC (admin, system). |
+| `exp` | Yes | Expiration time. Gateway rejects expired tokens. |
+
+## Key Registration
+
+Register an ES256 public key for your tenant:
+
+```bash
+sukko key register --tenant demo \
+  --key-id my-signing-key \
+  --algorithm ES256 \
+  --public-key-file ./public.pem
+```
+
+Or via the REST API:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/tenants/demo/keys \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key_id": "my-signing-key",
+    "algorithm": "ES256",
+    "public_key": "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+  }'
+```
+
+## Token Refresh
+
+JWTs expire. To maintain long-lived connections, refresh the token over the WebSocket:
+
+```json
+{
+  "type": "auth",
+  "data": { "token": "eyJhbG..." }
+}
+```
+
+The gateway responds with `auth_ack` (success) or `auth_error` (rejected).
+
+SDK clients handle this automatically via the `getToken` callback — the SDK refreshes **proactively** before the token expires (and reactively if the server rejects one), preserving your subscriptions:
+
+```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
+const client = new SukkoClient({
+  transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+  getToken: async () => {
+    const res = await fetch('/api/auth/sukko-token');
+    return res.text();
+  },
+});
+```
+
+Call `await client.refreshToken()` to force an immediate refresh (WebSocket connections only — over SSE, refresh happens on reconnect).
+
+## API Key Alternative
+
+For server-to-server communication (no browser), API keys are simpler:
+
+```bash
+sukko api-keys create --tenant demo --name "backend-producer"
+```
+
+Pass via header: `X-API-Key: pk_live_...`
+
+### Upgrading an API key to a JWT
+
+An API-key connection sees only channels the key is permitted. To gain access to permission-scoped channels mid-session, **escalate** to a JWT — the SDK sends the new credential and re-subscribes the channels the API key was previously denied:
+
+```typescript
+await client.escalate(userJwt);
+```
+
+## Next Steps
+
+- **[Channels](./channels)** — How JWT claims drive channel access
+- **[Gateway](./gateway)** — Connection lifecycle and auth verification
+- **[REST API Reference](../reference/rest-api)** — Key and API key endpoints

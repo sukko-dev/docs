@@ -1,0 +1,152 @@
+---
+title: Quickstart
+description: Go from zero to first real-time message in 5 minutes
+sidebar_position: 1
+---
+
+# Quickstart
+
+Get Sukko running locally and receive your first real-time message in under 5 minutes.
+
+:::info Time to complete
+~5 minutes
+:::
+
+## Prerequisites
+
+- **Docker** installed and running ([Install Docker](https://docs.docker.com/get-docker/))
+- **A terminal** (macOS, Linux, or Windows WSL2)
+
+## Step 1: Install the Sukko CLI
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs>
+  <TabItem value="brew" label="Homebrew (macOS/Linux)" default>
+
+```bash
+brew install sukko-dev/tap/sukko
+```
+
+  </TabItem>
+  <TabItem value="scoop" label="Scoop (Windows)">
+
+```bash
+scoop bucket add sukko https://github.com/sukko-dev/scoop-bucket
+scoop install sukko
+```
+
+  </TabItem>
+  <TabItem value="binary" label="Direct Download">
+
+Download the latest release from [GitHub Releases](https://github.com/sukko-dev/cli/releases) and add it to your PATH.
+
+  </TabItem>
+</Tabs>
+
+Verify the installation:
+
+```bash
+sukko version
+```
+
+## Step 2: Initialize and Start Sukko
+
+Initialize a local environment with default settings (SQLite + Valkey + direct messaging):
+
+```bash
+sukko init --defaults
+```
+
+This creates a `.sukko/config.json` with your infrastructure selections and sets up a `local` context pointing to `localhost`.
+
+Now start the stack:
+
+```bash
+sukko up
+```
+
+Docker images are pulled and services start up:
+- **Gateway** — WebSocket reverse proxy (port 3000)
+- **Core** — Message server
+- **Provisioning** — Multi-tenant management API (port 8080)
+- **Valkey** — Broadcast bus
+
+A `demo` tenant is automatically created with catch-all routing and public channel rules. Wait for all services to be healthy (~30 seconds):
+
+```
+✓ All services healthy
+  Gateway:      ws://localhost:3000
+  Provisioning: http://localhost:8080
+```
+
+## Step 3: Create a Signing Key
+
+Generate an ES256 keypair, register the public key with the provisioning API, and save the private key locally:
+
+```bash
+sukko keys create --generate
+```
+
+```
+Key pair generated.
+  Public key registered as "..." for tenant "demo"
+  Private key saved to ~/.config/sukko/keys/demo/...
+
+Generate a token with:
+  sukko token generate --sub <user-id>
+```
+
+## Step 4: Generate a Token
+
+Create a JWT token for a test user:
+
+```bash
+sukko token generate --sub user-1
+```
+
+Copy the token — you'll use it in the next steps.
+
+## Step 5: Subscribe to a Channel
+
+Open a **second terminal** and subscribe to a channel:
+
+```bash
+sukko subscribe demo.general.chat --token <paste-token-here>
+```
+
+```
+Subscribed to [demo.general.chat]. Press Ctrl+C to stop.
+```
+
+## Step 6: Publish a Message
+
+Back in your first terminal, publish a message:
+
+```bash
+sukko publish demo.general.chat '{"text": "Hello, Sukko!"}' --token <paste-token-here>
+```
+
+In the subscriber terminal, you'll see:
+
+```
+[demo.general.chat] {"text": "Hello, Sukko!"}
+```
+
+You just sent your first real-time message through Sukko.
+
+## Step 7: Clean Up
+
+When you're done:
+
+```bash
+sukko down
+```
+
+## Next Steps
+
+- **[Integrate with your app](./guides/sdk/react)** — Add real-time features with the React, Vue, or Svelte SDK
+- **[Understand the architecture](./concepts/architecture)** — How data flows from Kafka to WebSocket clients
+- **[Deploy to Kubernetes](./guides/deploy/kubernetes)** — Production deployment with Helm
+- **[Configure channels](./concepts/channels)** — Public, user-scoped, and group-scoped channel patterns

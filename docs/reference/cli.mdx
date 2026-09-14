@@ -1,0 +1,945 @@
+---
+title: CLI Reference
+description: Every sukko CLI command with usage and flags
+---
+
+# CLI Reference
+
+The `sukko` CLI manages your Sukko deployment — tenants, keys, testing, and local development.
+
+## Install
+
+```bash
+# macOS / Linux
+brew install sukko-dev/tap/sukko
+
+# Windows
+scoop bucket add sukko https://github.com/sukko-dev/scoop-bucket
+scoop install sukko
+```
+
+## Commands
+
+### `sukko api-keys`
+
+Manage API keys for tenant authentication
+
+---
+
+### `sukko api-keys create`
+
+Create a new API key
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | — | API key name (optional) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko api-keys list`
+
+List API keys for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko api-keys revoke`
+
+Revoke an API key
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--key-id` | string | — | API key ID (required) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko auth`
+
+Manage admin authentication keypairs
+
+```
+Generate, register, revoke, and list admin Ed25519 keypairs for JWT-based authentication.
+```
+
+---
+
+### `sukko auth keygen`
+
+Generate an Ed25519 admin keypair
+
+```
+Generates a new Ed25519 keypair and saves it to the active context directory.
+```
+
+---
+
+### `sukko auth list`
+
+List active admin keys
+
+---
+
+### `sukko auth register`
+
+Register your public key with provisioning
+
+```
+Sends your public key to the provisioning API to enable JWT-based admin authentication.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | — | Admin name (defaults to context name) |
+
+---
+
+### `sukko auth revoke <key-id>`
+
+Revoke an admin key
+
+---
+
+### `sukko completion [bash|zsh|fish]`
+
+Generate shell completion scripts
+
+```
+Generate shell completion scripts for sukko.
+
+To load completions:
+
+Bash:
+  $ source <(sukko completion bash)
+  # To load for each session, add to ~/.bashrc:
+  $ echo 'source <(sukko completion bash)' >> ~/.bashrc
+
+Zsh:
+  $ source <(sukko completion zsh)
+  # To load for each session, add to ~/.zshrc:
+  $ echo 'source <(sukko completion zsh)' >> ~/.zshrc
+
+Fish:
+  $ sukko completion fish | source
+  # To load for each session:
+  $ sukko completion fish > ~/.config/fish/completions/sukko.fish
+```
+
+---
+
+### `sukko config`
+
+Configuration management
+
+---
+
+### `sukko config defaults`
+
+Show all configuration environment variables with defaults
+
+```
+Outputs all environment variables from Go config struct tags (the single source of truth).
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--format` | string | `table` | Output format (table|env|json) |
+
+---
+
+### `sukko config view`
+
+Fetch active configuration from a running service
+
+---
+
+### `sukko connections`
+
+Connection management and testing
+
+---
+
+### `sukko connections test`
+
+Test WebSocket connectivity to the gateway (CLI-only, no tester needed)
+
+```
+Test WebSocket connectivity by opening a single connection directly from the CLI.
+
+Verifies: WebSocket upgrade (101), subscribe, and basic message flow.
+For full deployment validation (Kafka pipeline, multi-tenant isolation),
+use 'sukko test smoke' which orchestrates the tester service.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--api-key` | string | — | API key for authentication |
+| `--gateway-url` | string | — | Gateway URL (overrides context) |
+| `--timeout` | duration | `10s` | Connection timeout |
+| `--token` | string | — | JWT token for authentication |
+
+---
+
+### `sukko context`
+
+Manage CLI contexts (environments)
+
+```
+Add, remove, switch, and list named contexts for different Sukko environments.
+```
+
+---
+
+### `sukko context add <name>`
+
+Add a new context
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--admin-token` | string | — | Admin authentication token |
+| `--api-key` | string | — | API key for gateway access |
+| `--gateway-url` | string | — | WebSocket gateway URL (e.g., ws://localhost:3000) |
+| `--provisioning-url` | string | — | Provisioning API URL (e.g., http://localhost:8080) |
+| `--tenant` | string | — | Default active tenant ID |
+| `--tester-url` | string | — | Tester service URL (e.g., http://localhost:8090) |
+
+---
+
+### `sukko context create [name]`
+
+Create a context interactively
+
+```
+Create a named context for a Sukko environment. Prompts for required
+fields (name, provisioning URL, gateway URL, admin token) and optional fields.
+Secrets are entered with masked input to avoid shell history exposure.
+
+All fields can also be provided as flags for non-interactive/CI use.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--admin-token` | string | — | Admin authentication token |
+| `--api-key` | string | — | API key for gateway access |
+| `--environment` | string | — | Environment name (e.g., staging, production) |
+| `--force` | bool | `false` | Overwrite existing context without confirmation |
+| `--gateway-url` | string | — | WebSocket gateway URL (e.g., wss://ws.example.com) |
+| `--provisioning-url` | string | — | Provisioning API URL (e.g., https://api.example.com) |
+| `--tenant` | string | — | Default active tenant ID |
+| `--tester-url` | string | — | Tester service URL |
+
+---
+
+### `sukko context current`
+
+Show the active context
+
+---
+
+### `sukko context list`
+
+List all contexts
+
+**Aliases:** `ls`
+
+---
+
+### `sukko context remove <name>`
+
+Remove a context
+
+**Aliases:** `rm`
+
+---
+
+### `sukko context use <name>`
+
+Set the active context
+
+---
+
+### `sukko down`
+
+Stop the local development environment
+
+```
+Stop and remove local Docker Compose services. Use -v to also remove volumes.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--volumes`, `-v` | bool | `false` | Remove volumes (full reset) |
+
+---
+
+### `sukko edition`
+
+Show current edition, limits, and usage
+
+```
+Show the current Sukko edition (Community/Pro/Enterprise), license status,
+hard limits, and live resource usage.
+
+Fetches data from provisioning's /edition endpoint (tenant usage) and
+gateway's /edition endpoint (connection/shard usage), merging both.
+Falls back to locally stored license key if the platform is unreachable.
+```
+
+---
+
+### `sukko edition compare`
+
+Compare Community, Pro, and Enterprise editions
+
+```
+Display a comparison table of all three Sukko editions.
+
+This command works offline — the comparison data is hardcoded from the
+published edition matrix. No running services required.
+```
+
+---
+
+### `sukko grafana`
+
+Open Grafana in the browser
+
+```
+Open the Grafana dashboard in the system browser. Requires observability to be enabled.
+```
+
+---
+
+### `sukko health`
+
+Check health of all Sukko components
+
+```
+Check health of all Sukko components.
+
+Probes gateway, server, provisioning, and their dependencies. Reports
+per-component status with troubleshooting suggestions on failure.
+```
+
+---
+
+### `sukko init`
+
+Initialize a local Sukko development environment
+
+```
+Initialize a local Sukko development environment.
+
+Creates .sukko/config.json with infrastructure selections and sets up
+a local context with dev credentials. Run 'sukko up' to start services.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--defaults` | bool | `false` | Skip prompts and use defaults (postgres + valkey + direct) |
+
+---
+
+### `sukko keys`
+
+Manage JWT signing keys
+
+---
+
+### `sukko keys create`
+
+Register a new public key or generate a key pair
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--algorithm` | string | — | Signing algorithm: ES256, RS256, EdDSA |
+| `--expires-at` | string | — | Expiration time (RFC3339) |
+| `--generate` | bool | `false` | Generate ES256 key pair, register public key, save private key locally |
+| `--key-id` | string | — | Key ID (optional, auto-generated if not set) |
+| `--public-key-file` | string | — | Path to PEM public key file |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko keys list`
+
+List keys for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko keys revoke`
+
+Revoke a key
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--key-id` | string | — | Key ID (required) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko license`
+
+Manage Sukko license key
+
+```
+Store, view, and remove the Sukko license key from the CLI context.
+```
+
+---
+
+### `sukko license push [key]`
+
+Push a license key to a running deployment
+
+```
+Push a Sukko license key to a running provisioning service via
+POST /api/v1/license. The license is applied immediately without
+restarting services.
+
+If no key argument is provided, you will be prompted for input to avoid
+the key appearing in shell history.
+
+This command does NOT modify the local context — use 'sukko license set'
+to persist the key for future 'sukko up' invocations.
+```
+
+---
+
+### `sukko license remove`
+
+Remove the stored license key from the active context
+
+---
+
+### `sukko license set [key]`
+
+Store a license key in the active context
+
+```
+Store a Sukko license key in the CLI context. The key is encrypted at rest.
+
+If no key argument is provided, you will be prompted for input to avoid
+the key appearing in shell history.
+```
+
+---
+
+### `sukko license show`
+
+Display the stored license key and decoded claims
+
+---
+
+### `sukko logs [service...]`
+
+View logs from local Docker Compose services
+
+```
+View logs from local Docker Compose services.
+
+Only available for local Docker Compose environments. Specify service names
+to filter (e.g., 'sukko logs ws-gateway ws-server').
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--follow`, `-f` | bool | `false` | Follow log output |
+
+---
+
+### `sukko publish <channel> <message>`
+
+Publish a message to a channel via the gateway
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--api-key` | string | — | API key for authentication |
+| `--count` | int | `1` | Number of messages to publish |
+| `--gateway-url` | string | — | Gateway URL (overrides context) |
+| `--interval` | duration | `0s` | Interval between messages (e.g., 100ms, 1s) |
+| `--token` | string | — | JWT token for authentication |
+
+---
+
+### `sukko quota`
+
+Manage tenant quotas
+
+---
+
+### `sukko quota get`
+
+Get quotas for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active context if not set) |
+
+---
+
+### `sukko quota update`
+
+Update quotas for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--consumer-byte-rate` | int | `0` | Consumer throughput limit (bytes/sec) |
+| `--max-connections` | int | `0` | Maximum WebSocket connections |
+| `--max-partitions` | int | `0` | Maximum partitions |
+| `--max-storage-bytes` | int | `0` | Maximum storage in bytes |
+| `--max-topics` | int | `0` | Maximum topics |
+| `--producer-byte-rate` | int | `0` | Producer throughput limit (bytes/sec) |
+| `--tenant` | string | — | Tenant ID (uses active context if not set) |
+
+---
+
+### `sukko rules`
+
+Manage routing and channel rules
+
+---
+
+### `sukko rules channels`
+
+Manage channel permission rules
+
+---
+
+### `sukko rules channels delete`
+
+Delete channel rules for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules channels get`
+
+Get channel rules for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules channels set`
+
+Set channel rules for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--file` | string | — | Path to JSON channel rules file (alternative to --public) |
+| `--public` | stringSlice | `[]` | Public channel patterns (repeatable) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules routing`
+
+Manage topic routing rules
+
+---
+
+### `sukko rules routing add`
+
+Add a single routing rule for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--pattern` | string | — | Channel pattern (e.g. trades.**, **) |
+| `--priority` | int | `0` | Rule priority (lower = higher precedence; must be unique per tenant) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--topics` | string | — | Comma-separated topic suffixes (e.g. trades,audit-log) |
+
+---
+
+### `sukko rules routing delete`
+
+Delete routing rules for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules routing get`
+
+Get routing rules for a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules routing set`
+
+Set routing rules for a tenant from a JSON file
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--file` | string | — | Path to JSON routing rules file (required) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko rules test-access`
+
+Test channel access for a subject
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--channel` | string | — | Channel to test access for |
+| `--group` | stringSlice | `[]` | Groups to test access for |
+| `--sub` | string | — | Subject (user ID) to test access for |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+
+---
+
+### `sukko status`
+
+Show status of all services
+
+```
+Show a unified view of all Sukko services with health status.
+```
+
+---
+
+### `sukko subscribe <channel> [channel...]`
+
+Subscribe to channels and stream messages to stdout
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--api-key` | string | — | API key for authentication |
+| `--gateway-url` | string | — | Gateway URL (overrides context) |
+| `--token` | string | — | JWT token for authentication |
+
+---
+
+### `sukko tenant`
+
+Manage tenants
+
+---
+
+### `sukko tenant create`
+
+Create a new tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--category` | stringSlice | `[]` | Topic categories (repeatable) |
+| `--consumer-type` | string | `shared` | Consumer type (shared|dedicated) |
+| `--id` | string | — | Tenant ID (required) |
+| `--name` | string | — | Display name |
+
+---
+
+### `sukko tenant delete [tenant-id]`
+
+Delete a tenant (alias for deprovision)
+
+---
+
+### `sukko tenant deprovision [tenant-id]`
+
+Initiate tenant deletion (grace period)
+
+---
+
+### `sukko tenant get [tenant-id]`
+
+Get tenant details
+
+```
+Get tenant details. If no tenant-id is provided, uses the active tenant from context.
+```
+
+---
+
+### `sukko tenant list`
+
+List tenants
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--limit` | int | `50` | Maximum results |
+| `--offset` | int | `0` | Results offset |
+| `--status` | string | — | Filter by status |
+
+---
+
+### `sukko tenant reactivate [tenant-id]`
+
+Reactivate a suspended tenant
+
+---
+
+### `sukko tenant suspend [tenant-id]`
+
+Suspend a tenant
+
+---
+
+### `sukko tenant update [tenant-id]`
+
+Update a tenant
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--name` | string | — | New display name |
+
+---
+
+### `sukko test`
+
+Run tests against the Sukko platform
+
+```
+Run smoke, load, stress, soak, or validation tests via the sukko-tester service.
+```
+
+---
+
+### `sukko test load`
+
+Sustained load test with configurable connections
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--connections` | int | `10` | Number of WebSocket connections |
+| `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
+| `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
+| `--publish-rate` | int | `10` | Messages per second |
+| `--ramp-rate` | int | `5` | Connections per second during ramp-up |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--tester-url` | string | — | Tester service URL (overrides context) |
+
+---
+
+### `sukko test smoke`
+
+Quick connectivity and health check
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--tester-url` | string | — | Tester service URL (overrides context) |
+
+---
+
+### `sukko test soak`
+
+Long-running stability test
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--connections` | int | `10` | Number of WebSocket connections |
+| `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
+| `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
+| `--publish-rate` | int | `10` | Messages per second |
+| `--ramp-rate` | int | `5` | Connections per second during ramp-up |
+| `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--tester-url` | string | — | Tester service URL (overrides context) |
+
+---
+
+### `sukko test stress`
+
+Push to maximum capacity and find limits
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--connections` | int | `10` | Number of WebSocket connections |
+| `--duration` | string | `30s` | Test duration (e.g., 30s, 5m, 1h) |
+| `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
+| `--publish-rate` | int | `10` | Messages per second |
+| `--ramp-rate` | int | `5` | Connections per second during ramp-up |
+| `--suite` | string | — | Load suite to run (e.g. revocation); omit for default |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--tester-url` | string | — | Tester service URL (overrides context) |
+
+---
+
+### `sukko test validate`
+
+Run validation suites
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--follow`, `-f` | bool | `false` | Stream metrics in real-time |
+| `--kafka-brokers` | string | — | Per-run Kafka broker override for the kafka-ingest suite (comma-separated); credentials come from the tester's environment |
+| `--suite` | string | `auth` | Validation suite (fetch available suites from tester via --help) |
+| `--tenant` | string | — | Tenant ID (uses active tenant from context if not set) |
+| `--tester-url` | string | — | Tester service URL (overrides context) |
+
+---
+
+### `sukko token`
+
+JWT token helpers
+
+---
+
+### `sukko token generate`
+
+Generate a signed JWT token
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--algorithm` | string | — | Signing algorithm (ES256, RS256, EdDSA) |
+| `--groups` | stringSlice | `[]` | Groups (repeatable) |
+| `--key-file` | string | — | Path to PEM private key |
+| `--roles` | stringSlice | `[]` | Roles (repeatable) |
+| `--scopes` | stringSlice | `[]` | Scopes (repeatable) |
+| `--sub` | string | — | Subject (user ID) |
+| `--tenant` | string | — | Tenant ID |
+| `--ttl` | duration | `1h0m0s` | Token time-to-live (e.g., 1h, 30m, 24h) |
+
+---
+
+### `sukko token revoke`
+
+Revoke a token by session (jti) or user (sub)
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--expires` | string | — | Revocation expiry (duration like 2h or RFC3339 timestamp) |
+| `--jti` | string | — | Revoke a specific session by JWT ID |
+| `--sub` | string | — | Revoke all sessions for a user |
+| `--tenant` | string | — | Tenant ID |
+| `--token` | string | — | JWT to revoke (extracts jti and tenant_id) |
+
+---
+
+### `sukko token validate <token>`
+
+Decode and validate a JWT token
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--key-file` | string | — | Path to PEM public key (for signature verification) |
+
+---
+
+### `sukko up`
+
+Start the local development environment
+
+```
+Start the local development environment using Docker Compose.
+
+Reads .sukko/config.json (created by 'sukko init'), activates the selected
+infrastructure profiles, waits for all services to become healthy, and
+provisions a default tenant for immediate use.
+```
+
+**Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--pull` | bool | `false` | Always pull latest images before starting |
+
+---
+
+### `sukko version`
+
+Show CLI version information
+
+---
+

@@ -1,0 +1,144 @@
+---
+title: SSE Transport
+description: Server-Sent Events for receive-only real-time data streaming
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# SSE Transport <EditionBadge edition="pro" />
+
+Server-Sent Events (SSE) provides a receive-only transport for clients that don't need bidirectional communication — dashboards, data feeds, monitoring widgets, or environments where WebSocket isn't available.
+
+SSE clients receive the same messages as WebSocket clients on the same channels, through the same broadcast bus.
+
+## Connecting
+
+```
+GET /sse?channels=demo.general.chat,demo.announce.updates&token=<JWT>
+```
+
+Or with an API key (public channels only):
+
+```
+GET /sse?channels=demo.general.chat&api_key=<pk_live_...>
+```
+
+Authentication can also be passed via headers:
+
+```
+GET /sse?channels=demo.general.chat
+Authorization: Bearer <JWT>
+```
+
+## Browser Example
+
+```javascript
+const url = new URL('https://gateway.example.com/sse');
+url.searchParams.set('channels', 'demo.general.chat,demo.announce.updates');
+url.searchParams.set('token', jwt);
+
+const source = new EventSource(url);
+
+source.addEventListener('message', (event) => {
+  const msg = JSON.parse(event.data);
+  console.log(`[${msg.channel}]`, msg.data);
+});
+
+source.onerror = () => {
+  console.log('Connection lost, reconnecting...');
+};
+```
+
+## Using the Sukko SDK
+
+The `@sukko/sdk` package ships an `SseTransport` so you get the same `SukkoClient` API as WebSocket — plus automatic recovery, idle-timeout detection, and `Last-Event-ID` resume — without hand-rolling `EventSource`. On a receive-only transport the client transparently adapts: `subscribe`/`unsubscribe` reconnect the stream with the new channel set, `publish` routes over the REST endpoint, and an expired token is refreshed via `getToken` and reconnected on a `401`.
+
+```typescript
+import { SukkoClient, SseTransport } from '@sukko/sdk';
+
+const client = new SukkoClient({
+  transport: new SseTransport({
+    url: 'https://gateway.example.com',
+    channels: ['demo.general.chat'],
+  }),
+  getToken: async () => (await fetch('/api/token')).text(),
+});
+
+// On a receive-only transport, subscribing opens/updates the stream.
+client.subscribe(['demo.general.chat']);
+client.on('message', (msg) => console.log(msg.channel, msg.data));
+
+// publish() transparently routes over REST; a failure surfaces on `publishError`.
+client.publish('demo.general.chat', { text: 'Hello from SSE' });
+```
+
+Where an SSE reconnect can't confirm a replay, the client emits a per-channel `possible_gap` on its `messages()` stream rather than dropping silently — see [Automatic Recovery](./sdk/vanilla-ts#automatic-recovery).
+
+## Event Format
+
+```
+id: 1234
+event: message
+data: {"type":"message","seq":1234,"ts":1706000000000,"channel":"demo.general.chat","data":{"text":"Hello"},"mid":"9c5b1f0a3d2e6c47-2-1234"}
+
+```
+
+- `id` — sequence number (used for reconnection via `Last-Event-ID`)
+- `event` — always `message` for broadcast messages
+- `data` — JSON message envelope (same format as WebSocket)
+- `mid` (inside the envelope, optional) — **stable message identity**: the same message carries the same `mid` on every copy delivered (live, replay, history), so consumers can deduplicate across reconnects. It is an opaque string (at most 64 characters) — never parse it, and never use it as a resume cursor (`Last-Event-ID` and `pos`/`from_pos` remain the cursors)
+
+Keepalive comments (`: keepalive`) are sent periodically (default: every 45 seconds) to prevent proxy timeouts on idle connections.
+
+## Key Differences from WebSocket
+
+| | WebSocket | SSE |
+|--|-----------|-----|
+| Direction | Bidirectional | Receive-only |
+| Publishing | Yes (via WebSocket frame) | No (use REST publish endpoint) |
+| Channel changes | Subscribe/unsubscribe mid-connection | Close and reconnect with new channels |
+| Connection limits | Counts toward tenant limit | Counts toward tenant limit |
+| Auth refresh | Mid-connection via `auth` message | Close and reconnect with new token |
+
+## REST Publish
+
+SSE clients can publish via the stateless REST endpoint:
+
+```bash
+curl -X POST https://gateway.example.com/api/v1/publish \
+  -H "Authorization: Bearer $JWT" \
+  -H "Content-Type: application/json" \
+  -d '{"channel": "demo.general.chat", "data": {"text": "Hello from REST"}}'
+```
+
+REST publish requires a JWT — API keys cannot publish. Same rate limiting and channel permissions as WebSocket publish. REST publish is available in **every edition** (SSE itself remains Pro); on the **kafka backend**, publishing additionally requires a matching per-tenant [routing rule](../concepts/channels#topic-routing-rules) (a Pro feature) — without one the publish is rejected with `409 PUBLISH_NOT_ROUTABLE`.
+
+The response includes the message's stable identity (`mid`) — the same `mid` subscribers receive on the delivered envelope (omitted when a routing rule fans the publish out to multiple topics):
+
+```json
+{"status": "accepted", "channel": "demo.general.chat", "mid": "9c5b1f0a3d2e6c47-2-1235"}
+```
+
+## CORS
+
+For browser EventSource connections from a different origin, configure CORS:
+
+```
+GATEWAY_CORS_ORIGINS=https://app.example.com,https://dashboard.example.com
+```
+
+Default is `*` (allow all origins) for development. Set specific origins in production.
+
+## Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SSE_KEEPALIVE_INTERVAL` | `45s` | Interval between keepalive comments |
+| `GATEWAY_CORS_ORIGINS` | `*` | Allowed CORS origins (comma-separated) |
+| `SERVER_GRPC_ADDR` | `localhost:3006` | Core gRPC address (auto-wired in Helm) |
+
+## Next Steps
+
+- **[Channels](../concepts/channels)** — Channel types and access patterns
+- **[Authentication](../concepts/authentication)** — JWT and API key setup
+- **[Configuration Reference](../reference/configuration)** — All SSE-related env vars

@@ -1,0 +1,113 @@
+---
+title: Svelte Integration
+description: Add real-time features to your Svelte app with @sukko/svelte
+---
+
+# Svelte Integration
+
+Add real-time WebSocket features to your Svelte app using the `@sukko/svelte` package.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket @sukko/svelte
+```
+
+## Setup Context
+
+Construct a `SukkoClient` and put it in Svelte context with `setSukkoClient` in your root layout — the stores below read it back:
+
+```svelte
+<!-- src/routes/+layout.svelte -->
+<script lang="ts">
+  import { SukkoClient } from '@sukko/sdk';
+  import { WebSocketTransport } from '@sukko/websocket';
+  import { setSukkoClient } from '@sukko/svelte';
+
+  const client = new SukkoClient({
+    transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+    getToken: async () => {
+      const res = await fetch('/api/auth/sukko-token');
+      return res.text();
+    },
+  });
+  setSukkoClient(client);
+</script>
+
+<slot />
+```
+
+## Subscribe to a Channel
+
+`createSubscription` takes an **array of channels** and returns a readable store of the latest message (`lastMessage` / `data`). Accumulate a scrollback list with `onMessage` and a writable store. The subscription only starts when its store has a subscriber, so **reference `$sub`** in the template (Svelte runs the store's start function on the first subscriber):
+
+```svelte
+<script lang="ts">
+  import { writable } from 'svelte/store';
+  import { createSubscription, type TypedMessage } from '@sukko/svelte';
+
+  const messages = writable<TypedMessage[]>([]);
+
+  const sub = createSubscription({
+    channels: ['general.chat'],
+    onMessage: (msg) => messages.update((m) => [...m, msg]),
+  });
+</script>
+
+<p>Subscribed: {$sub.isSubscribed}</p>
+<ul>
+  {#each $messages as msg, i (i)}
+    <li>{JSON.stringify(msg.data)}</li>
+  {/each}
+</ul>
+```
+
+For a single latest-value view, read the subscription store's `data`:
+
+```svelte
+<script lang="ts">
+  import { createSubscription } from '@sukko/svelte';
+
+  const trade = createSubscription<Trade>({ channels: ['tenant.BTC.trade'] });
+</script>
+
+<span>Last price: {$trade.data?.price}</span>
+```
+
+## Publish a Message
+
+```svelte
+<script lang="ts">
+  import { getSukkoClient } from '@sukko/svelte';
+
+  const client = getSukkoClient();
+</script>
+
+<button on:click={() => client.publish('general.chat', { text: 'Hello from Svelte!' })}>
+  Send
+</button>
+```
+
+## Connection State
+
+`createConnectionState` returns a readable store of `{ state, isConnected, isReconnecting }`:
+
+```svelte
+<script lang="ts">
+  import { createConnectionState } from '@sukko/svelte';
+
+  const conn = createConnectionState();
+</script>
+
+<span>Status: {$conn.state}</span>
+```
+
+## Next Steps
+
+- **[Vanilla TypeScript](./vanilla-ts)** — Framework-agnostic integration
+- **[SDK Reference](../../reference/sdk/svelte)** — Full API reference
+- **[Channels](../../concepts/channels)** — Channel types and scoping

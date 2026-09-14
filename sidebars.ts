@@ -1,0 +1,89 @@
+import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
+
+const sidebars: SidebarsConfig = {
+  docsSidebar: [
+    'quickstart',
+    {
+      type: 'category',
+      label: 'Concepts',
+      items: [
+        'concepts/architecture',
+        'concepts/multi-tenancy',
+        'concepts/channels',
+        'concepts/authentication',
+        'concepts/message-backends',
+        'concepts/gateway',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Editions',
+      items: [
+        'editions/comparison',
+        'editions/lifecycle',
+        'editions/upgrade',
+        'editions/pricing',
+      ],
+    },
+    'security',
+    {
+      type: 'category',
+      label: 'Guides',
+      items: [
+        {
+          type: 'category',
+          label: 'SDK Integration',
+          items: [
+            'guides/sdk/react',
+            'guides/sdk/vue',
+            'guides/sdk/svelte',
+            'guides/sdk/vanilla-ts',
+            'guides/sdk/react-native',
+            'guides/sdk/python',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Deployment',
+          items: [
+            'guides/deploy/local',
+            'guides/deploy/kubernetes',
+          ],
+        },
+        'guides/admin-auth',
+        'guides/admin-ui',
+        'guides/tenant-onboarding',
+        'guides/sse',
+        'guides/push-notifications',
+        'guides/testing',
+        'guides/observability',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Reference',
+      items: [
+        'reference/cli',
+        'reference/rest-api',
+        'reference/configuration',
+        {
+          type: 'category',
+          label: 'SDK',
+          items: [
+            'reference/sdk/core',
+            'reference/sdk/websocket',
+            'reference/sdk/websocket-node',
+            'reference/sdk/react',
+            'reference/sdk/react-native',
+            'reference/sdk/vue',
+            'reference/sdk/svelte',
+            'reference/sdk/python',
+          ],
+        },
+      ],
+    },
+    'roadmap',
+  ],
+};
+
+export default sidebars;

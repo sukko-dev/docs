@@ -1,0 +1,226 @@
+---
+title: Kubernetes Deployment
+description: Deploy Sukko to Kubernetes with Helm
+---
+
+# Kubernetes Deployment
+
+Deploy Sukko to any Kubernetes cluster using the Helm chart. Supports DOKS (DigitalOcean), GKE (Google), and any conformant K8s.
+
+:::info Time to complete
+~15 minutes (assuming an existing cluster)
+:::
+
+## Prerequisites
+
+- A Kubernetes cluster (v1.25+)
+- `kubectl` configured and connected to the cluster
+- Helm 3 installed
+- Container images available on ghcr.io (or your registry)
+
+## Step 1: Add the Chart
+
+The Helm chart is in the Sukko repository:
+
+```bash
+git clone https://github.com/sukko-dev/sukko.git
+cd sukko
+```
+
+## Step 2: Configure Values
+
+Copy the demo values as a starting point:
+
+```bash
+cp deployments/helm/sukko/values/doks/demo.yaml my-values.yaml
+```
+
+Edit `my-values.yaml` for your environment:
+
+```yaml
+global:
+  namespace: sukko
+  imageRegistry: "ghcr.io/sukko-dev"
+
+ws-gateway:
+  replicaCount: 2
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 3000
+
+ws-server:
+  replicaCount: 2
+  messageBackend: kafka
+
+provisioning:
+  replicaCount: 1
+
+redpanda:
+  enabled: true
+  replicaCount: 1
+
+monitoring:
+  enabled: true
+```
+
+### Key Configuration
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `ws-gateway.replicaCount` | Gateway replicas | 1 |
+| `ws-server.messageBackend` | `direct` or `kafka` | kafka |
+| `redpanda.enabled` | Deploy Redpanda (Kafka) | true |
+| `monitoring.enabled` | Deploy Prometheus + Grafana | true |
+
+## Step 3: Deploy
+
+```bash
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f my-values.yaml \
+  -n sukko --create-namespace
+```
+
+## Step 4: Verify
+
+```bash
+# Check pods
+kubectl get pods -n sukko
+
+# Check services
+kubectl get svc -n sukko
+
+# Check gateway external IP
+kubectl get svc -n sukko -l app.kubernetes.io/name=ws-gateway \
+  -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}'
+```
+
+Test connectivity:
+
+```bash
+curl http://<gateway-ip>/health
+```
+
+## Platform-Specific Notes
+
+### DOKS (DigitalOcean)
+
+```bash
+# Connect kubectl
+doctl kubernetes cluster kubeconfig save sukko-demo
+
+# Deploy
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f deployments/helm/sukko/values/doks/demo.yaml \
+  -n sukko-demo --create-namespace
+```
+
+### GKE (Google)
+
+```bash
+# Connect kubectl
+gcloud container clusters get-credentials sukko-demo \
+  --zone us-central1-a --project your-project
+
+# Deploy with static IP from foundation layer
+GATEWAY_IP=$(terraform -chdir=deployments/terraform/environments/gke/demo-foundation \
+  output -raw gateway_external_ip)
+
+helm upgrade --install sukko ./deployments/helm/sukko \
+  -f deployments/helm/sukko/values/gke/demo.yaml \
+  -n sukko-demo --create-namespace \
+  --set ws-gateway.service.loadBalancerIP=$GATEWAY_IP
+```
+
+## Monitoring
+
+With `monitoring.enabled: true`, the chart deploys:
+
+- **Prometheus** — metrics collection (port-forward: 9090)
+- **Grafana** — dashboards (port-forward: 3000)
+- **Loki** — log aggregation
+- **Promtail** — log shipping
+
+```bash
+# Access Grafana
+kubectl port-forward -n sukko svc/sukko-monitoring-grafana 3000:3000
+# Open http://localhost:3000
+```
+
+## Scaling
+
+### Horizontal Scaling
+
+Increase replicas for the gateway and server:
+
+```yaml
+ws-gateway:
+  replicaCount: 3
+
+ws-server:
+  replicaCount: 3
+```
+
+### Connection Limits
+
+Configure per-tenant and global limits:
+
+```yaml
+ws-gateway:
+  extraEnv:
+    DEFAULT_TENANT_CONNECTION_LIMIT: "10000"
+
+ws-server:
+  connectionLimits:
+    clusterMaxConnections: 100000
+```
+
+## Upgrading
+
+### migrate-dlq
+
+When upgrading to a release that introduces **channel topic routing**, run `migrate-dlq` **before** upgrading the provisioning service. It creates the `dead-letter` and `default` Kafka topics for all existing active tenants so that infrastructure is in place when the new server starts routing.
+
+```bash
+# Dry-run first — lists what would be created without touching Kafka
+./migrate-dlq --dry-run
+
+# Create topics for all active tenants
+./migrate-dlq
+
+# Recreate existing topics (delete + create — non-atomic)
+./migrate-dlq --recreate
+```
+
+:::caution --recreate is non-atomic
+If `--recreate` deletes a topic but the subsequent create fails, the topic will be absent until you re-run `migrate-dlq`. The tool logs `state=topic_absent` for any such topic and exits with code 2. Re-running without `--recreate` will recreate missing topics.
+:::
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | All tenants processed successfully |
+| `1` | Startup failure (cannot connect to DB or Kafka) |
+| `2` | Partial failure (≥1 tenant topic creation failed) |
+
+**Required Kafka permissions:**
+- `CreateTopics` — always required
+- `DeleteTopics` — required only with `--recreate`
+
+**Required database permissions:**
+- `SELECT` on the `tenants` table
+
+**Configuration** — the tool reads from environment variables, same as the provisioning service:
+
+```bash
+PROVISIONING_KAFKA_BROKERS=redpanda:9092 \
+DATABASE_URL=postgres://... \
+./migrate-dlq --dry-run
+```
+
+## Next Steps
+
+- **[Configuration Reference](../../reference/configuration)** — All environment variables
+- **[Monitoring](../../concepts/architecture)** — Architecture and data flow
+- **[Local Development](./local)** — Run Sukko locally for development

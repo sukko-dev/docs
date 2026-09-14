@@ -1,0 +1,154 @@
+---
+title: Vanilla TypeScript
+description: Use the Sukko SDK without any framework
+---
+
+# Vanilla TypeScript
+
+Use the Sukko SDK directly with TypeScript — no React, Vue, or Svelte required.
+
+:::info Time to complete
+~10 minutes
+:::
+
+## Install
+
+```bash
+npm install @sukko/sdk @sukko/websocket
+```
+
+## Create a Client
+
+```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
+const client = new SukkoClient({
+  transport: new WebSocketTransport({
+    url: 'ws://localhost:3000',
+  }),
+  getToken: async () => {
+    const res = await fetch('/api/auth/sukko-token');
+    return res.text();
+  },
+});
+```
+
+The client connects automatically on construction (`autoConnect` defaults to `true`). Pass `autoConnect: false` to connect manually with `client.connect()`.
+
+## Subscribe
+
+`subscribe` takes an **array of channels**. Messages arrive on the `message` event (or the back-pressured `messages()` stream — see below).
+
+```typescript
+client.subscribe(['general.chat']);
+
+client.on('message', (msg) => {
+  console.log(msg.channel, msg.data);
+});
+```
+
+## Publish
+
+```typescript
+client.publish('general.chat', {
+  text: 'Hello from vanilla TS!',
+});
+```
+
+`data` must be a JSON **object**. `publish` is fire-and-forget over WebSocket; for an awaitable publish that resolves on the gateway's ack (and works without a live socket), use `await client.restPublish('general.chat', { text: '…' })` — REST publish is available in **every edition**. The gateway's REST publish response (and the WebSocket `publish_ack`) carries the message's stable identity `mid` — the same `mid` subscribers receive on the delivered envelope (omitted when a routing rule fans the publish out to multiple topics).
+
+## Connection State
+
+There are no separate `connected`/`disconnected` events — the client emits a single `stateChange` with the current [`ConnectionState`](../../reference/sdk/core) (`connecting`, `connected`, `reconnecting`, `disconnected`, `error`):
+
+```typescript
+client.on('stateChange', (state) => {
+  console.log('State:', state);
+});
+
+client.on('reconnecting', (attempt) => {
+  console.log(`Reconnecting (attempt ${attempt})…`);
+});
+```
+
+## Automatic Recovery
+
+When the connection drops and reconnects, the SDK **automatically** replays messages missed during the gap — you don't call anything. It tracks an opaque per-channel cursor (`pos`) and, on reconnect, resumes from the last-seen position (Kafka backend). The `client_id` is stored in `localStorage` under `CLIENT_ID_KEY` and survives page reloads, but the `pos` cursor is held in memory — so a page reload starts a fresh session and does **not** replay messages missed while the page was gone.
+
+Where recovery cannot be *guaranteed*, the SDK never silently drops messages — it surfaces a marker on the delivery stream instead. To observe those, consume the **`messages()`** async iterator (the authoritative, back-pressured delivery surface) rather than the `message` event tap:
+
+```typescript
+for await (const item of client.messages()) {
+  switch (item.type) {
+    case 'message':
+    case 'replay_message':
+      // Live messages and replayed (recovered) messages — replayed ones arrive here on the
+      // stream, not on the `message` event tap.
+      console.log(item.channel, item.data);
+      break;
+    case 'gap':
+      // A detected gap being recovered — `last_pos` is the replay anchor.
+      console.warn('gap on', item.channel, 'before', item.last_pos);
+      break;
+    case 'possible_gap':
+      // Recovery could not be confirmed (Direct backend, or an SSE reconnect).
+      console.warn('possible gap on', item.channel);
+      break;
+  }
+}
+```
+
+A recovery that is truncated (e.g. the connection drops again mid-replay) is advisory, not fatal — it fires a `recoveryInterrupted` event and the next reconnect retries:
+
+```typescript
+client.on('recoveryInterrupted', (err) => {
+  console.warn('recovery interrupted:', err.message);
+});
+```
+
+:::note
+`msg.pos` is absent for messages delivered by the Direct backend (`MESSAGE_BACKEND=direct`), which has no replay cursor — on that backend a reconnect degrades to a re-subscribe and emits a `possible_gap` per channel rather than replaying.
+:::
+
+### Message identity (`mid`) vs. cursor (`pos`)
+
+Delivered envelopes (live, replay, and history) also carry an optional **`mid`** — a stable, opaque message identity (at most 64 characters). Unlike `seq` (per-connection) and `pos` (a per-channel replay cursor), the **same message carries the same `mid` on every copy delivered**, so you can deduplicate a reconnect-replay overlap or process messages idempotently by keying on it. `mid` is identity, never a cursor: keep sending `pos` values for replay (`from_pos`/`last_pos`), and never parse `mid` — its format is backend-specific and may change between releases.
+
+## Complete Example
+
+```typescript
+import { SukkoClient } from '@sukko/sdk';
+import { WebSocketTransport } from '@sukko/websocket';
+
+const client = new SukkoClient({
+  transport: new WebSocketTransport({ url: 'ws://localhost:3000' }),
+  getToken: () => fetch('/api/token').then((r) => r.text()),
+});
+
+client.subscribe(['general.chat']);
+
+client.on('message', (msg) => {
+  const li = document.createElement('li');
+  li.textContent = JSON.stringify(msg.data);
+  document.getElementById('messages')?.appendChild(li);
+});
+
+// Publish on button click
+document.getElementById('send')?.addEventListener('click', () => {
+  client.publish('general.chat', { text: 'Hello!' });
+});
+```
+
+## Cleanup
+
+```typescript
+client.unsubscribe(['general.chat']);
+client.disconnect();
+```
+
+## Next Steps
+
+- **[React Integration](./react)** — React hooks and provider
+- **[SDK Reference](../../reference/sdk/core)** — Full SukkoClient API reference
+- **[Authentication](../../concepts/authentication)** — Token management

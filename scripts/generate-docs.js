@@ -1,0 +1,567 @@
+#!/usr/bin/env node
+
+// Pre-build script: generates MDX reference pages from extracted JSON.
+// Run before `npm run build` or `npm start`.
+//
+// Usage: node scripts/generate-docs.js
+
+const fs = require('fs');
+const path = require('path');
+
+const DOCS_DIR = path.join(__dirname, '..', 'docs');
+const GEN_DIR = path.join(__dirname, '..', 'generated');
+
+// Escape characters that MDX evaluates as JSX expressions or HTML entities.
+// Curly braces must be escaped as \{ \} — even inside backtick code spans in
+// table cells, MDX v3 evaluates {expr} as a JavaScript expression.
+function mdxSafe(str) {
+  if (!str) return '';
+  return str
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}');
+}
+
+// ─── Config Reference ─────────────────────────────────────────────────────────
+
+const SERVICE_ORDER = ['base', 'gateway', 'server', 'provisioning', 'webhook-shared', 'webhook-worker', 'tester'];
+const SERVICE_LABELS = {
+  base: 'Shared (Base)',
+  gateway: 'Gateway',
+  server: 'Core',
+  provisioning: 'Provisioning',
+  'webhook-shared': 'Shared Webhook Configuration',
+  'webhook-worker': 'Webhook Worker',
+  tester: 'Tester',
+};
+
+function generateConfigReference() {
+  const jsonPath = path.join(GEN_DIR, 'config-reference.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip config-reference (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const sorted = [...data.services].sort(
+    (a, b) => SERVICE_ORDER.indexOf(a.name) - SERVICE_ORDER.indexOf(b.name),
+  );
+
+  let md = `---
+title: Configuration Reference
+description: All environment variables across Sukko services
+---
+
+# Configuration Reference
+
+All configurable environment variables across Sukko services. Values are set via \`env:\` struct tags in Go config files — the \`envDefault\` is the source of truth for defaults.
+
+`;
+
+  for (const svc of sorted) {
+    const label = SERVICE_LABELS[svc.name] || svc.name;
+    md += `## ${label}\n\n`;
+
+    // Callout before webhook-shared: operators must keep these in sync across services.
+    if (svc.name === 'webhook-shared') {
+      md += ':::note\nThese variables must be set **identically** across both the provisioning service and the webhook-worker. Setting them differently causes authentication failures or silent credential decryption mismatches.\n:::\n\n';
+    }
+
+    md += '| Variable | Type | Default | Description |\n';
+    md += '|----------|------|---------|-------------|\n';
+    for (const v of svc.vars) {
+      if (v.name === '-') continue;
+      const def = v.default ? `\`${v.default}\`` : '—';
+      let rawDesc = v.description ?? '';
+      // Clarify PROVISIONING_GRPC_RECONNECT_* placement in the webhook-worker section.
+      // These vars carry a PROVISIONING_ prefix because they configure the connection
+      // to the provisioning service — they are read by webhook-worker, not provisioning.
+      if (
+        svc.name === 'webhook-worker' &&
+        (v.name === 'PROVISIONING_GRPC_RECONNECT_DELAY' ||
+          v.name === 'PROVISIONING_GRPC_RECONNECT_MAX_DELAY')
+      ) {
+        rawDesc =
+          rawDesc +
+          " Configures the webhook-worker's outbound gRPC client connection to the provisioning service — the provisioning process does not read these vars.";
+      }
+      const desc = mdxSafe(rawDesc.replace(/\n/g, ' ').replace(/\|/g, '\\|'));
+      md += `| \`${v.name}\` | ${v.type} | ${def} | ${desc} |\n`;
+    }
+    md += '\n';
+  }
+
+  const outPath = path.join(DOCS_DIR, 'reference', 'configuration.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  config-reference: ${data.services.reduce((n, s) => n + s.vars.length, 0)} vars`);
+}
+
+// ─── CLI Reference ────────────────────────────────────────────────────────────
+
+function generateCLIReference() {
+  const jsonPath = path.join(GEN_DIR, 'cli-reference.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip cli-reference (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
+  let md = `---
+title: CLI Reference
+description: Every sukko CLI command with usage and flags
+---
+
+# CLI Reference
+
+The \`sukko\` CLI manages your Sukko deployment — tenants, keys, testing, and local development.
+
+## Install
+
+\`\`\`bash
+# macOS / Linux
+brew install sukko-dev/tap/sukko
+
+# Windows
+scoop bucket add sukko https://github.com/sukko-dev/scoop-bucket
+scoop install sukko
+\`\`\`
+
+## Commands
+
+`;
+
+  // gendocs outputs a tree: root command with children (nested subcommands)
+  // Support both old format (flat .commands array) and new format (single root with .children)
+  const commands = data.commands || (data.children ? data.children : []);
+  let count = 0;
+
+  function renderCommand(cmd, prefix) {
+    const fullName = prefix ? `${prefix} ${cmd.name}` : cmd.name;
+    // use field goes inside backticks — angle brackets are safe there, don't escape
+    // prefix carries the full parent path (e.g., "sukko context") for nested subcommands
+    md += `### \`${prefix} ${cmd.use || cmd.name}\`\n\n`;
+    md += `${mdxSafe(cmd.short)}\n\n`;
+    if (cmd.long) {
+      // Long descriptions from cobra may contain markdown headings or shell syntax
+      // that breaks MDX parsing — render as a fenced code block
+      md += `\`\`\`\n${cmd.long.trim()}\n\`\`\`\n\n`;
+    }
+    if (cmd.aliases && cmd.aliases.length > 0) {
+      md += `**Aliases:** ${cmd.aliases.map(a => `\`${a}\``).join(', ')}\n\n`;
+    }
+    if (cmd.flags && cmd.flags.length > 0) {
+      md += '**Flags:**\n\n';
+      md += '| Flag | Type | Default | Description |\n';
+      md += '|------|------|---------|-------------|\n';
+      for (const f of cmd.flags) {
+        const name = f.shorthand ? `\`--${f.name}\`, \`-${f.shorthand}\`` : `\`--${f.name}\``;
+        md += `| ${name} | ${f.type} | ${f.default ? `\`${mdxSafe(f.default)}\`` : '—'} | ${mdxSafe(f.usage)} |\n`;
+      }
+      md += '\n';
+    }
+    if (cmd.example) {
+      md += '**Example:**\n\n```bash\n' + cmd.example + '\n```\n\n';
+    }
+    md += '---\n\n';
+    count++;
+
+    // Recurse into subcommands
+    if (cmd.children) {
+      for (const child of cmd.children) {
+        renderCommand(child, fullName);
+      }
+    }
+  }
+
+  for (const cmd of commands) {
+    renderCommand(cmd, 'sukko');
+  }
+
+  const outPath = path.join(DOCS_DIR, 'reference', 'cli.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  cli-reference: ${count} commands`);
+}
+
+// ─── SDK Reference ────────────────────────────────────────────────────────────
+
+const PACKAGE_FILES = {
+  '@sukko/sdk': 'reference/sdk/core.mdx',
+  '@sukko/websocket': 'reference/sdk/websocket.mdx',
+  '@sukko/websocket-node': 'reference/sdk/websocket-node.mdx',
+  '@sukko/react': 'reference/sdk/react.mdx',
+  '@sukko/react-native': 'reference/sdk/react-native.mdx',
+  '@sukko/vue': 'reference/sdk/vue.mdx',
+  '@sukko/svelte': 'reference/sdk/svelte.mdx',
+};
+
+const PACKAGE_LABELS = {
+  '@sukko/sdk': 'Core SDK',
+  '@sukko/websocket': 'WebSocket Transport',
+  '@sukko/websocket-node': 'Node WebSocket Transport',
+  '@sukko/react': 'React Hooks',
+  '@sukko/react-native': 'React Native Push',
+  '@sukko/vue': 'Vue Composables',
+  '@sukko/svelte': 'Svelte Stores',
+};
+
+function generateSDKReference() {
+  const jsonPath = path.join(GEN_DIR, 'sdk-reference.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip sdk-reference (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const kinds = ['class', 'function', 'type', 'constant'];
+  const kindLabels = { class: 'Classes', function: 'Functions', type: 'Types', constant: 'Constants' };
+
+  for (const pkg of data.packages) {
+    const file = PACKAGE_FILES[pkg.name];
+    if (!file) continue;
+
+    const label = PACKAGE_LABELS[pkg.name] || pkg.name;
+    let md = `---
+title: "${label}"
+description: "${pkg.name} API reference"
+---
+
+# ${label}
+
+\`\`\`bash
+npm install ${pkg.name}
+\`\`\`
+
+`;
+
+    const seen = new Set();
+    const unique = pkg.exports.filter(e => {
+      if (seen.has(e.name)) return false;
+      seen.add(e.name);
+      return true;
+    });
+
+    for (const kind of kinds) {
+      const items = unique.filter(e => e.kind === kind);
+      if (items.length === 0) continue;
+
+      md += `## ${kindLabels[kind]}\n\n`;
+      for (const item of items) {
+        md += `### \`${mdxSafe(item.signature)}\`\n\n`;
+        if (item.parameters) md += `**Parameters:** \`${mdxSafe(item.parameters)}\`\n\n`;
+        if (item.returnType) md += `**Returns:** \`${mdxSafe(item.returnType)}\`\n\n`;
+        md += '---\n\n';
+      }
+    }
+
+    const outPath = path.join(DOCS_DIR, file);
+    fs.writeFileSync(outPath, md);
+    console.log(`  sdk-reference: ${pkg.name} (${unique.length} exports)`);
+  }
+}
+
+// ─── Python SDK Reference ─────────────────────────────────────────────────────
+
+// The Python reference comes from a separate extractor (scripts/extract-py, griffe) writing
+// generated/python-reference.json in the same shape as sdk-reference.json — a single package `sukko`.
+function generatePythonSDKReference() {
+  const jsonPath = path.join(GEN_DIR, 'python-reference.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip python-reference (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const pkg = data.packages.find(p => p.name === 'sukko');
+  if (!pkg) {
+    console.log('  skip python-reference (no `sukko` package)');
+    return;
+  }
+
+  const kinds = ['class', 'function', 'type', 'constant'];
+  const kindLabels = { class: 'Classes', function: 'Functions', type: 'Types', constant: 'Constants' };
+
+  let md = `---
+title: "Python SDK"
+description: "sukko (Python client) API reference"
+---
+
+# Python SDK
+
+\`\`\`bash
+pip install sukko
+\`\`\`
+
+`;
+
+  const seen = new Set();
+  const unique = pkg.exports.filter(e => {
+    if (seen.has(e.name)) return false;
+    seen.add(e.name);
+    return true;
+  });
+
+  for (const kind of kinds) {
+    const items = unique.filter(e => e.kind === kind);
+    if (items.length === 0) continue;
+
+    md += `## ${kindLabels[kind]}\n\n`;
+    for (const item of items) {
+      md += `### \`${mdxSafe(item.signature)}\`\n\n`;
+      md += '---\n\n';
+    }
+  }
+
+  const outPath = path.join(DOCS_DIR, 'reference', 'sdk', 'python.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  python-reference: sukko (${unique.length} exports)`);
+}
+
+// ─── Editions Comparison ──────────────────────────────────────────────────────
+
+function formatLimit(value) {
+  if (value === 0) return 'Unlimited';
+  return value.toLocaleString();
+}
+
+// Normalize feature names to human-readable labels (used by editions + roadmap)
+const featureLabels = {
+  'MESSAGE_BACKEND=kafka': 'Kafka/Redpanda Backend',
+  'DATABASE_DRIVER=postgres': 'PostgreSQL for Provisioning',
+  'SSE transport': 'SSE Transport',
+  'CHANNEL_RULES': 'Per-Tenant Channel Rules',
+  'TENANT_CONNECTION_LIMIT_ENABLED': 'Per-Tenant Connection Limits',
+  'per-tenant configurable quotas': 'Per-Tenant Configurable Quotas',
+  'tenant lifecycle manager': 'Tenant Lifecycle Manager',
+  'ALERT_ENABLED': 'Alerting (AlertManager)',
+  'CHANNEL_TOPIC_ROUTING': 'Channel Topic Routing',
+  'real-time analytics': 'Real-Time Analytics',
+  'real-time analytics for push': 'Real-Time Analytics for Push',
+  'live gap recovery': 'Live Gap Recovery',
+  'connections management API': 'Connections Management API',
+  'connection tracing': 'Connection Tracing (OpenTelemetry)',
+  'admin UI': 'Admin UI',
+  'token revocation': 'Token Revocation',
+  'webhook delivery': 'Webhook Delivery',
+  'message history': 'Message History',
+  'channel patterns (CEL)': 'Channel Patterns (CEL)',
+  'delta compression': 'Delta Compression',
+  'Web Push transport': 'Web Push Transport',
+  'per-tenant IP allowlisting': 'Per-Tenant IP Allowlisting',
+  'audit logging': 'Audit Logging',
+  'REST publish': 'REST Publish',
+  'web push notifications': 'Web Push',
+  'mobile push notifications (FCM + APNs)': 'Mobile Push (FCM/APNs)',
+  'end-to-end encryption': 'End-to-End Encryption',
+  'priority message routing': 'Priority Message Routing',
+  'custom quota policies': 'Custom Quota Policies',
+};
+
+function featureLabel(name) {
+  return featureLabels[name] || name;
+}
+
+function generateEditionsComparison() {
+  const jsonPath = path.join(GEN_DIR, 'editions.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip editions (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
+  const editions = {};
+  for (const e of data.editions) {
+    editions[e.edition] = e;
+  }
+
+  const c = editions['community'] || {};
+  const p = editions['pro'] || {};
+  const e = editions['enterprise'] || {};
+
+  let md = `---
+title: Edition Comparison
+description: Compare Sukko Community, Pro, and Enterprise editions
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Edition Comparison
+
+Sukko is available in three editions. Community is free — no license key required. Pro and Enterprise unlock higher limits and advanced features via a license key.
+
+## Limits
+
+| Resource | Community | Pro | Enterprise |
+|----------|-----------|-----|------------|
+| **Tenants** | ${formatLimit(c.max_tenants)} | ${formatLimit(p.max_tenants)} | ${formatLimit(e.max_tenants)} |
+| **Total Connections** | ${formatLimit(c.max_total_connections)} | ${formatLimit(p.max_total_connections)} | ${formatLimit(e.max_total_connections)} |
+| **Shards** | ${formatLimit(c.max_shards)} | ${formatLimit(p.max_shards)} | ${formatLimit(e.max_shards)} |
+| **Topics per Tenant** | ${formatLimit(c.max_topics_per_tenant)} | ${formatLimit(p.max_topics_per_tenant)} | ${formatLimit(e.max_topics_per_tenant)} |
+| **Routing Rules per Tenant** | ${formatLimit(c.max_routing_rules_per_tenant)} | ${formatLimit(p.max_routing_rules_per_tenant)} | ${formatLimit(e.max_routing_rules_per_tenant)} |
+
+## Features
+
+| Feature | Community | Pro | Enterprise |
+|---------|-----------|-----|------------|
+`;
+
+  // Auto-generate feature rows from extracted data
+  const features = data.features || [];
+  // Community-tier entries are ungated features listed explicitly in the
+  // feature matrix so this page renders them as available in every edition.
+  const communityFeatures = features.filter(f => f.edition === 'community');
+  const proFeatures = features.filter(f => f.edition === 'pro');
+  const enterpriseFeatures = features.filter(f => f.edition === 'enterprise');
+
+  const implCommunityFeatures = communityFeatures.filter(f => f.implemented);
+  const implProFeatures = proFeatures.filter(f => f.implemented);
+  const comingSoonProFeatures = proFeatures.filter(f => !f.implemented);
+  const implEntFeatures = enterpriseFeatures.filter(f => f.implemented);
+  const comingSoonEntFeatures = enterpriseFeatures.filter(f => !f.implemented);
+
+  for (const f of implCommunityFeatures) {
+    md += `| **${mdxSafe(featureLabel(f.name))}** | Yes | Yes | Yes |\n`;
+  }
+  for (const f of implProFeatures) {
+    md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
+  }
+  for (const f of implEntFeatures) {
+    md += `| **${mdxSafe(featureLabel(f.name))}** | — | — | Yes |\n`;
+  }
+
+  if (comingSoonProFeatures.length > 0 || comingSoonEntFeatures.length > 0) {
+    md += `\n## Coming Soon\n\n`;
+    md += `| Feature | Community | Pro | Enterprise |\n`;
+    md += `|---------|-----------|-----|------------|\n`;
+    for (const f of comingSoonProFeatures) {
+      md += `| **${mdxSafe(featureLabel(f.name))}** | — | Yes | Yes |\n`;
+    }
+    for (const f of comingSoonEntFeatures) {
+      md += `| **${mdxSafe(featureLabel(f.name))}** | — | — | Yes |\n`;
+    }
+  }
+
+  md += `
+
+## Which Edition Do I Need?
+
+### Community (Free)
+
+For evaluation, development, and proof-of-concept deployments. No license key required — and no feature wall on the data path: the Kafka/Redpanda backend, message history, live gap recovery, and REST publish are all included. Capacity caps are the tier boundary, not features.
+
+- Up to ${formatLimit(c.max_tenants)} tenants, ${formatLimit(c.max_total_connections)} connections, ${formatLimit(c.max_shards)} shard
+- The full data path: Kafka/Redpanda ingestion, message history, live gap recovery, REST publish
+- Community support via GitHub Issues
+
+### Pro <EditionBadge edition="pro" />
+
+For production workloads: production scale plus the operations surface.
+
+- Up to ${formatLimit(p.max_tenants)} tenants, ${formatLimit(p.max_total_connections)} connections, ${formatLimit(p.max_shards)} shards
+- SSE transport and Web Push
+- Operations: per-tenant connection limits and quotas, tenant lifecycle, channel-topic routing, alerting, tracing, analytics, admin UI, token revocation, webhooks, connections API
+- Email support
+
+### Enterprise <EditionBadge edition="enterprise" />
+
+For compliance-driven and large-scale deployments.
+
+- Unlimited tenants, connections, and shards
+- Audit-log query API and mobile push (FCM/APNs)
+- Priority support with custom SLA
+- Contact us for pricing
+
+## Next Steps
+
+- **[Upgrade to Pro](./upgrade)** — Set your license key and unlock Pro features
+- **[Pricing](./pricing)** — Pricing details
+- **[Quickstart](../quickstart)** — Try Sukko with the free Community edition
+`;
+
+  const outPath = path.join(DOCS_DIR, 'editions', 'comparison.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  editions: ${data.editions.length} editions`);
+}
+
+// ─── Roadmap ──────────────────────────────────────────────────────────────────
+
+const priorityLabels = {
+  2: 'High Priority',
+  3: 'Medium Priority',
+  4: 'Low Priority',
+  5: 'Future',
+};
+
+function generateRoadmap() {
+  const jsonPath = path.join(GEN_DIR, 'editions.json');
+  if (!fs.existsSync(jsonPath)) {
+    console.log('  skip roadmap (no JSON)');
+    return;
+  }
+
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  const features = (data.features || []).filter(f => f.status === 'future' && f.priority >= 2);
+
+  if (features.length === 0) {
+    console.log('  skip roadmap (no future features)');
+    return;
+  }
+
+  // Group by priority
+  const groups = {};
+  for (const f of features) {
+    const p = f.priority;
+    if (!groups[p]) groups[p] = [];
+    groups[p].push(f);
+  }
+
+  let md = `---
+title: Roadmap
+description: Upcoming features planned for Sukko
+---
+
+# Roadmap
+
+Planned features for upcoming Sukko releases. This page is auto-generated from the feature matrix in the Sukko source code.
+
+Have feedback or feature requests? Join the discussion on [GitHub Discussions](https://github.com/sukko-dev/sukko/discussions).
+
+`;
+
+  const sortedPriorities = Object.keys(groups).map(Number).sort();
+
+  for (const p of sortedPriorities) {
+    const label = priorityLabels[p] || `Priority ${p}`;
+    md += `## ${label}\n\n`;
+    md += '| Feature | Edition | Description |\n';
+    md += '|---------|---------|-------------|\n';
+
+    for (const f of groups[p]) {
+      const edition = f.edition === 'pro' ? 'Pro' : 'Enterprise';
+      md += `| **${mdxSafe(featureLabel(f.name))}** | ${edition} | ${mdxSafe(f.description)} |\n`;
+    }
+    md += '\n';
+  }
+
+  md += `---
+
+*This roadmap is auto-generated from the [feature matrix](https://sukko.dev) in the Sukko source code. Priorities may change based on community feedback.*
+`;
+
+  const outPath = path.join(DOCS_DIR, 'roadmap.mdx');
+  fs.writeFileSync(outPath, md);
+  console.log(`  roadmap: ${features.length} planned features`);
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
+console.log('Generating reference docs from extracted JSON...');
+generateConfigReference();
+generateCLIReference();
+generateSDKReference();
+generatePythonSDKReference();
+generateEditionsComparison();
+generateRoadmap();
+console.log('Done.');

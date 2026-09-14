@@ -1,0 +1,113 @@
+---
+title: Message Backends
+description: Direct and Kafka message backends
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Message Backends
+
+Sukko supports two pluggable message backends. Both deliver messages through the same broadcast bus to WebSocket clients — they differ in how messages enter the system.
+
+## Direct
+
+Zero-dependency mode for local development and testing.
+
+- Client publishes via WebSocket, server routes directly to broadcast bus
+- No persistence, no replay
+- No external dependencies (no Kafka)
+
+```bash
+# Default for sukko up
+MESSAGE_BACKEND=direct
+```
+
+## Kafka / Redpanda
+
+Production-grade persistent ingestion with offset-based replay. Available in **every edition**, Community included.
+
+- External systems publish to Kafka topics
+- ws-server consumes via franz-go consumer groups
+- Three-layer protection: rate limiting, CPU backpressure, non-blocking broadcast
+- Offset-based replay on client reconnection
+
+:::note Client publish into the kafka backend needs routing rules
+Client (WebSocket) and REST publishes into the kafka backend are routed to topics via per-tenant [routing rules](./channels#topic-routing-rules) — a **Pro** feature. Without a matching rule the publish is rejected, never silently dropped. On Community, the kafka backend is the **ingest path**: your producers publish to the tenant's automatically provisioned `default` topic and Sukko fans out to clients (with history and gap recovery) — no routing rules needed; client publishing works on the direct backend.
+:::
+
+```bash
+MESSAGE_BACKEND=kafka
+KAFKA_BROKERS=redpanda:9092
+```
+
+### Topic Naming
+
+Topics follow a three-part scheme: `{namespace}.{tenant_id}.{suffix}`
+
+Example: `prod.acme.messages`, `dev.demo.chat`
+
+### Which Topics Sukko Consumes
+
+Provisioning is the sole authority on each tenant's topic set. For every active tenant, Sukko creates and consumes exactly:
+
+- the tenant's **`default` topic** (`{namespace}.{tenant_id}.default`) — provisioned automatically with every tenant, on every edition. Publish records here and they fan out to subscribed clients with no further setup — this is the Community ingest path
+- every topic suffix referenced by the tenant's [routing rules](./channels#topic-routing-rules) — rules **extend** the consumed set on Pro and above; they never gate the default topic
+
+Records produced into any other topic are never read — Sukko only consumes provisioning-opened, tenant-scoped, namespace-prefixed topics, which is the ingestion-path half of [tenant isolation](../security#defense-in-depth-on-the-ingestion-path). (The auto-provisioned `dead-letter` topic is written by Sukko but never consumed — infrastructure, not an ingest target.)
+
+### Consumer Modes
+
+- **Shared** — all tenants on one consumer group (default)
+- **Dedicated** — per-tenant consumer group for high-volume tenants
+
+### Tenant Validation & Dead-Lettering
+
+The consumer resolves each topic's owning tenant from the routing snapshot and re-checks that every record it reads belongs to that tenant — the ingestion-path half of Sukko's [tenant isolation](../security#defense-in-depth-on-the-ingestion-path) controls. Records are handled by outcome:
+
+| Outcome | Condition | Disposition |
+|---------|-----------|-------------|
+| **Broadcast** | Channel header present and its tenant matches the topic's tenant | Delivered to the broadcast bus |
+| **Dead-lettered** | Missing channel header, or channel-tenant ≠ topic-tenant | Sent to the dead-letter queue, committed, never broadcast |
+| **Redelivered** | Topic not yet present in the routing snapshot | Dropped **without commit** — Kafka redelivers once the snapshot catches up |
+
+The redeliver path is deliberate: an unknown topic usually means the routing snapshot hasn't arrived yet, so the record is left uncommitted rather than discarded. Dead-letter and unknown-topic events are exported as Prometheus metrics for operator visibility.
+
+### Readiness Gate
+
+Because the consumer must know every topic's owning tenant before it can safely route, ws-server exposes a dedicated **`/ready`** endpoint that stays not-ready until the routing snapshot has been applied:
+
+| Endpoint | Purpose | Not-ready behavior |
+|----------|---------|--------------------|
+| `/ready` | Readiness — has the routing snapshot been applied? | `503` with `{"status":"not_ready","ready":false}` until the snapshot arrives; `200` with `{"status":"ready","ready":true}` after |
+| `/health` | Liveness — is the process running? | Always `200` while the process is alive — never gated on the snapshot |
+
+Keeping readiness separate from liveness is intentional: Kubernetes pulls a not-ready pod out of the Service endpoints (so no client traffic reaches a pod that can't resolve topics yet) **without** restarting it, avoiding a cluster-wide crash-loop during a provisioning outage. In `direct` mode there is no snapshot to wait for, so `/ready` reports ready immediately.
+
+:::note
+This `/ready` is the ws-server endpoint. The [gateway](./gateway#health-checks) exposes its own `/ready` for accepting WebSocket connections — they are separate probes on separate services.
+:::
+
+## Comparison
+
+| | Direct | Kafka |
+|---|---|---|
+| **Persistence** | None | Offset-based |
+| **Replay** | No | Yes |
+| **Dependencies** | None | Kafka/Redpanda |
+| **Use Case** | Testing | Production |
+| **Backpressure** | No | Yes (CPU brake) |
+
+## Broadcast Bus
+
+Both backends route messages through the **broadcast bus** (Valkey) for inter-pod fan-out. The backend is how messages get IN — the bus is how they get distributed.
+
+```bash
+BROADCAST_TYPE=valkey   # Valkey Pub/Sub for inter-instance fan-out
+VALKEY_ADDRS=valkey:6379
+```
+
+## Next Steps
+
+- **[Architecture](./architecture)** — Full data flow diagram
+- **[Configuration Reference](../reference/configuration)** — All backend env vars
+- **[Kubernetes Deployment](../guides/deploy/kubernetes)** — Configure backends in Helm

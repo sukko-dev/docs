@@ -1,0 +1,28 @@
+# Sukko Documentation
+
+> Sukko is a multi-tenant WebSocket infrastructure platform. Deploy it in your own cloud (BYOC), connect your Kafka/Redpanda pipeline, and deliver real-time data to thousands of WebSocket clients with sub-millisecond fan-out.
+
+## Sections
+
+- [Quickstart](/quickstart): Zero-to-first-message in 5 minutes using the sukko CLI
+- [Security](/security): How Sukko secures multi-tenant WebSocket infrastructure at every layer
+- [Concepts](/concepts/architecture): Architecture, multi-tenancy, channels, authentication, message backends, gateway
+- [SDK Guides](/guides/sdk/react): React, Vue, Svelte, React Native, and vanilla TypeScript integration guides
+- [Python SDK Guide](/guides/sdk/python): Python client SDK (async + sync/notebook) — subscribe, recovery, auth, REST publish, push
+- [Deployment](/guides/deploy/local): Local dev (Docker Compose) and Kubernetes (Helm) deployment guides
+- [Testing](/guides/testing): Deployment validation using the Sukko tester service — suite commands, edition requirements, and troubleshooting
+- [Admin UI](/guides/admin-ui): Enable, secure (ADMIN_TOKEN + browser session), and use the operator admin dashboard — per-tenant management, connections, analytics, system-health panel, and edition availability
+- [CLI Reference](/reference/cli): Every sukko CLI command with flags and examples
+- [REST API Reference](/reference/rest-api): Provisioning API endpoints (tenants, keys, rules, quotas, webhooks including test delivery)
+- [SDK Reference](/reference/sdk/core): TypeScript SDK API reference (@sukko/sdk, @sukko/websocket, @sukko/websocket-node, @sukko/react, @sukko/react-native, @sukko/vue, @sukko/svelte)
+- [Python SDK Reference](/reference/sdk/python): Python client SDK API reference (sukko) — clients, transports, messages, recovery, errors
+- [Configuration Reference](/reference/configuration): Every environment variable across all services
+- [Editions](/editions/comparison): Community, Pro, and Enterprise feature comparison
+
+## Links
+
+- Website: https://sukko.dev
+- Documentation: https://docs.sukko.dev
+- CLI: https://github.com/sukko-dev/cli
+- JS SDK: https://github.com/sukko-dev/sdk-js
+- Issues: https://github.com/sukko-dev/sukko

@@ -1,0 +1,98 @@
+---
+title: Multi-Tenancy
+description: How Sukko isolates tenants at every layer
+---
+
+import EditionBadge from '@site/src/components/EditionBadge';
+
+# Multi-Tenancy
+
+Every connection, channel, and topic in Sukko belongs to a tenant. Tenants are isolated at every layer of the stack.
+
+## Tenant Model
+
+A tenant represents a customer or application environment. Each tenant has:
+
+- A unique ID (`^[a-z][a-z0-9-]{2,62}$`)
+- JWT signing keys for authentication
+- API keys for public-channel-only access
+- Channel rules controlling subscribe/publish access
+- Routing rules mapping channels to backend topics
+- Quotas limiting connections, topics, throughput, and storage
+
+## Isolation Controls {#isolation-guarantees}
+
+Tenant isolation in Sukko is **security scoping** — every channel, subscription, topic, and database query is scoped to the authenticated tenant — plus **per-tenant admission controls** (connection limits and quotas, Pro). It is not a runtime resource-fairness guarantee: tenants share the same process, broadcast bus, and backend infrastructure, so isolation means no tenant can *see or touch* another tenant's data, not that a heavy tenant cannot affect shared capacity (admission controls exist to bound that).
+
+| Layer | Isolation |
+|-------|-----------|
+| **Connections** | Gateway tracks connections per tenant. Per-tenant connection limits enforced via quotas (admission control, Pro). |
+| **Channels** | Channel names are namespaced as `{tenant}.{suffix}`. Tenant A's `general.chat` is a different channel from Tenant B's — subscriptions never cross tenants. |
+| **Topics** | Backend topics are prefixed: `{namespace}.{tenant_id}.{suffix}`. The Kafka consumer re-validates that each record's channel-tenant matches its topic-tenant and [dead-letters](./message-backends#tenant-validation--dead-lettering) any mismatch. |
+| **Authentication** | Each tenant registers its own JWT signing keys. Cross-tenant tokens are rejected at the gateway. |
+| **Quotas** | Per-tenant limits on connections, topics, partitions, storage, and producer/consumer throughput (admission control, Pro). |
+
+## Quotas <EditionBadge edition="pro" />
+
+Each tenant has configurable resource quotas:
+
+| Quota | Description |
+|-------|-------------|
+| `max_connections` | Maximum concurrent WebSocket connections (0 = system default) |
+| `max_topics` | Maximum topics allowed |
+| `max_partitions` | Maximum partitions allowed |
+| `max_storage_bytes` | Maximum storage in bytes |
+| `producer_byte_rate` | Maximum producer throughput (bytes/sec) |
+| `consumer_byte_rate` | Maximum consumer throughput (bytes/sec) |
+
+Manage quotas via the CLI or REST API:
+
+```bash
+sukko quota get --tenant demo
+sukko quota update --tenant demo --max-connections 500
+```
+
+## Consumer Modes
+
+Sukko supports two consumer modes for Kafka backends:
+
+### Shared Consumer
+
+All tenants share a single consumer group. Topics are discovered via the tenant registry and hot-added without rebalance (KIP-429). Best for small-to-medium tenants.
+
+### Dedicated Consumer
+
+Each tenant gets its own consumer group with isolated partition management. Best for high-volume tenants that need guaranteed throughput.
+
+Configure per tenant via the provisioning API:
+
+```bash
+sukko tenant create --id high-volume --name "High Volume" --consumer-type dedicated
+```
+
+## Tenant Lifecycle <EditionBadge edition="pro" />
+
+| State | Description |
+|-------|-------------|
+| **active** | Normal operation. Connections accepted, messages delivered. |
+| **suspended** | New connections rejected. Existing connections maintained. Reactivation possible. |
+| **deprovisioning** | Grace period before deletion. A `deprovision_at` timestamp marks when cleanup occurs. |
+| **deleted** | All resources cleaned up. Irreversible. |
+
+```bash
+# Suspend a tenant
+sukko tenant suspend --id demo
+
+# Reactivate
+sukko tenant reactivate --id demo
+
+# Deprovision (schedules deletion)
+sukko tenant deprovision --id demo
+```
+
+## Next Steps
+
+- **[Authentication](./authentication)** — JWT setup and key registration
+- **[Channels](./channels)** — Channel scoping per tenant
+- **[Security](../security)** — How tenant isolation is enforced at every layer
+- **[Configuration Reference](../reference/configuration)** — Tenant-related env vars
