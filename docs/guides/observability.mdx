@@ -96,6 +96,74 @@ helm install sukko sukko-dev/sukko \
   --set env.PYROSCOPE_ADDR=http://your-pyroscope:4040
 ```
 
+## Broadcast Delivery Signals
+
+The core server fans every ingested message out through the Valkey broadcast bus. If the
+bus is unreachable, the Kafka consumer **deliberately stops advancing** rather than
+committing past messages it could not deliver — delivery is at-least-once, so an outage
+costs latency and consumer lag, never silent message loss.
+
+That trade-off is worth understanding before it happens: while the bus is down, the
+consumer blocks on the undelivered message and **all tenants sharing that consumer wait
+behind it**. Messages are not dropped; they are delayed until the bus returns, then
+delivered (possibly more than once — each carries a stable message id for de-duplication).
+
+Three counters make the condition visible:
+
+| Metric | Meaning |
+|--------|---------|
+| `ws_broadcast_publish_failures_total` | Broadcast publishes that failed — non-zero means the bus is unreachable or rejecting |
+| `ws_consumer_broadcast_retries_total` | Retry attempts on held messages; climbing means the consumer is stalled on an undelivered message |
+| `ws_consumer_broadcast_blocked_seconds_total` | Cumulative time the consumer spent blocked — the direct measure of ingestion backpressure |
+
+Recommended alerts for your own stack:
+
+```yaml
+# Bus unreachable — delivery is stalled, not losing data
+- alert: SukkoBroadcastPublishFailing
+  expr: rate(ws_broadcast_publish_failures_total[5m]) > 0
+  for: 2m
+  labels: { severity: critical }
+
+# Sustained ingestion backpressure
+- alert: SukkoConsumerBlocked
+  expr: rate(ws_consumer_broadcast_blocked_seconds_total[5m]) > 0.1
+  for: 5m
+  labels: { severity: warning }
+```
+
+Pair these with Kafka consumer lag: rising lag **with** blocked-seconds climbing is a bus
+outage; rising lag **without** it is a throughput problem.
+
+### Subscription health
+
+The core server holds one Valkey subscription per tenant, and it reconciles what it *should*
+be subscribed to against what it has *confirmed* — so a lost subscription repairs itself
+rather than leaving a tenant silently undelivered.
+
+| Metric | Meaning |
+|--------|---------|
+| `ws_broadcast_subscriptions_desired` | Subscriptions this pod should hold |
+| `ws_broadcast_subscriptions_established` | Subscriptions confirmed on its current connection |
+
+**`established` below `desired` while publishes succeed is the signal to watch.** It means
+messages are being published that this pod's subscribers cannot receive. It is normal for a
+fraction of a second after a tenant's first subscribe or last unsubscribe, and during bus
+reconnection; sustained divergence is not.
+
+```yaml
+- alert: SukkoSubscriptionsNotConverged
+  expr: ws_broadcast_subscriptions_established < ws_broadcast_subscriptions_desired
+  for: 2m
+  labels: { severity: warning }
+```
+
+`GET /health` on the core server reports the same condition under `checks.broadcast`, with
+`publish_healthy`, `subscriptions_converged`, and the desired/established pair. Non-convergence
+is reported as **degraded with HTTP 200** — deliberately, so it never fails the liveness probe.
+A pod whose subscription is still converging continues serving its existing connections, and
+restarting pods during a bus outage would turn a recoverable blip into a fleet-wide one.
+
 ## Summary
 
 | Scenario | Helm Config |
