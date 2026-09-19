@@ -24,18 +24,12 @@ jobs:
 
       # --- Clone source repos for reference extraction ---
 
-      # sukko (private) — needs GitHub App token
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@v1
-        with:
-          app-id: ${{ secrets.DOCS_BUILD_APP_ID }}
-          private-key: ${{ secrets.DOCS_BUILD_APP_PRIVATE_KEY }}
-          owner: sukko-dev
-          repositories: sukko
-
-      - name: Clone sukko (private)
-        run: git clone --depth 1 https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/sukko-dev/sukko.git .sources/sukko
+      # sukko (public) — cloned anonymously, like the SDK/CLI repos below. It was
+      # private when this workflow was written; the cutover made it public, so the
+      # GitHub App token it used to mint is no longer needed (and the App is not
+      # installed on the recreated public repo, which broke this step).
+      - name: Clone sukko
+        run: git clone --depth 1 https://github.com/sukko-dev/sukko.git .sources/sukko
 
       # sukko-cli (public)
       - name: Clone sukko-cli
