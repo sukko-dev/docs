@@ -52,6 +52,7 @@ Provisioning is the sole authority on each tenant's topic set. For every active 
 
 - the tenant's **`default` topic** (`{namespace}.{tenant_id}.default`) — provisioned automatically with every tenant, on every edition. Publish records here and they fan out to subscribed clients with no further setup — this is the Community ingest path
 - every topic suffix referenced by the tenant's [routing rules](./channels#topic-routing-rules) — rules **extend** the consumed set on Pro and above; they never gate the default topic
+- every topic an operator has **explicitly provisioned** for the tenant (`sukko topics create --suffix <name>`, or `POST /api/v1/tenants/{tenant}/topics`) — provisioned topics exist independently of routing rules, so a topic can be opened ahead of the rule that will reference it, and a topic still referenced by a rule cannot be deleted. The number of provisioned topics is bounded by the tenant's `max_topics` quota; the `default` and `dead-letter` suffixes are reserved
 
 Records produced into any other topic are never read — Sukko only consumes provisioning-opened, tenant-scoped, namespace-prefixed topics, which is the ingestion-path half of [tenant isolation](../security#defense-in-depth-on-the-ingestion-path). (The auto-provisioned `dead-letter` topic is written by Sukko but never consumed — infrastructure, not an ingest target.)
 
