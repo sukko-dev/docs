@@ -1,6 +1,6 @@
 ---
 title: Push Notifications
-description: Deliver messages to offline clients via FCM, APNs, and Web Push
+description: Deliver messages to offline clients via Web Push (mobile push is planned)
 ---
 
 import EditionBadge from '@site/src/components/EditionBadge';
@@ -10,7 +10,11 @@ import EditionBadge from '@site/src/components/EditionBadge';
 When a client is offline or disconnected, Sukko can deliver messages via push notifications — FCM (Android), APNs (iOS/macOS), and Web Push (browsers). The Push service runs independently from the real-time path, consuming from the message backend and dispatching to registered devices.
 
 :::note Editions
-The Push service requires **Pro** or higher. **Web Push** (browsers) is fully available on Pro. **Mobile push** — `android`/`ios` device registration and FCM/APNs credential upload — requires **Enterprise**; below it those requests are rejected with `403 EDITION_LIMIT`.
+The Push service requires **Pro** or higher. **Web Push** (browsers) is fully available and validated on Pro.
+:::
+
+:::caution Mobile push is planned
+**Mobile push** — `android`/`ios` device registration and FCM/APNs credential upload — is implemented but **not yet validated end-to-end and is not offered as a supported feature**. The Enterprise gate exists (below Enterprise these requests are rejected with `403 EDITION_LIMIT`), and the setup steps below document the gated API, but real FCM/APNs delivery is unverified. Web Push is the supported push path today.
 :::
 
 ## Architecture

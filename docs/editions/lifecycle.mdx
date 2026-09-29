@@ -38,14 +38,14 @@ Same as Community → Pro, plus:
 | What Changes | Effect |
 |--------------|--------|
 | All limits | Unlimited |
-| Feature gates | Mobile push (FCM/APNs) and the audit-log query API activate immediately |
+| Feature gates | The audit-log query API activates immediately (mobile push, FCM/APNs, is planned) |
 
 ### Pro → Enterprise
 
 | What Changes | Effect |
 |--------------|--------|
 | All limits | Unlimited (was capped) |
-| Feature gates | Enterprise-only features activate: mobile push (FCM/APNs), audit-log query API |
+| Feature gates | Enterprise-only features activate: the audit-log query API (mobile push, FCM/APNs, is planned) |
 
 All upgrades are immediate. No data migration, no restart, no downtime.
 
@@ -59,7 +59,7 @@ Downgrades are graceful — existing resources are preserved, but new creation i
 |-----------|----------|
 | **Existing tenants** | Preserved. New creation blocked if count exceeds 50. |
 | **Existing connections** | Maintained. New connections rejected if over 10,000. |
-| **Mobile push (FCM/APNs)** | New `android`/`ios` registrations return `403 EDITION_LIMIT`. Web Push continues (it is Pro). Existing device registrations preserved. |
+| **Mobile push (FCM/APNs, planned)** | New `android`/`ios` registrations return `403 EDITION_LIMIT`. Web Push continues (it is Pro). Existing device registrations preserved. |
 | **Audit logs** | Records keep being written. Existing logs preserved. The query endpoint returns `403 EDITION_LIMIT`. |
 | **Shards** | If running >8 shards, restart required to reduce. |
 
