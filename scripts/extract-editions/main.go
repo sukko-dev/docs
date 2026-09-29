@@ -391,6 +391,14 @@ func markImplemented(features []FeatureGate, wsRoot string) {
 		if constName == "" {
 			continue
 		}
+		// An explicit "future" status is authoritative: a feature declared
+		// planned stays not-implemented even if a latent gate check exists — e.g.
+		// a frozen, e2e-unvalidated capability kept behind its edition gate per
+		// ADR-0009 (mobile push). Gate-presence must not resurrect it into the
+		// marketing surface. The status was already applied above; leave it.
+		if features[i].Status == "future" {
+			continue
+		}
 		// Ungated (Community) features have no gate checks by design — the
 		// capability is available in every edition, so no EditionHasFeature
 		// call exists anywhere. Their implemented state comes from the
