@@ -90,6 +90,32 @@ data: {"type":"message","seq":1234,"ts":1706000000000,"channel":"demo.general.ch
 
 Keepalive comments (`: keepalive`) are sent periodically (default: every 45 seconds) to prevent proxy timeouts on idle connections.
 
+## Reconnection recovery frames
+
+When you reconnect with a `Last-Event-ID`, the server replays the messages you missed and then reports the **outcome** of that replay with two control frames — delivered on the same `event: message` channel, discriminated by `data.type` (exactly like a delivery message or a `gap`):
+
+```
+event: message
+data: {"type":"no_replay","channels":["demo.orders","demo.trades"]}
+
+event: message
+data: {"type":"replay_truncated","replayed":100}
+```
+
+- **`no_replay`** — the server could not replay the listed channels (unauthorized, no history on a direct backend, or the replay failed). Treat each as a possible gap: if continuity matters, re-fetch via the history API.
+- **`replay_truncated`** — the replay hit the server's `WS_MAX_REPLAY_MESSAGES` cap (default `100`); `replayed` messages were delivered and a gap remains before the live stream resumes.
+
+Both are advisory — the live stream continues regardless, and a client that doesn't recognize a frame type ignores it safely.
+
+### How the SDKs surface this
+
+The Sukko SDKs translate these frames onto their existing recovery surfaces rather than exposing the raw frame:
+
+- **`replay_truncated`** surfaces as a recovery-interrupted signal (JavaScript `recoveryInterrupted`; Python/Go the SDK's recovery-interrupted error) — advisory and connection-level, carrying no channel.
+- **`no_replay`** surfaces as a per-channel `possible_gap`, except where the SDK already assumes one. The JavaScript SDK emits a `possible_gap` for every channel on each SSE reopen (a receive-only transport cannot confirm live replay), so it treats `no_replay` as already covered; the Python and Go SDKs trust the server's replay and surface a `possible_gap` for exactly the `no_replay` channels. Either way, no recovery loss is silent.
+
+See each SDK's recovery guide for the exact event names.
+
 ## Key Differences from WebSocket
 
 | | WebSocket | SSE |
