@@ -17,6 +17,8 @@ Full OpenAPI specification: `ws/docs/openapi/provisioning.openapi.yaml`
 
 Webhook management requires a Pro or Enterprise license. All webhook endpoints return `403 EDITION_LIMIT` on Community edition.
 
+Webhook (and connection) management is **operator-only**: these endpoints require an admin or system JWT. A tenant JWT is rejected with `403 INSUFFICIENT_ROLE` — webhooks and connections are provisioned on a tenant's behalf by an operator, like the tenant's keys, topics, and routing rules.
+
 ### POST /api/v1/tenants/\{slug\}/webhooks/\{webhookID\}/test
 
 Performs a single synchronous test delivery to the registered webhook URL. Useful for verifying that an endpoint is reachable before relying on it in production.
@@ -54,7 +56,8 @@ HTTP 200 is always returned when the test delivery RPC itself succeeded. The `st
 
 | Status | Code | Description |
 |--------|------|-------------|
-| `401` | `UNAUTHORIZED` | Missing or invalid tenant JWT |
+| `401` | `UNAUTHORIZED` | Missing or invalid JWT |
+| `403` | `INSUFFICIENT_ROLE` | Tenant JWT rejected — admin or system role required |
 | `403` | `EDITION_LIMIT` | Feature not available in current edition |
 | `404` | `WEBHOOK_NOT_FOUND` | Webhook not found for this tenant |
 | `429` | `RATE_LIMIT_EXCEEDED` | Rate limit exceeded. `Retry-After` header indicates reset time in seconds. |
