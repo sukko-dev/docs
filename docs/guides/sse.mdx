@@ -77,13 +77,13 @@ Where an SSE reconnect can't confirm a replay, the client emits a per-channel `p
 ## Event Format
 
 ```
-id: 1234
+id: v1:eyJkZW1vLmdlbmVyYWwuY2hhdCI6IjItNSJ9
 event: message
 data: {"type":"message","seq":1234,"ts":1706000000000,"channel":"demo.general.chat","data":{"text":"Hello"},"mid":"9c5b1f0a3d2e6c47-2-1234"}
 
 ```
 
-- `id` — sequence number (used for reconnection via `Last-Event-ID`)
+- `id` — the opaque, versioned reconnect cursor (`Last-Event-ID`). It is **not** a per-message id: the gateway emits it only for messages backed by Kafka history, and then only at a bounded cadence (not on every event), so many frames carry no `id`. Resend the last one you received to resume (see [Reconnection recovery frames](#reconnection-recovery-frames)); never parse it
 - `event` — always `message` for broadcast messages
 - `data` — JSON message envelope (same format as WebSocket)
 - `mid` (inside the envelope, optional) — **stable message identity**: the same message carries the same `mid` on every copy delivered (live, replay, history), so consumers can deduplicate across reconnects. It is an opaque string (at most 64 characters) — never parse it, and never use it as a resume cursor (`Last-Event-ID` and `pos`/`from_pos` remain the cursors)
