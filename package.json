@@ -5,7 +5,8 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "extract": "bash scripts/extract.sh",
-    "generate": "node scripts/generate-docs.js",
+    "generate": "node scripts/generate-docs.js && node scripts/generate-llms.js",
+    "check-llms": "node scripts/check-llms.js",
     "start": "npm run extract && npm run generate && docusaurus start",
     "build": "npm run extract && npm run generate && docusaurus build",
     "swizzle": "docusaurus swizzle",

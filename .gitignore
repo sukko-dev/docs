@@ -12,6 +12,9 @@
 /generated
 scripts/generated/
 
+# Generated LLM discovery index (built from sidebars.ts + page frontmatter)
+/static/llms.txt
+
 # Compiled extraction binaries
 scripts/extract-config/extract-config
 scripts/extract-editions/extract-editions

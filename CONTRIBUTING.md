@@ -48,8 +48,13 @@ edge cases to a closing section or a reference page.
 
 ## Page index
 
-When adding, removing, or renaming a page, also update `static/llms.txt` —
-it is the discovery index for the documentation site.
+`static/llms.txt` is the discovery index for the documentation site. It is
+**generated** from `sidebars.ts` and each page's `title`/`description`
+frontmatter (`npm run generate`, which runs as part of `build`), so it is
+gitignored — do not hand-edit it. When adding, removing, or renaming a page,
+update `sidebars.ts`; the index follows automatically, and CI
+(`npm run check-llms`) fails the build if it ever drifts from the pages it
+points at.
 
 ## Local setup
 
