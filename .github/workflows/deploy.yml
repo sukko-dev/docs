@@ -75,6 +75,13 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # Validate the generated llms.txt: every /docs link resolves in the built
+      # site and the index matches the sidebar. The Docusaurus/lychee link check
+      # never inspects .txt static files, so this is the only guard against the
+      # index drifting from the pages it points at.
+      - name: Validate llms.txt
+        run: npm run check-llms
+
       # --- Deploy (main only) ---
 
       - name: Deploy to Cloudflare Pages
