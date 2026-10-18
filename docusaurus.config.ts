@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Sukko Docs',
-  tagline: 'Multi-Tenant WebSocket Infrastructure',
+  tagline: 'Realtime infra proven correct under failure, in your own cloud',
   favicon: 'img/favicon.ico',
 
   future: {
