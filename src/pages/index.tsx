@@ -10,9 +10,10 @@ function Hero() {
       <div className="container">
         <h1 className="hero__title">{siteConfig.title}</h1>
         <p className="hero__subtitle">
-          Multi-tenant WebSocket infrastructure. Deploy in your own cloud,
-          connect your Kafka pipeline, deliver real-time data to thousands of
-          clients with sub-millisecond fan-out.
+          Realtime infrastructure for the part that breaks — lossless recovery
+          across node failure and consumer-group rebalance, proven in a public
+          fault-matrix benchmark. Deploy in your own cloud, connect your Kafka
+          pipeline, deliver real-time data to thousands of clients.
         </p>
         <div style={{ marginTop: '2rem' }}>
           <Link
@@ -43,7 +44,7 @@ const features = [
   {
     title: 'Multi-Tenant from Day One',
     description:
-      'Tenant isolation at every layer — connections, channels, Kafka topics, and database queries. Per-tenant JWT keys, channel rules, quotas, and connection limits. Not bolted on, built in.',
+      'Per-tenant scoping at every layer — connections, channels, Kafka topics, and database queries. Per-tenant JWT keys, channel rules, quotas, and connection limits. Not bolted on, built in.',
   },
   {
     title: 'Pluggable Backends',
@@ -56,9 +57,9 @@ const features = [
       'Publish to Kafka/Redpanda, Sukko delivers to WebSocket clients. Per-tenant topic routing, shared or dedicated consumers, three-layer backpressure protection.',
   },
   {
-    title: 'Sub-Millisecond Fan-Out',
+    title: 'Lossless Under Failure',
     description:
-      'Sharded connection architecture with broadcast bus for inter-pod distribution. Subscription index eliminates O(N) scans — direct lookup of subscribers per channel.',
+      'Lossless gap recovery across consumer-group rebalance and node failover, plus backpressure that survives slow clients. A sharded broadcast architecture, proven zero-loss in a public fault-matrix benchmark.',
   },
   {
     title: 'Channel Access Control',
@@ -110,8 +111,8 @@ function Features() {
 export default function Home(): React.ReactElement {
   return (
     <Layout
-      title="Multi-Tenant WebSocket Infrastructure"
-      description="Deploy Sukko in your own cloud. Kafka-native ingestion, sub-millisecond fan-out, multi-tenant isolation."
+      title="Realtime infra proven under failure, in your own cloud"
+      description="Deploy Sukko in your own cloud. Lossless recovery under failure, Kafka-native ingestion, per-tenant scoping across every data path."
     >
       <Hero />
       <Features />
