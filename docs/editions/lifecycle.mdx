@@ -7,18 +7,17 @@ import EditionBadge from '@site/src/components/EditionBadge';
 
 # License Lifecycle
 
-Sukko uses ECDSA P-256-signed license keys to determine which edition (Community, Pro, Enterprise) is active. License changes take effect immediately via hot-reload — no restart required for upgrades or limit changes.
+Sukko uses ECDSA P-256-signed license keys to determine which edition (Community, Pro, Enterprise) is active. An **upgrade or renewal** takes effect immediately via hot-reload; a **downgrade or an expiry** takes effect only at the **next restart**. A running deployment is never downgraded or stopped while it is serving.
 
 ## How License Changes Propagate
 
 When a license is reloaded via `POST /api/v1/license`:
 
-1. Provisioning validates the ECDSA P-256 signature and checks replay protection (`iat` must be newer)
-2. New edition and limits are atomically swapped in memory
-3. All services (Core, Gateway, Push) receive the update via gRPC stream
-4. Feature gates and limits take effect immediately
+1. Provisioning validates the ECDSA P-256 signature and checks replay protection (`iat` must be newer than the last accepted key)
+2. If the key **raises or renews** the edition and limits, the new values are atomically swapped in memory and every service (Core, Gateway, Push) picks them up via the gRPC stream — effective immediately, no restart (`status: active`)
+3. If the key **lowers** the edition or any capacity limit, it is accepted, persisted, and broadcast, but the running services keep serving at the edition and limits they booted with; the lower key takes effect only when each service restarts (`status: pending_restart`)
 
-No restart is needed for upgrades or downgrades. The message backend is edition-independent — Kafka runs on every edition, so an edition change never forces a backend switch.
+An upgrade needs no restart; a downgrade is applied at the next restart (see below). The message backend is edition-independent — Kafka runs on every edition, so an edition change never forces a backend switch.
 
 ## Upgrades
 
@@ -51,7 +50,9 @@ All upgrades are immediate. No data migration, no restart, no downtime.
 
 ## Downgrades
 
-Downgrades are graceful — existing resources are preserved, but new creation is blocked when limits are exceeded.
+A downgrade — a lower edition, or a smaller Pro capacity band — does **not** change a running deployment. The reload API accepts the key, persists it, and broadcasts it (returning `status: pending_restart`), but every service keeps serving at the edition and limits it booted with until you restart it. A downgrade never interrupts live traffic or revokes capacity mid-flight.
+
+The tables below describe the behavior **once you restart** onto the lower key: existing resources are preserved, but new creation is blocked where the lower limits are exceeded.
 
 ### Enterprise → Pro
 
@@ -80,12 +81,18 @@ Same as Enterprise → Community, except mobile push and the audit-log query API
 
 ## License Expiry
 
-When a license expires, Sukko immediately degrades to Community edition. There is no grace period — at expiry time, the system behaves as if running Community.
+A license expiry **never changes a running deployment**. Enforcement happens only when a key is loaded — at startup and on reload — so a server whose key lapses while running keeps serving at the edition and limits it booted with. There is no mid-flight downgrade and no automatic shutdown.
+
+Expiry bites at the **next restart**: an expired key is refused exactly like a missing one, so a service will not start (it crash-loops) until it is re-keyed. Re-key before you restart or redeploy.
 
 | Scenario | Effect |
 |----------|--------|
-| **Pro expires** | Same as Pro → Community downgrade. Existing resources preserved, new creation blocked at Community limits. |
-| **Enterprise expires** | Same as Enterprise → Community downgrade. The Kafka backend keeps running — ingestion is unaffected. |
+| **Key expires while running** | No change — the service keeps serving its booted edition and limits. Re-key before the next restart. |
+| **Service (re)starts with an expired key** | Refused at startup — the service does not come up until a valid key is supplied (same as a missing key). |
+
+:::warning Re-key before restarting
+Because a running server survives expiry, an expired license can go unnoticed until a deploy or a pod reschedule — at which point the service will not come back up. Monitor the expiry metric (below) and renew ahead of time.
+:::
 
 ### Monitoring Expiry
 
@@ -107,7 +114,7 @@ Set up an alert to catch upcoming expirations:
 
 ## Key Behaviors
 
-**No forced disconnections** — Sukko never drops existing WebSocket or SSE connections on downgrade or expiry. Connections established before the change continue until the client disconnects.
+**No mid-flight downgrade** — a downgrade or an expiry never changes a running deployment's edition or limits, and never drops existing WebSocket or SSE connections. Both take effect only at the next restart.
 
 **No data deletion** — Tenants, channel rules, routing rules, audit logs, and push registrations are never deleted on downgrade. They remain in the database and become accessible again on upgrade.
 
