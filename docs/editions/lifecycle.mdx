@@ -91,12 +91,19 @@ Expiry bites at the **next restart**: an expired key is refused exactly like a m
 | **Service (re)starts with an expired key** | Refused at startup — the service does not come up until a valid key is supplied (same as a missing key). |
 
 :::warning Re-key before restarting
-Because a running server survives expiry, an expired license can go unnoticed until a deploy or a pod reschedule — at which point the service will not come back up. Monitor the expiry metric (below) and renew ahead of time.
+Because a running server survives expiry, an expired license can go unnoticed until a deploy or a pod reschedule — at which point the service will not come back up. Watch the expiry log line and metric (below) and renew ahead of time.
 :::
 
 ### Monitoring Expiry
 
-Sukko exposes a Prometheus metric for license expiry:
+**Log line (built in).** Each service logs a `WARN` when its license is within **30 days**
+of expiry — once at startup and then daily — and keeps logging it (as `license EXPIRED …`)
+once the key has lapsed. It appears in the service's normal log stream (`kubectl logs`,
+Cloud Run logs, or `docker compose logs`), carries the current `edition` and the
+`days_left` / `days_expired` count, and never changes the running edition — it only warns.
+A renewal applied via the reload API silences it.
+
+**Prometheus metric.** Sukko also exposes a gauge for dashboards and alerting:
 
 ```
 sukko_license_expiry_timestamp
@@ -111,6 +118,11 @@ Set up an alert to catch upcoming expirations:
   labels:
     severity: warning
 ```
+
+The bundled monitoring chart ships a Grafana "License Expiry (days)" panel and this alert.
+Note the two windows are intentionally different channels: the in-service log warns from
+**30 days** out (so a lapse is visible in logs well ahead of a restart), while the example
+alert fires closer in, at **7 days** — tune either to your operational cadence.
 
 ## Key Behaviors
 
