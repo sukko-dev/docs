@@ -14,7 +14,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `LOG_LEVEL` | string | `info` | Logging level (debug, info, warn, error). info is recommended for production. |
 | `LOG_FORMAT` | string | `json` | Log output format: json for machine parsing (production), text for human-readable (development). |
 | `ENVIRONMENT` | string | `local` | Deployment environment name (e.g. local, dev, stag, prod). Used for Kafka topic namespace resolution. |
-| `SUKKO_LICENSE_KEY` | string | — | Sukko license token (JWT). Community edition has no key; Pro/Enterprise obtain via Sukko account. Leave empty for Community. |
+| `SUKKO_LICENSE_KEY` | string | — | Signed Sukko license token (JWT). Required: issued per account (free for Community) — an empty key is refused at startup. Get one at https://docs.sukko.dev/editions/upgrade. |
 | `OTEL_TRACING_ENABLED` | bool | `false` | Enable distributed tracing via OpenTelemetry. Disabled by default; configure OTEL_EXPORTER_TYPE and OTEL_EXPORTER_ENDPOINT when enabled. |
 | `OTEL_EXPORTER_TYPE` | string | `otlp-grpc` | OpenTelemetry trace exporter type: otlp-grpc, otlp-http, or stdout. Required when OTEL_TRACING_ENABLED=true. |
 | `OTEL_EXPORTER_ENDPOINT` | string | `localhost:4317` | OpenTelemetry collector endpoint (e.g. otelcol:4317). Required when OTEL_EXPORTER_TYPE is otlp-grpc or otlp-http. |
@@ -26,7 +26,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `HTTP_READ_TIMEOUT` | time.Duration | `15s` | Maximum duration for reading a complete HTTP request. Protects against slow-loris attacks. |
 | `HTTP_WRITE_TIMEOUT` | time.Duration | `15s` | Maximum duration for writing the HTTP response. |
 | `HTTP_IDLE_TIMEOUT` | time.Duration | `60s` | Maximum idle time on a keep-alive connection before it is closed. |
-| `KAFKA_TOPIC_NAMESPACE` | string | — | Explicit Kafka topic namespace prefix (\{namespace\}.\{tenant\}.\{category\}); required when the service builds or parses namespaced topics; validated against VALID_NAMESPACES. |
+| `KAFKA_TOPIC_NAMESPACE` | string | — | Explicit Kafka topic namespace prefix (\{namespace\}.\{tenant\}.\{suffix\}); required when the service builds or parses namespaced topics; validated against VALID_NAMESPACES. |
 | `VALID_NAMESPACES` | string | `local,dev,stag,prod` | Comma-separated list of allowed Kafka topic namespaces. Used to validate KAFKA_TOPIC_NAMESPACE. |
 | `KAFKA_BROKERS` | string | — | Comma-separated Kafka/Redpanda broker addresses for ws-server, push, and the tester's kafka-ingest suite (provisioning uses PROVISIONING_KAFKA_BROKERS instead). Required when MESSAGE_BACKEND=kafka; no default. |
 | `KAFKA_SASL_ENABLED` | bool | `false` | Enable SASL authentication for Kafka connections. Required for most managed Kafka/Redpanda services. |
@@ -54,11 +54,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `REQUIRE_TENANT_ID` | bool | `true` | When true, all WebSocket connections must identify a tenant via their JWT or API key. Disable only in single-tenant deployments where the tenant is implicit. |
 | `DEFAULT_TENANT_CONNECTION_LIMIT` | int | `1000` | Default maximum simultaneous WebSocket connections allowed per tenant when TENANT_CONNECTION_LIMIT_ENABLED is true. |
 | `TENANT_CONNECTION_LIMIT_ENABLED` | bool | `false` | When true, the gateway enforces per-tenant connection limits using DEFAULT_TENANT_CONNECTION_LIMIT as the default cap. |
-| `GATEWAY_RATE_LIMIT_ENABLED` | bool | `true` | When true, enforces per-authenticated-principal WebSocket message rate limits using GATEWAY_RATE_LIMIT_RATE and GATEWAY_RATE_LIMIT_BURST. |
-| `GATEWAY_RATE_LIMIT_BURST` | int | `100` | Burst allowance for per-principal WebSocket message rate limiting. Allows short spikes above the sustained rate. |
-| `GATEWAY_RATE_LIMIT_RATE` | float64 | `10.0` | Sustained message rate limit per authenticated principal, in messages per second. |
-| `GATEWAY_PUBLISH_RATE_LIMIT` | float64 | `10.0` | Sustained rate limit for REST publish requests per authenticated principal, in messages per second. |
-| `GATEWAY_PUBLISH_BURST` | int | `100` | Burst allowance for the REST publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in. |
+| `GATEWAY_PUBLISH_RATE_LIMIT` | float64 | `10.0` | Sustained rate limit for REST and WebSocket publish requests per authenticated principal, in messages per second. |
+| `GATEWAY_PUBLISH_BURST` | int | `100` | Burst allowance for the REST and WebSocket publish rate limiter. Allows short spikes above GATEWAY_PUBLISH_RATE_LIMIT before throttling kicks in. |
 | `GATEWAY_MAX_PUBLISH_SIZE` | int | `65536` | Maximum REST publish payload size in bytes. Payloads exceeding this are rejected. Default: 64KB. |
 | `GATEWAY_AUTH_REFRESH_RATE_INTERVAL` | time.Duration | `30s` | Minimum interval between JWT refresh operations per connection. Prevents refresh storms under load. |
 | `GATEWAY_AUTH_VALIDATION_TIMEOUT` | time.Duration | `5s` | Timeout for validating auth refresh operations per connection. |
@@ -66,8 +63,11 @@ All configurable environment variables across Sukko services. Values are set via
 | `GATEWAY_SHUTDOWN_TIMEOUT` | time.Duration | `30s` | Maximum time the gateway waits for active connections to drain before forcing shutdown. |
 | `WS_INTERNAL_SECRET` | string | — | Shared secret forwarded as X-Sukko-Internal-Secret to ws-server. Set WS_INTERNAL_SECRET_ENABLED=true on ws-server to enforce. |
 | `SERVER_GRPC_ADDR` | string | `localhost:3006` | ws-server gRPC address for RealtimeService |
-| `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for device registration and VAPID key endpoints. |
+| `GATEWAY_PUSH_ENABLED` | bool | `false` | Enables the gateway's push endpoints and push-service client; when false the /api/v1/push/* routes are not registered (404) and no push connection is made. Explicit deployment mode — the push service is deploy-optional. |
+| `PUSH_GRPC_ADDR` | string | `localhost:3008` | Push service gRPC address for device registration and VAPID key endpoints; required (and used) only when GATEWAY_PUSH_ENABLED=true. |
 | `SSE_KEEPALIVE_INTERVAL` | time.Duration | `45s` | Interval for SSE keepalive messages sent to prevent proxy timeouts on long-lived connections. |
+| `SSE_CURSOR_EVERY_N` | int | `20` | Emit the Last-Event-ID reconnect cursor at most every Nth delivered SSE message (and on each keepalive tick if it advanced), keeping the per-message delivery path light; a client resuming from a slightly-stale cursor replays a few extra messages, deduplicated by mid. |
+| `SSE_MAX_CHANNELS` | int | `64` | Maximum channels a single SSE connection may subscribe to; bounds the reconnect cursor token so it stays within request-header size limits. |
 | `GATEWAY_CORS_ORIGINS` | []string | `*` | CORS allowed origins (* = all, production: restrict) |
 | `GATEWAY_CHANNEL_RULES_CACHE_TTL` | time.Duration | `1m` | How long per-tenant channel rules are cached locally before re-fetching from the provisioning service. |
 | `GATEWAY_REGISTRY_QUERY_TIMEOUT` | time.Duration | `5s` | Timeout for querying the connections registry when enforcing per-tenant connection limits. |
@@ -86,7 +86,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `KAFKA_DEFAULT_REPLICATION_FACTOR` | int | `1` | Default replication factor for Kafka topics created on demand by ws-server. |
 | `WS_MEMORY_LIMIT` | int64 | `536870912` | Memory limit in bytes. New connections are rejected (HTTP 503) when exceeded. Default: 512MB. |
 | `WS_MAX_CONNECTIONS` | int | `500` | Maximum simultaneous WebSocket client connections per pod. New connections are rejected with HTTP 503 when this limit is reached. |
-| `WS_MAX_KAFKA_RATE` | int | `1000` | Maximum Kafka messages per second the server will consume across all topics. |
+| `WS_MAX_KAFKA_RATE` | int | `1000` | Maximum Kafka messages per second the server consumes across all topics; exceeding it paces (backpressures) consumption rather than dropping, so sustained overload becomes consumer lag, not message loss. |
 | `WS_MAX_BROADCAST_RATE` | int | `25` | Maximum Valkey broadcast fan-out rate in messages per second. Messages above this rate are dropped and counted in ws_broadcast_bus_dropped_total. |
 | `WS_MAX_GOROUTINES` | int | `100000` | Maximum number of goroutines allowed per pod. New connections are rejected when this limit is reached. |
 | `WS_RATE_LIMIT_BURST_MULTIPLIER` | int | `2` | Burst capacity as a multiple of the steady-state rate |
@@ -161,6 +161,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `VALKEY_HEALTH_CHECK_INTERVAL` | time.Duration | `10s` | Interval for periodic Valkey health checks. |
 | `VALKEY_HEALTH_CHECK_TIMEOUT` | time.Duration | `5s` | Timeout for each Valkey health check PING. |
 | `VALKEY_PUBLISH_STALENESS_THRESHOLD` | time.Duration | `60s` | Staleness window for the Valkey broadcast publisher — a warning is logged if no message is published within this interval (indicates silent consumer failures). |
+| `VALKEY_ZERO_SUBSCRIBER_WINDOW` | time.Duration | `30s` | How long a broadcast that reaches zero subscribers is held for retry after a Valkey pub/sub disruption before being flushed — bounds consume-loop backpressure so a genuinely empty channel cannot block ingestion indefinitely. |
 | `KAFKA_BATCH_SIZE` | int | `50` | Maximum number of Kafka messages processed per consumer batch. |
 | `KAFKA_BATCH_TIMEOUT` | time.Duration | `10ms` | Maximum time to wait to fill a batch before processing it. |
 | `KAFKA_METADATA_MIN_AGE` | time.Duration | `5s` | Minimum interval before the Kafka producer refreshes topic metadata (lower = faster new-topic produce, more metadata traffic). |
@@ -233,7 +234,7 @@ All configurable environment variables across Sukko services. Values are set via
 | `LIFECYCLE_CHECK_INTERVAL` | time.Duration | `1h` | How often the lifecycle manager scans for tenants due for deprovisioning or cleanup. |
 | `LIFECYCLE_MANAGER_ENABLED` | bool | `true` | Enables the background tenant lifecycle manager (deprovisioning, retention enforcement). |
 | `MAX_ROUTING_RULES_PER_TENANT` | int | `100` | Max routing rules per tenant |
-| `MAX_TOPICS_PER_RULE` | int | `10` | Max topics per routing rule |
+| `MAX_TOPICS_PER_RULE` | int | `10` | Max topic destinations per routing rule: 1 ingress topic plus up to MAX_TOPICS_PER_RULE-1 egress topics |
 | `ROUTING_DLQ_TOPIC_PARTITIONS` | int | `1` | Partitions for dead-letter topics |
 | `ROUTING_DLQ_TOPIC_RETENTION_MS` | int64 | `604800000` | Retention for dead-letter topics (7 days) |
 | `INFRA_TOPIC_REPLICATION_FACTOR` | int | `1` | Replication factor for all infrastructure topics (DLQ + default); use int — caarlos0/env v11 does not handle int16; cast to int16 at CreateTopic call sites |
@@ -247,6 +248,8 @@ All configurable environment variables across Sukko services. Values are set via
 | `PROVISIONING_DELETION_TIMEOUT` | time.Duration | `5m` | Timeout for a single tenant deletion operation (Kafka topic removal, ACL cleanup). |
 | `SLUG_RENAME_TOPIC_HOLD_PERIOD` | time.Duration | `168h` | How long a tenant's previous slug is honored after a rename: retention window for old Kafka topics/ACLs, and the grace window during which old-slug JWTs are still accepted on both the provisioning API and the WebSocket gateway. Minimum 24h. |
 | `PROVISIONING_TOKEN_REVOCATION_MAX_LIFETIME` | time.Duration | `1h` | Maximum duration to retain a revoked token record before the prune loop removes it. |
+| `PROVISIONING_TOKEN_REVOCATION_RATE_LIMIT_PER_MIN` | int | `30` | Maximum token-revocation requests per minute per IP before HTTP 429; independent of API_RATE_LIMIT_PER_MIN. |
+| `PROVISIONING_TOKEN_REVOCATION_RATE_LIMIT_BURST` | int | `5` | Burst allowance for token-revocation requests per IP before HTTP 429 is returned. |
 | `PROVISIONING_VALKEY_ADDRS` | []string | — | Valkey server addresses (host:port), comma-separated. For Sentinel mode, list all sentinels. |
 | `PROVISIONING_VALKEY_PASSWORD` | string | — | Valkey authentication password. Leave empty for unauthenticated local deployments. |
 | `PROVISIONING_VALKEY_MASTER_NAME` | string | — | Sentinel master name. Required when using Valkey Sentinel for high availability. |
@@ -306,7 +309,7 @@ These variables must be set **identically** across both the provisioning service
 | `TESTER_AUTH_TOKEN` | string | — | Bearer token required for all tester management API endpoints. Must be set explicitly — the tester rejects requests when unset. |
 | `GATEWAY_URL` | string | `ws://localhost:3000` | WebSocket URL of the gateway that test connections will target. |
 | `PROVISIONING_URL` | string | `http://localhost:8080` | HTTP base URL of the provisioning service used to create test tenants and API keys. |
-| `TESTER_SIGNING_KEY_FILE` | string | — | Path to Ed25519 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests. |
+| `TESTER_SIGNING_KEY_FILE` | string | — | Path to PEM PKCS#8 ECDSA P-256 private key file for signing license tokens in the license-reload test suite. Leave empty when not running license tests. |
 | `TESTER_ADMIN_KEY_FILE` | string | — | Path to Ed25519 private key file for admin JWT signing. When unset, an ephemeral keypair is generated per test run (local dev only). |
 | `TESTER_ADMIN_KEY_ID` | string | `bootstrap-0` | Key ID embedded in admin JWTs; must match the kid registered with the provisioning service. |
 | `TESTER_PUSH_RECEIVER_HOST` | string | — | Hostname the push service uses to reach the tester's mock WebPush receiver for delivery verification. Empty skips the delivery check. |

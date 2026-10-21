@@ -41,6 +41,8 @@ Edit `my-values.yaml` for your environment:
 global:
   namespace: sukko
   imageRegistry: "ghcr.io/sukko-dev"
+  license:
+    existingSecret: sukko-license   # required for every edition — see "License Key" below
 
 ws-gateway:
   replicaCount: 2
@@ -68,10 +70,23 @@ monitoring:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
+| `global.license.existingSecret` | Secret holding the license key (**required**, every edition) | — |
 | `ws-gateway.replicaCount` | Gateway replicas | 1 |
 | `ws-server.messageBackend` | `direct` or `kafka` | kafka |
 | `redpanda.enabled` | Deploy Redpanda (Kafka) | true |
 | `monitoring.enabled` | Deploy Prometheus + Grafana | true |
+
+### License Key (required)
+
+Every edition requires a license key — the pods crash-loop without one. Grab a **free Community key** from your [dashboard](https://sukko.dev/dashboard) (see [Licensing](../../editions/upgrade)), then create the secret the chart reads:
+
+```bash
+kubectl create secret generic sukko-license \
+  -n sukko \
+  --from-literal=license-key=eyJlZGl0aW9uIjoi...
+```
+
+Reference it via `global.license.existingSecret` in your values (shown above).
 
 ## Step 3: Deploy
 
