@@ -1,11 +1,11 @@
 ---
 title: Upgrade
-description: Upgrade from Community to Pro or Enterprise
+description: Get your free Community key, or upgrade to Pro or Enterprise
 ---
 
-# Upgrade
+# Licensing & Upgrades
 
-Upgrading Sukko is a single environment variable change. No data migration, no downtime.
+Every edition of Sukko requires a license key, **Community included** — each service refuses to start without one. Community keys are **free**, issued per account; Pro and Enterprise are purchased. Setting or changing a key is a single environment-variable change — no data migration, no downtime.
 
 :::info Time to complete
 ~2 minutes
@@ -13,46 +13,53 @@ Upgrading Sukko is a single environment variable change. No data migration, no d
 
 ## Step 1: Get a License Key
 
-Purchase a Pro or Enterprise license from the [Customer Portal](https://sukko.dev/pricing).
+### Community (free)
 
-You'll receive a license key that looks like:
+1. Create an account at [sukko.dev](https://sukko.dev) and verify your email address.
+2. Your free Community key is shown on your [dashboard](https://sukko.dev/dashboard) — copy it.
+
+### Pro or Enterprise
+
+Purchase a Pro or Enterprise plan from the [pricing page](https://sukko.dev/pricing). The key appears on your dashboard the same way.
+
+Keys are signed JWTs and look like:
 
 ```
-sk_live_abc123...
+eyJlZGl0aW9uIjoiY29tbXVuaXR5Iiwi...
 ```
 
 ## Step 2: Set the License Key
 
+Set the key on every service (gateway, server, provisioning).
+
 ### Docker Compose (sukko CLI)
 
 ```bash
-sukko license set sk_live_abc123...
+sukko license set eyJlZGl0aW9uIjoi...
 sukko down && sukko up
 ```
 
 ### Kubernetes (Helm)
 
-```bash
-helm upgrade sukko ./deployments/helm/sukko \
-  -f my-values.yaml \
-  -n sukko \
-  --set global.licenseKey=sk_live_abc123...
-```
-
-Or set it as a Kubernetes secret:
+Create a secret holding the key, then point the chart at it:
 
 ```bash
 kubectl create secret generic sukko-license \
   -n sukko \
-  --from-literal=key=sk_live_abc123...
+  --from-literal=license-key=eyJlZGl0aW9uIjoi...
+
+helm upgrade sukko ./deployments/helm/sukko \
+  -f my-values.yaml \
+  -n sukko \
+  --set global.license.existingSecret=sukko-license
 ```
+
+The chart reads the key from the secret's `license-key` entry (override with `global.license.existingSecretKey`).
 
 ### Environment Variable (Direct)
 
-Set on all three services (gateway, server, provisioning):
-
 ```bash
-export SUKKO_LICENSE_KEY="sk_live_abc123..."
+export SUKKO_LICENSE_KEY="eyJlZGl0aW9uIjoi..."
 ```
 
 ## Step 3: Verify
@@ -63,7 +70,7 @@ Check the edition endpoint on any service:
 curl http://localhost:8080/edition | jq .
 ```
 
-Expected output:
+Expected output (Pro shown):
 
 ```json
 {
@@ -84,18 +91,21 @@ Or via the CLI:
 sukko edition
 ```
 
-## Downgrade
+## Changing Editions
 
-To return to Community, remove the license key and restart:
+An **upgrade or renewal** takes effect immediately via hot-reload. A **downgrade** — a lower edition, or a smaller Pro capacity band — is accepted and persisted but takes effect only at the **next restart**; a running deployment is never downgraded or stopped while it is serving.
+
+To move to a lower edition (including back to **Community**), set that edition's key and restart — you cannot run without a key:
 
 ```bash
-sukko license clear
+sukko license set <lower-edition-key>
 sukko down && sukko up
 ```
 
-Existing tenants and data are preserved. If you exceed Community limits, new tenant/connection creation will be rejected until you're within limits.
+Existing tenants and data are preserved. If you exceed Community limits, new tenant/connection creation is rejected until you are within limits. See [Edition Lifecycle](./lifecycle) for the full upgrade, downgrade, and expiry behavior.
 
 ## Next Steps
 
 - **[Edition Comparison](./comparison)** — Full feature matrix
+- **[Edition Lifecycle](./lifecycle)** — Upgrades, downgrades, and expiry
 - **[Configuration Reference](../reference/configuration)** — All environment variables
