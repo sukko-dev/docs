@@ -61,11 +61,13 @@ sukko init --defaults
 
 This creates a `.sukko/config.json` with your infrastructure selections and sets up a `local` context pointing to `localhost`.
 
-Sukko requires a license key for every edition — including Community. Create a free account at [sukko.dev](https://sukko.dev), copy your **free Community key** from the dashboard, and set it:
+Sukko requires a license key for every edition — including Community. Create a free account at [sukko.dev](https://sukko.dev) and verify your email, then let the CLI fetch your key:
 
 ```bash
-sukko license set eyJlZGl0aW9uIjoi...
+sukko license login
 ```
+
+This shows a short code to approve in your browser — no key to copy-paste — and stores your **free Community key**, encrypted, in the `local` context you just created. Prefer to paste it yourself? Copy the key from your [dashboard](https://sukko.dev/dashboard) and run `sukko license set <key>` instead.
 
 See [Licensing](./editions/upgrade) for details.
 

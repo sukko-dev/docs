@@ -16,7 +16,7 @@ Every edition of Sukko requires a license key, **Community included** — each s
 ### Community (free)
 
 1. Create an account at [sukko.dev](https://sukko.dev) and verify your email address.
-2. Your free Community key is shown on your [dashboard](https://sukko.dev/dashboard) — copy it.
+2. Your free Community key is shown on your [dashboard](https://sukko.dev/dashboard) — copy it. Or skip the copy-paste: the `sukko` CLI can fetch it for you with `sukko license login` (see [Step 2](#step-2-set-the-license-key)).
 
 ### Pro or Enterprise
 
@@ -33,6 +33,15 @@ eyJlZGl0aW9uIjoiY29tbXVuaXR5Iiwi...
 Set the key on every service (gateway, server, provisioning).
 
 ### Docker Compose (sukko CLI)
+
+Fetch and store your key in one step — the CLI shows a short code to approve in your browser (no key to copy-paste) and stores it, encrypted, in the active context:
+
+```bash
+sukko license login
+sukko down && sukko up
+```
+
+`login` retrieves your account's **current** entitlement, so it also picks up a Pro or Enterprise key after you purchase one. To set a key you already have on hand, paste it instead:
 
 ```bash
 sukko license set eyJlZGl0aW9uIjoi...
