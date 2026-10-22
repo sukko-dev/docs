@@ -13,9 +13,10 @@ Sukko uses ECDSA P-256-signed license keys to determine which edition (Community
 
 When a license is reloaded via `POST /api/v1/license`:
 
-1. Provisioning validates the ECDSA P-256 signature and checks replay protection (`iat` must be newer than the last accepted key)
+1. Provisioning validates the ECDSA P-256 signature and checks replay protection: a strictly-older key, or a same-`iat` key with different claims, is rejected (`REPLAY_DETECTED`). Re-pushing the key that is already active is **not** a replay — see 4
 2. If the key **raises or renews** the edition and limits, the new values are atomically swapped in memory and every service (Core, Gateway, Push) picks them up via the gRPC stream — effective immediately, no restart (`status: active`)
 3. If the key **lowers** the edition or any capacity limit, it is accepted, persisted, and broadcast, but the running services keep serving at the edition and limits they booted with; the lower key takes effect only when each service restarts (`status: pending_restart`)
+4. If the pushed key is the one **already active** — an idempotent re-push, such as `sukko up`'s automatic reconcile — nothing changes and no event is broadcast; the reload returns `status: unchanged`
 
 An upgrade needs no restart; a downgrade is applied at the next restart (see below). The message backend is edition-independent — Kafka runs on every edition, so an edition change never forces a backend switch.
 
