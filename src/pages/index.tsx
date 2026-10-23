@@ -62,6 +62,11 @@ const features = [
       'Lossless gap recovery across consumer-group rebalance and node failover, plus backpressure that survives slow clients. A sharded broadcast architecture, proven zero-loss in a public fault-matrix benchmark.',
   },
   {
+    title: 'Stream AI Tokens',
+    description:
+      'Stream LLM output token-by-token over WebSocket or SSE. Lossless recovery means a dropped connection never loses a token mid-response — the same guarantee that protects market data and event streams.',
+  },
+  {
     title: 'Channel Access Control',
     description:
       'Public, user-scoped, and group-scoped channels enforced at the gateway via JWT claims. Per-tenant channel rules configurable through the provisioning API.',
