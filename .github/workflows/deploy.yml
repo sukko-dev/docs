@@ -90,4 +90,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build --project-name=sukko-docs
+          # --branch=main forces a PRODUCTION deployment. Without it, wrangler can't detect the
+          # branch under Actions' detached HEAD and deploys to a PREVIEW URL, leaving the
+          # production alias (docs.sukko.dev) stale even though the job reports success.
+          command: pages deploy build --project-name=sukko-docs --branch=main
