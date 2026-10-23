@@ -9,6 +9,10 @@ description: "@sukko/react-native API reference"
 npm install @sukko/react-native
 ```
 
+:::caution Mobile push is planned
+This API registers devices for **mobile push (FCM/APNs)**, which is implemented but **not yet validated end-to-end and is not offered as a supported feature** — the Enterprise gate is enforced, but real FCM/APNs delivery is unverified. **Web Push** (browsers, Pro) is the supported push path today. See the [push notifications guide](../../guides/push-notifications).
+:::
+
 ## Classes
 
 ### `PushPermissionDeniedError`
