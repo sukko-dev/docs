@@ -107,6 +107,10 @@ parse_channel("acme.trades.btc")      # -> ParsedChannel(tenant="acme", suffix="
 
 Register a mobile/browser device for push on a user's behalf (this SDK does not *receive* push). Push requires **Pro** (Web Push); registering **android**/**ios** devices (FCM/APNs) additionally requires **Enterprise** — below it the gateway rejects those platforms with `403 EDITION_LIMIT`:
 
+:::caution Mobile push is planned
+**Mobile push** (`android`/`ios`, FCM/APNs) is implemented but **not yet validated end-to-end and is not offered as a supported feature** — the Enterprise gate is enforced and the API below works, but real FCM/APNs delivery is unverified. **Web Push** (browsers) is the supported push path today. See the [push notifications guide](../push-notifications).
+:::
+
 ```python
 device_id = await client.push.subscribe(
     platform="android", channels=["acme.alerts"], token="<fcm-token>",
