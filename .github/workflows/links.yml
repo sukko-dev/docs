@@ -34,5 +34,8 @@ jobs:
       - name: Check links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --verbose --no-progress --root-dir ./build --exclude 'localhost' --exclude '127.0.0.1' --exclude 'sukko.dev' --exclude 'docs.sukko.dev' --exclude 'pyroscope' --exclude 'tartarus.org' --exclude 'svc.cluster.local' --accept '200..=399' ./build
+          # engelschall.com: dead URL inside a bundled JS dependency's LICENSE.txt (not our content).
+          # x.com / discord: valid social links the footer carries, but these hosts reject lychee's
+          # bot (X returns 403, Discord blocks/redirects), so they can't be verified automatically.
+          args: --verbose --no-progress --root-dir ./build --exclude 'localhost' --exclude '127.0.0.1' --exclude 'sukko.dev' --exclude 'docs.sukko.dev' --exclude 'pyroscope' --exclude 'tartarus.org' --exclude 'svc.cluster.local' --exclude 'engelschall\.com' --exclude '//x\.com' --exclude 'discord\.gg' --exclude 'discord\.com' --accept '200..=399' ./build
           fail: true
