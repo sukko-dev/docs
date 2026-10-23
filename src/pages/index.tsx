@@ -74,7 +74,7 @@ const features = [
   {
     title: 'Multiple Transports',
     description:
-      'WebSocket, Server-Sent Events (SSE), and push notifications (FCM for Android, APNs for iOS/macOS, Web Push for browsers). Same tenant isolation and channel rules across all transports.',
+      'WebSocket, Server-Sent Events (SSE), and Web Push for browsers. Mobile push (FCM for Android, APNs for iOS/macOS) is planned. Same tenant isolation and channel rules across all transports.',
   },
   {
     title: 'Framework SDKs',
