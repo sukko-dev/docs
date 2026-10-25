@@ -50,6 +50,7 @@ const sidebars: SidebarsConfig = {
             'guides/deploy/kubernetes',
           ],
         },
+        'guides/contexts',
         'guides/admin-auth',
         'guides/admin-ui',
         'guides/tenant-onboarding',
