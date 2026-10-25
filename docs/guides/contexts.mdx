@@ -1,0 +1,100 @@
+---
+title: "Contexts: local vs remote"
+description: How the sukko CLI targets a local or remote stack — the connection model, the security posture, and how to tell which stack a command will reach.
+---
+
+# Contexts: local vs remote
+
+A **context** is a named target the `sukko` CLI operates against. It bundles the stack's URLs, the credentials to authenticate, and a type — `local` or `remote`. Switching context is how you point the same commands at your laptop one minute and a staging cluster the next, the same way `kubectl config use-context` or `docker context use` work.
+
+Contexts live under your OS config directory (`~/.config/sukko/contexts/` on Linux); all secrets are encrypted at rest with XChaCha20-Poly1305.
+
+## What a context holds
+
+| Field | Purpose |
+| --- | --- |
+| Provisioning URL | Admin REST API (tenants, keys, rules, license) |
+| Gateway URL | WebSocket / SSE / REST publish endpoint |
+| Tester URL | Test-orchestration service (optional) |
+| Admin keypair | Ed25519 private key + key ID, used to sign admin JWTs |
+| API key | Tenant gateway credential (encrypted) |
+| License key | Encrypted |
+| Type | `local` (Docker Compose) or `remote` (a deployed stack) |
+
+## Local vs remote
+
+- **`local`** — created by `sukko init`, which also generates the admin keypair and sets the context active. It points at the Docker Compose stack `sukko up` boots on your machine (`http://localhost:18080`, `ws://localhost:13000`, …).
+- **`remote`** — created by `sukko context add` / `sukko context create`, pointing at a deployed stack (staging, production). Remote contexts must use TLS (see [Security posture](#security-posture)).
+
+```bash
+# Create a remote context (interactive; secrets are masked)
+sukko context create staging
+
+# Or non-interactively
+sukko context add production \
+  --provisioning-url https://api.sukko.example.com \
+  --gateway-url wss://ws.sukko.example.com \
+  --admin-token <token> \
+  --environment production
+
+# List, switch, inspect, remove
+sukko context list
+sukko context use production
+sukko context current
+sukko context remove old-env
+```
+
+## How the CLI connects
+
+The CLI is a **REST/WebSocket client over HTTP(S) — not SSH**. There is no remote shell and no agent on the stack: every command is an ordinary API request to the context's URLs.
+
+| Surface | Local default | Auth |
+| --- | --- | --- |
+| Provisioning API | `http://localhost:18080` | Ed25519-signed admin JWT (5-min expiry), per request |
+| Gateway | `ws://localhost:13000` | Tenant API key or token |
+| Tester | `http://localhost:8090` | Tester token |
+
+Admin authentication is a short-lived JWT the CLI signs locally with your private key — there is no static admin token on the wire. See [Admin Authentication](./admin-auth) for the keypair model.
+
+**Resolution precedence** for every target: CLI flag (e.g. `--api-url`) > environment variable (e.g. `SUKKO_API_URL`) > active context > built-in default.
+
+## Security posture
+
+:::warning TLS is required for remote
+A `remote` context must use `https`/`wss`. The CLI refuses to **create or operate** one whose provisioning, gateway, or tester URL is plaintext (`http`/`ws`) to a non-loopback host, so admin tokens, signed JWTs, and API keys are never sent in the clear. This is enforced both when a context is saved and at the moment a command dials, so a hand-edited config or a `--api-url` override can't bypass it.
+
+Loopback plaintext (`localhost`, `127.0.0.1`, `::1`) is allowed — to reach a private endpoint, forward it to a loopback port (e.g. `kubectl port-forward`), which keeps the bytes off the network.
+:::
+
+Changes to a **remote** stack ask for confirmation first, so a destructive provisioning command against production is never a single keystroke:
+
+```bash
+sukko tenant delete acme            # prompts: About to run "sukko tenant delete" against remote context "production" …
+sukko tenant delete acme --yes      # skip the prompt (scripts / CI)
+```
+
+In a non-interactive shell (CI), a remote change without `--yes` **fails fast** with a message pointing at `--yes` rather than hanging on a prompt. Read-only commands and anything against a local stack are never gated. Data-path commands (`publish`, `test`) are routine traffic and are not gated.
+
+## Which stack am I operating?
+
+Any command that reaches a stack's API prints a one-line banner to **stderr** naming the active context, its mode, and the effective URL it is about to dial. Anything that isn't a known-local target is marked with `⚠` and highlighted on a terminal:
+
+```
+⚠ provisioning API: production (remote) · https://api.sukko.example.com
+```
+
+The `⚠` appears for a `remote` context, an untyped/hand-edited context, and for a `local` context whose URL was overridden off-box (shown as `[endpoint overridden]`). Because the banner goes to stderr, it never interferes with `-o json` or piped stdout.
+
+## What remote mode can and can't do
+
+Remote mode **operates** a running stack's API — it does not deploy or manage the stack itself. There is no "remote up": `sukko up`, `down`, `status`, and `init` always operate the **local** Docker Compose stack and ignore the active context, so switching to a production context can't accidentally redirect them. `sukko up` prints a note when a non-local context is active and refuses a non-loopback `--api-url`.
+
+To check a **remote** stack's health, use `sukko health`, which probes whichever context is active. `sukko status` always reports the local stack.
+
+To deploy a remote stack in the first place, see the [Kubernetes deployment guide](./deploy/kubernetes).
+
+## See also
+
+- **[CLI Reference](../reference/cli)** — every `sukko` command and flag
+- **[Admin Authentication](./admin-auth)** — the Ed25519 keypair model
+- **[Security](../security)** — platform-wide security posture
