@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
         'reference/cli',
         'reference/rest-api',
         'reference/configuration',
+        'reference/versioning',
         {
           type: 'category',
           label: 'SDK',
