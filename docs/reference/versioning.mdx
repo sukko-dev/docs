@@ -1,0 +1,67 @@
+---
+title: Versioning & Compatibility
+description: What a Sukko platform version promises, and how to pin one safely
+---
+
+# Versioning & Compatibility
+
+This page states what a Sukko version promises, so you can upgrade with confidence.
+
+Sukko ships as three independent release trains. Each is versioned on its own
+[SemVer](https://semver.org/) line — a platform version and an SDK version that happen
+to share digits mean nothing to each other.
+
+| Train | Examples | Line today |
+| --- | --- | --- |
+| **Platform** — the service images (ws-gateway, ws-server, provisioning, push, webhook-worker) and Helm charts | `v1.0.10` | `1.x` |
+| **Wire contracts** — gateway OpenAPI, provisioning OpenAPI, client AsyncAPI | OpenAPI `1.2.0`, AsyncAPI `1.4.3` | `1.x`, each independent |
+| **CLI and SDKs** — the `sukko` CLI and the client SDKs | CLI `v1.3.0`, `@sukko/sdk` `0.1.x` | per package |
+
+## The wire contracts are the compatibility authority
+
+API compatibility is governed by the **wire contracts**, not by the platform image tag.
+Each contract carries its own SemVer:
+
+- the gateway OpenAPI spec,
+- the provisioning OpenAPI spec,
+- the client WebSocket AsyncAPI spec.
+
+A client or SDK that works against a given contract version keeps working against **any
+platform image that serves that contract version.** The platform images and the SDKs ship
+on independent schedules, coupled only through these contracts — so you can upgrade the
+platform without re-vendoring an SDK, as long as the contract version it serves is
+unchanged.
+
+## What a platform version means
+
+Given a platform version `vMAJOR.MINOR.PATCH`:
+
+- **MAJOR** — a backward-incompatible change to a wire contract, or to stored/on-disk
+  data. Upgrading across a MAJOR may require client, SDK, or data changes, and is always
+  called out in the release notes.
+- **MINOR** — may change the **operator-facing surface**: environment variables or Helm
+  values. Every such change is listed in the release notes. This is allowed **until the
+  operator-config freeze** (below) and reflects that the configuration surface is still
+  settling even though the API is stable.
+- **PATCH** — never breaks anything. Bug fixes and security fixes only (for example
+  `v1.0.10`).
+
+Wire-contract compatibility is never broken by a platform MINOR or PATCH — only by a
+platform MAJOR, and only together with the affected contract's own MAJOR bump.
+
+## Operator-config freeze
+
+The operator configuration surface (environment variables, Helm values) is not yet frozen:
+a MINOR release may still rename or remove one, and the release notes will say so. The
+surface is frozen once, together, the wire contracts are frozen at a stated version,
+contract tests run in CI against a live stack, and this policy is published. Until then,
+read the release notes before taking a MINOR upgrade.
+
+## Pinning a version
+
+- **Pin a specific image tag or digest.** Deploy a specific `vX.Y.Z` tag — or, for the
+  strongest guarantee, an image digest.
+- **Do not run `:latest` in production.** The `:latest` tag follows the newest release and
+  will change under you.
+- **Read the release notes before a MINOR upgrade** — they list any operator-config change.
+- **Within a MAJOR line, PATCH upgrades are always safe to take.**
